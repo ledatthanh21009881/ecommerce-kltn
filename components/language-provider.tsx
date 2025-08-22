@@ -1,0 +1,401 @@
+"use client"
+
+import React, { createContext, useContext, useState, useEffect } from 'react'
+
+type Language = 'en' | 'vi'
+
+interface LanguageContextType {
+  language: Language
+  setLanguage: (lang: Language) => void
+  t: (key: string) => string
+}
+
+const translations = {
+  en: {
+    // Header/Navigation
+    'nav.allProducts': 'All Products',
+    'nav.collections': 'Collections',
+    'nav.about': 'About',
+    'nav.signIn': 'Sign In',
+    'nav.signOut': 'Sign Out',
+    'nav.myAccount': 'My Account',
+    'nav.myOrders': 'My Orders',
+    'nav.adminPanel': 'Admin Panel',
+    'nav.createAccount': 'Create Account',
+    'nav.cart': 'Cart',
+    'nav.search': 'Search',
+    
+    // Login/Auth
+    'auth.signIn': 'Sign In',
+    'auth.adminPortal': 'Admin Portal',
+    'auth.accountName': 'Account Name',
+    'auth.password': 'Password',
+    'auth.forgotPassword': 'Forgot password?',
+    'auth.signingIn': 'Signing In...',
+    'auth.authenticating': 'Authenticating...',
+    'auth.signInAsAdmin': 'Sign In as Admin',
+    'auth.adminLogin': 'Admin Login',
+    'auth.adminLoginDesc': 'Sign in to access the administration panel',
+    'auth.backToUserLogin': '← Back to User Login',
+    'auth.needHelp': 'Need help?',
+    'auth.contactSupport': 'Contact Support',
+    'auth.dontHaveAccount': "Don't have an account?",
+    'auth.createOne': 'Create one',
+    'auth.email': 'Email',
+    'auth.emailRequired': 'Email is required',
+    'auth.emailPlaceholder': 'Enter your email address',
+    'auth.forgotPasswordDesc': 'Enter your email address and we will send you a link to reset your password.',
+    'auth.sendResetLink': 'Send Reset Link',
+    'auth.sending': 'Sending...',
+    'auth.resetLinkSent': 'Reset link has been sent to your email',
+    'auth.resetError': 'Failed to send reset link',
+    'auth.backToLogin': 'Back to Login',
+    'auth.changePassword': 'Change Password',
+    'auth.currentPassword': 'Current Password',
+    'auth.newPassword': 'New Password',
+    'auth.confirmPassword': 'Confirm Password',
+    'auth.currentPasswordRequired': 'Current password is required',
+    'auth.newPasswordRequired': 'New password is required',
+    'auth.confirmPasswordRequired': 'Confirm password is required',
+    'auth.passwordMismatch': 'Passwords do not match',
+    'auth.passwordChangeSuccess': 'Password changed successfully',
+    'auth.passwordChangeError': 'Failed to change password',
+    'auth.changingPassword': 'Changing password...',
+    'auth.sessionExpired': 'Session expired, please login again',
+    'auth.tokenRefreshed': 'Session refreshed successfully',
+    'auth.tokenRefreshFailed': 'Failed to refresh session',
+    
+    // Logout Modal
+    'logout.confirmTitle': 'Confirm Logout',
+    'logout.confirmMessage': 'Are you sure you want to sign out?',
+    'logout.confirmButton': 'Sign Out',
+    'logout.cancelButton': 'Cancel',
+    'logout.success': 'Logged out successfully',
+    'logout.signingOut': 'Signing out...',
+    
+    // Admin
+    'admin.dashboard': 'Dashboard',
+    'admin.products': 'Products',
+    'admin.categories': 'Categories',
+    'admin.orders': 'Orders',
+    'admin.users': 'Users',
+    'admin.inventory': 'Inventory',
+    'admin.shipping': 'Shipping',
+    'admin.promotions': 'Promotions',
+    'admin.suppliers': 'Suppliers',
+    'admin.content': 'Content',
+    'admin.messages': 'Messages',
+    'admin.analytics': 'Analytics',
+    'admin.payments': 'Payments',
+    'admin.tracking': 'Tracking',
+    'admin.reviews': 'Reviews',
+    'admin.settings': 'Settings',
+    'admin.profileSettings': 'Profile Settings',
+    
+    // Categories
+    'categories.title': 'Category Management',
+    'categories.addNew': 'Add New Category',
+    'categories.edit': 'Edit Category',
+    'categories.name': 'Category Name',
+    'categories.parent': 'Parent Category',
+    'categories.position': 'Position',
+    'categories.status': 'Status',
+    'categories.active': 'Active',
+    'categories.inactive': 'Inactive',
+    'categories.actions': 'Actions',
+    'categories.noParent': 'No Parent (Main Category)',
+    'categories.createSuccess': 'Category created successfully',
+    'categories.updateSuccess': 'Category updated successfully',
+    'categories.deleteSuccess': 'Category deleted successfully',
+    'categories.statusToggled': 'Category status updated',
+    'categories.confirmDelete': 'Are you sure you want to delete this category?',
+    'categories.deleteWarning': 'This action cannot be undone.',
+    'categories.nameRequired': 'Category name is required',
+    'categories.loading': 'Loading categories...',
+    'categories.noCategories': 'No categories found',
+
+    // Products
+    'products.title': 'Products Management',
+    'products.addNew': 'Add New Product',
+    'products.editProduct': 'Edit Product',
+    'products.deleteProduct': 'Delete Product',
+    'products.name': 'Product Name',
+    'products.slug': 'URL Slug',
+    'products.description': 'Description',
+    'products.shortDescription': 'Short Description',
+    'products.category': 'Category',
+    'products.brand': 'Brand',
+    'products.material': 'Material',
+    'products.status': 'Status',
+    'products.featured': 'Featured',
+    'products.price': 'Price',
+    'products.stock': 'Stock',
+    'products.variants': 'Variants',
+    'products.images': 'Images',
+    'products.actions': 'Actions',
+    'products.active': 'Active',
+    'products.inactive': 'Inactive',
+    'products.outOfStock': 'Out of Stock',
+    'products.yes': 'Yes',
+    'products.no': 'No',
+    'products.confirmDelete': 'Are you sure you want to delete this product?',
+    'products.deleteWarning': 'This action cannot be undone.',
+    'products.save': 'Save',
+    'products.cancel': 'Cancel',
+    'products.delete': 'Delete',
+    'products.edit': 'Edit',
+    'products.view': 'View',
+    'products.loading': 'Loading...',
+    'products.noProducts': 'No products found',
+    'products.createSuccess': 'Product created successfully',
+    'products.updateSuccess': 'Product updated successfully',
+    'products.deleteSuccess': 'Product deleted successfully',
+    'products.error': 'An error occurred',
+    'products.searchPlaceholder': 'Search products...',
+    'products.filterByCategory': 'Filter by Category',
+    'products.filterByStatus': 'Filter by Status',
+    'products.sortBy': 'Sort by',
+    'products.sortByName': 'Name',
+    'products.sortByDate': 'Date Created',
+    'products.sortByPrice': 'Price',
+    'products.sortByStock': 'Stock',
+    'products.sortAsc': 'Ascending',
+    'products.sortDesc': 'Descending',
+    'products.size': 'Size',
+    'products.color': 'Color',
+    'products.sku': 'SKU',
+    'products.addVariant': 'Add Variant',
+    'products.removeVariant': 'Remove Variant',
+    'products.addImage': 'Add Image',
+    'products.removeImage': 'Remove Image',
+    'products.imageUrl': 'Image URL',
+    'products.altText': 'Alt Text',
+    'products.isPrimary': 'Primary Image',
+    'products.displayOrder': 'Display Order',
+    'products.metaTitle': 'Meta Title',
+    'products.metaDescription': 'Meta Description',
+    
+    // Common
+    'common.loading': 'Loading...',
+    'common.save': 'Save',
+    'common.cancel': 'Cancel',
+    'common.delete': 'Delete',
+    'common.edit': 'Edit',
+    'common.view': 'View',
+    'common.close': 'Close',
+    'common.submit': 'Submit',
+    'common.reset': 'Reset',
+  },
+  vi: {
+    // Header/Navigation
+    'nav.allProducts': 'Tất cả sản phẩm',
+    'nav.collections': 'Bộ sưu tập',
+    'nav.about': 'Giới thiệu',
+    'nav.signIn': 'Đăng nhập',
+    'nav.signOut': 'Đăng xuất',
+    'nav.myAccount': 'Tài khoản của tôi',
+    'nav.myOrders': 'Đơn hàng của tôi',
+    'nav.adminPanel': 'Quản trị viên',
+    'nav.createAccount': 'Tạo tài khoản',
+    'nav.cart': 'Giỏ hàng',
+    'nav.search': 'Tìm kiếm',
+    
+    // Login/Auth
+    'auth.signIn': 'Đăng nhập',
+    'auth.adminPortal': 'Cổng quản trị',
+    'auth.accountName': 'Tên tài khoản',
+    'auth.password': 'Mật khẩu',
+    'auth.forgotPassword': 'Quên mật khẩu?',
+    'auth.signingIn': 'Đang đăng nhập...',
+    'auth.authenticating': 'Đang xác thực...',
+    'auth.signInAsAdmin': 'Đăng nhập quản trị',
+    'auth.adminLogin': 'Đăng nhập quản trị',
+    'auth.adminLoginDesc': 'Đăng nhập để truy cập bảng điều khiển quản trị',
+    'auth.backToUserLogin': '← Quay lại đăng nhập người dùng',
+    'auth.needHelp': 'Cần hỗ trợ?',
+    'auth.contactSupport': 'Liên hệ hỗ trợ',
+    'auth.dontHaveAccount': 'Chưa có tài khoản?',
+    'auth.createOne': 'Tạo tài khoản',
+    'auth.email': 'Email',
+    'auth.emailRequired': 'Email là bắt buộc',
+    'auth.emailPlaceholder': 'Nhập địa chỉ email của bạn',
+    'auth.forgotPasswordDesc': 'Nhập địa chỉ email của bạn và chúng tôi sẽ gửi cho bạn liên kết để đặt lại mật khẩu.',
+    'auth.sendResetLink': 'Gửi liên kết đặt lại',
+    'auth.sending': 'Đang gửi...',
+    'auth.resetLinkSent': 'Liên kết đặt lại đã được gửi đến email của bạn',
+    'auth.resetError': 'Không thể gửi liên kết đặt lại',
+    'auth.backToLogin': 'Quay lại đăng nhập',
+    'auth.changePassword': 'Đổi mật khẩu',
+    'auth.currentPassword': 'Mật khẩu hiện tại',
+    'auth.newPassword': 'Mật khẩu mới',
+    'auth.confirmPassword': 'Xác nhận mật khẩu',
+    'auth.currentPasswordRequired': 'Mật khẩu hiện tại là bắt buộc',
+    'auth.newPasswordRequired': 'Mật khẩu mới là bắt buộc',
+    'auth.confirmPasswordRequired': 'Xác nhận mật khẩu là bắt buộc',
+    'auth.passwordMismatch': 'Mật khẩu không khớp',
+    'auth.passwordChangeSuccess': 'Đổi mật khẩu thành công',
+    'auth.passwordChangeError': 'Không thể đổi mật khẩu',
+    'auth.changingPassword': 'Đang đổi mật khẩu...',
+    'auth.sessionExpired': 'Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại',
+    'auth.tokenRefreshed': 'Gia hạn phiên đăng nhập thành công',
+    'auth.tokenRefreshFailed': 'Không thể gia hạn phiên đăng nhập',
+    
+    // Logout Modal
+    'logout.confirmTitle': 'Xác nhận đăng xuất',
+    'logout.confirmMessage': 'Bạn có chắc chắn muốn đăng xuất không?',
+    'logout.confirmButton': 'Đăng xuất',
+    'logout.cancelButton': 'Hủy',
+    'logout.success': 'Đăng xuất thành công',
+    'logout.signingOut': 'Đang đăng xuất...',
+    
+    // Admin
+    'admin.dashboard': 'Bảng điều khiển',
+    'admin.products': 'Sản phẩm',
+    'admin.categories': 'Danh mục',
+    'admin.orders': 'Đơn hàng',
+    'admin.users': 'Người dùng',
+    'admin.inventory': 'Kho hàng',
+    'admin.shipping': 'Vận chuyển',
+    'admin.promotions': 'Khuyến mãi',
+    'admin.suppliers': 'Nhà cung cấp',
+    'admin.content': 'Nội dung',
+    'admin.messages': 'Tin nhắn',
+    'admin.analytics': 'Phân tích',
+    'admin.payments': 'Thanh toán',
+    'admin.tracking': 'Theo dõi',
+    'admin.reviews': 'Đánh giá',
+    'admin.settings': 'Cài đặt',
+    'admin.profileSettings': 'Cài đặt hồ sơ',
+    
+    // Categories
+    'categories.title': 'Quản lý danh mục',
+    'categories.addNew': 'Thêm danh mục mới',
+    'categories.edit': 'Sửa danh mục',
+    'categories.name': 'Tên danh mục',
+    'categories.parent': 'Danh mục cha',
+    'categories.position': 'Vị trí',
+    'categories.status': 'Trạng thái',
+    'categories.active': 'Hoạt động',
+    'categories.inactive': 'Không hoạt động',
+    'categories.actions': 'Thao tác',
+    'categories.noParent': 'Không có danh mục cha (Danh mục chính)',
+    'categories.createSuccess': 'Tạo danh mục thành công',
+    'categories.updateSuccess': 'Cập nhật danh mục thành công',
+    'categories.deleteSuccess': 'Xóa danh mục thành công',
+    'categories.statusToggled': 'Cập nhật trạng thái danh mục thành công',
+    'categories.confirmDelete': 'Bạn có chắc chắn muốn xóa danh mục này?',
+    'categories.deleteWarning': 'Hành động này không thể hoàn tác.',
+    'categories.nameRequired': 'Tên danh mục là bắt buộc',
+    'categories.loading': 'Đang tải danh mục...',
+    'categories.noCategories': 'Không tìm thấy danh mục nào',
+
+    // Products
+    'products.title': 'Quản lý Sản phẩm',
+    'products.addNew': 'Thêm Sản phẩm Mới',
+    'products.editProduct': 'Chỉnh sửa Sản phẩm',
+    'products.deleteProduct': 'Xóa Sản phẩm',
+    'products.name': 'Tên Sản phẩm',
+    'products.slug': 'URL Slug',
+    'products.description': 'Mô tả',
+    'products.shortDescription': 'Mô tả Ngắn',
+    'products.category': 'Danh mục',
+    'products.brand': 'Thương hiệu',
+    'products.material': 'Chất liệu',
+    'products.status': 'Trạng thái',
+    'products.featured': 'Nổi bật',
+    'products.price': 'Giá',
+    'products.stock': 'Tồn kho',
+    'products.variants': 'Biến thể',
+    'products.images': 'Hình ảnh',
+    'products.actions': 'Thao tác',
+    'products.active': 'Hoạt động',
+    'products.inactive': 'Không hoạt động',
+    'products.outOfStock': 'Hết hàng',
+    'products.yes': 'Có',
+    'products.no': 'Không',
+    'products.confirmDelete': 'Bạn có chắc chắn muốn xóa sản phẩm này?',
+    'products.deleteWarning': 'Hành động này không thể hoàn tác.',
+    'products.save': 'Lưu',
+    'products.cancel': 'Hủy',
+    'products.delete': 'Xóa',
+    'products.edit': 'Sửa',
+    'products.view': 'Xem',
+    'products.loading': 'Đang tải...',
+    'products.noProducts': 'Không tìm thấy sản phẩm nào',
+    'products.createSuccess': 'Tạo sản phẩm thành công',
+    'products.updateSuccess': 'Cập nhật sản phẩm thành công',
+    'products.deleteSuccess': 'Xóa sản phẩm thành công',
+    'products.error': 'Đã xảy ra lỗi',
+    'products.searchPlaceholder': 'Tìm kiếm sản phẩm...',
+    'products.filterByCategory': 'Lọc theo Danh mục',
+    'products.filterByStatus': 'Lọc theo Trạng thái',
+    'products.sortBy': 'Sắp xếp theo',
+    'products.sortByName': 'Tên',
+    'products.sortByDate': 'Ngày tạo',
+    'products.sortByPrice': 'Giá',
+    'products.sortByStock': 'Tồn kho',
+    'products.sortAsc': 'Tăng dần',
+    'products.sortDesc': 'Giảm dần',
+    'products.size': 'Kích thước',
+    'products.color': 'Màu sắc',
+    'products.sku': 'Mã SKU',
+    'products.addVariant': 'Thêm Biến thể',
+    'products.removeVariant': 'Xóa Biến thể',
+    'products.addImage': 'Thêm Hình ảnh',
+    'products.removeImage': 'Xóa Hình ảnh',
+    'products.imageUrl': 'URL Hình ảnh',
+    'products.altText': 'Văn bản Alt',
+    'products.isPrimary': 'Hình ảnh Chính',
+    'products.displayOrder': 'Thứ tự Hiển thị',
+    'products.metaTitle': 'Meta Title',
+    'products.metaDescription': 'Meta Description',
+    
+    // Common
+    'common.loading': 'Đang tải...',
+    'common.save': 'Lưu',
+    'common.cancel': 'Hủy',
+    'common.delete': 'Xóa',
+    'common.edit': 'Sửa',
+    'common.view': 'Xem',
+    'common.close': 'Đóng',
+    'common.submit': 'Gửi',
+    'common.reset': 'Đặt lại',
+  }
+}
+
+const LanguageContext = createContext<LanguageContextType | undefined>(undefined)
+
+export function LanguageProvider({ children }: { children: React.ReactNode }) {
+  const [language, setLanguageState] = useState<Language>('en')
+
+  useEffect(() => {
+    // Load language from localStorage
+    const savedLanguage = localStorage.getItem('language') as Language
+    if (savedLanguage && (savedLanguage === 'en' || savedLanguage === 'vi')) {
+      setLanguageState(savedLanguage)
+    }
+  }, [])
+
+  const setLanguage = (lang: Language) => {
+    setLanguageState(lang)
+    localStorage.setItem('language', lang)
+  }
+
+  const t = (key: string): string => {
+    return translations[language][key as keyof typeof translations['en']] || key
+  }
+
+  return (
+    <LanguageContext.Provider value={{ language, setLanguage, t }}>
+      {children}
+    </LanguageContext.Provider>
+  )
+}
+
+export function useLanguage() {
+  const context = useContext(LanguageContext)
+  if (context === undefined) {
+    throw new Error('useLanguage must be used within a LanguageProvider')
+  }
+  return context
+}
