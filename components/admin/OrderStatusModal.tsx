@@ -47,7 +47,7 @@ export default function OrderStatusModal({ isOpen, onClose, order, onStatusUpdat
       
 
       
-      const response = await fetch(`/api/backend/v1/orders/${order.order_id}/status`, {
+      const response = await fetch(`/api/orders/${order.order_id}/status`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

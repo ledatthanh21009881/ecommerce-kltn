@@ -18,16 +18,30 @@ export async function GET(request: NextRequest) {
     params.append('page', page)
     params.append('limit', limit)
 
-    // Use test route for now
+    // Get token from request headers
+    const token = request.headers.get('authorization')
+    
+    // Call backend API
     const backendUrl = `${process.env.BACKEND_URL || 'http://localhost:8000'}/api/v1/orders-test?${params.toString()}`
     
     const response = await fetch(backendUrl, {
-      headers: { 'Content-Type': 'application/json' }
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token && { 'Authorization': token }),
+      },
     })
+    
+    if (!response.ok) {
+      throw new Error(`Backend responded with status: ${response.status}`)
+    }
+    
     const data = await response.json()
     return NextResponse.json(data)
   } catch (error) {
     console.error('Error fetching orders:', error)
-    return NextResponse.json({ success: false, message: 'Internal server error' }, { status: 500 })
+    return NextResponse.json(
+      { success: false, message: 'Failed to fetch orders' }, 
+      { status: 500 }
+    )
   }
 }

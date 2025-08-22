@@ -170,9 +170,8 @@ export default function AddProductPage() {
         
       } catch (proxyError) {
         console.log('🔄 Proxy failed, trying direct API...', proxyError)
-        const response = await fetch('http://localhost:8000/api/v1/products', {
+        const response = await fetch('/api/backend/v1/products', {
           method: 'POST',
-          mode: 'cors',
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`,
@@ -287,9 +286,8 @@ export default function AddProductPage() {
             }
             
           } catch (proxyError) {
-            await fetch(`http://localhost:8000/api/v1/products/${productId}/images`, {
+            await fetch(`/api/backend/v1/products/${productId}/images`, {
               method: 'POST',
-              mode: 'cors',
               headers: {
                 'Content-Type': 'application/json',
                 'Accept': 'application/json',

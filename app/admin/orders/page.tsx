@@ -14,6 +14,7 @@ import OrderStatusModal from '@/components/admin/OrderStatusModal'
 import AssignShipperModal from '@/components/admin/AssignShipperModal'
 import ConfirmModal from '@/components/ui/confirm-modal'
 import { getAuthData } from '@/lib/admin-auth'
+import { ordersApi } from '@/lib/api'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -77,8 +78,7 @@ export default function AdminOrdersPage() {
   const fetchStatistics = async () => {
     try {
       console.log('Fetching statistics...')
-      const response = await fetch('/api/backend/v1/orders/statistics')
-      const data = await response.json()
+      const data = await ordersApi.getStatistics()
       console.log('Statistics data:', data)
       
       if (data.success) {
@@ -191,30 +191,36 @@ export default function AdminOrdersPage() {
     }
 
     try {
-      const url = `/api/backend/v1/invoice/generate?order_id=${order.order_id}&format=${format}`
-      const method = format === 'email' ? 'POST' : 'GET'
+      if (format === 'pdf') {
+        // Sử dụng Next.js API route cho PDF
+        const response = await fetch(`/api/backend/v1/invoice/generate?order_id=${order.order_id}&format=pdf`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('adminToken')}`
+          }
+        })
 
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('adminToken')}`
+        if (response.ok) {
+          const blob = await response.blob()
+          const url = window.URL.createObjectURL(blob)
+          const a = document.createElement('a')
+          a.href = url
+          a.download = `invoice-${order.order_id}.pdf`
+          a.click()
+          window.URL.revokeObjectURL(url)
+          toast.success('Tải hóa đơn PDF thành công!')
+        } else {
+          const data = await response.json()
+          toast.error(data.message || 'Lỗi khi tạo hóa đơn PDF')
         }
-      })
-
-      if (format === 'pdf' && response.ok) {
-        const blob = await response.blob()
-        const url = window.URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.href = url
-        a.download = `invoice-${order.order_id}.pdf`
-        a.click()
-        window.URL.revokeObjectURL(url)
-        toast.success('Tải hóa đơn PDF thành công!')
-      } else if (format === 'email' && response.ok) {
-        toast.success('Hóa đơn đã được gửi qua email!')
-      } else {
-        const data = await response.json()
-        toast.error(data.message || 'Lỗi khi tạo hóa đơn')
+      } else if (format === 'email') {
+        // Sử dụng ordersApi.sendInvoice cho email
+        const data = await ordersApi.sendInvoice(order.order_id.toString(), { format: 'email' })
+        
+        if (data.success) {
+          toast.success('Hóa đơn đã được gửi qua email!')
+        } else {
+          toast.error(data.message || 'Lỗi khi gửi hóa đơn qua email')
+        }
       }
     } catch (error) {
       console.error('Error generating invoice:', error)
@@ -228,16 +234,7 @@ export default function AdminOrdersPage() {
     try {
       const { token } = getAuthData()
       
-      const response = await fetch(`http://127.0.0.1:8000/api/backend/v1/orders/${deletingOrderId}`, {
-        method: 'DELETE',
-        mode: 'cors',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        }
-      })
-
-      const data = await response.json()
+      const data = await ordersApi.delete(deletingOrderId.toString())
       
       if (data.success) {
         toast.success('Order cancelled successfully')

@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
 import { getAuthData } from '@/lib/admin-auth'
+import { ordersApi } from '@/lib/api'
 
 interface DashboardStats {
   total_products: number
@@ -34,13 +35,23 @@ export default function AdminDashboardPage() {
   const fetchDashboardStats = async () => {
     try {
       setLoading(true)
-      const response = await fetch('/api/backend/v1/dashboard')
-      const data = await response.json()
       
-      if (data.success) {
-        setStats(data.data || {})
+      // Fetch orders statistics
+      const statsData = await ordersApi.getStatistics()
+      
+      if (statsData.success) {
+        const orderStats = statsData.data
+        setStats({
+          total_products: 0, // Will be fetched separately if needed
+          total_orders: orderStats.total_orders || 0,
+          total_users: 0, // Will be fetched separately if needed
+          total_revenue: parseFloat(orderStats.total_revenue) || 0,
+          recent_orders: [],
+          top_products: [],
+          sales_chart: []
+        })
       } else {
-        toast.error('Failed to fetch dashboard data')
+        toast.error('Failed to fetch order statistics')
       }
     } catch (error) {
       console.error('Error fetching dashboard data:', error)

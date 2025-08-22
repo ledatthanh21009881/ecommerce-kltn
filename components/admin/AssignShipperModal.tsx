@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { toast } from 'sonner'
 import { Order, Shipper } from '@/lib/types'
 import { getAuthData } from '@/lib/admin-auth'
+import { shippersApi } from '@/lib/api'
 
 interface AssignShipperModalProps {
   isOpen: boolean
@@ -31,20 +32,10 @@ export default function AssignShipperModal({ isOpen, onClose, order, onShipperAs
   const fetchAvailableShippers = async () => {
     try {
       setFetchingShippers(true)
-      const { token } = getAuthData()
       
       console.log('Fetching available shippers...')
-      console.log('Token:', token ? 'Present' : 'Missing')
       
-      const response = await fetch('/api/backend/v1/orders/available-shippers', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      })
-      
-      console.log('Response status:', response.status)
-      const data = await response.json()
+      const data = await shippersApi.getAvailable()
       console.log('Response data:', data)
       
       if (data.success) {
@@ -75,7 +66,7 @@ export default function AssignShipperModal({ isOpen, onClose, order, onShipperAs
         token: token ? 'Present' : 'Missing'
       })
       
-      const response = await fetch(`/api/backend/v1/orders/${order.order_id}/assign-shipper`, {
+      const response = await fetch(`/api/orders/${order.order_id}/assign-shipper`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

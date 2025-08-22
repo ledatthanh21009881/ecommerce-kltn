@@ -1,26 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-export async function POST(
+export async function PUT(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
     const id = params.id
     const body = await request.json()
+    const { status, reason } = body
     
     // Get token from request headers
     const token = request.headers.get('authorization')
     
     // Call backend API
-    const backendUrl = `${process.env.BACKEND_URL || 'http://localhost:8000'}/api/v1/products/${id}/images`
+    const backendUrl = `${process.env.BACKEND_URL || 'http://localhost:8000'}/api/v1/orders/${id}/status`
     
     const response = await fetch(backendUrl, {
-      method: 'POST',
+      method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
         ...(token && { 'Authorization': token }),
       },
-      body: JSON.stringify(body),
+      body: JSON.stringify({ status, reason }),
     })
     
     if (!response.ok) {
@@ -30,9 +31,9 @@ export async function POST(
     const data = await response.json()
     return NextResponse.json(data)
   } catch (error) {
-    console.error('Error uploading product images:', error)
+    console.error('Error updating order status:', error)
     return NextResponse.json(
-      { success: false, message: 'Failed to upload product images' }, 
+      { success: false, message: 'Failed to update order status' }, 
       { status: 500 }
     )
   }

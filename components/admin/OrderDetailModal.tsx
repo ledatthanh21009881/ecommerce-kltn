@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { toast } from 'sonner'
 import { Order, OrderItem, OrderStatusLog, ShippingTracking, Payment } from '@/lib/types'
+import { ordersApi } from '@/lib/api'
 
 interface OrderDetailModalProps {
   isOpen: boolean
@@ -30,26 +31,9 @@ export default function OrderDetailModal({ isOpen, onClose, order, onStatusUpdat
       setLoading(true)
       console.log('Fetching order details for ID:', orderId)
       
-      const token = localStorage.getItem('adminToken')
-      console.log('Token:', token)
-      const response = await fetch(`/api/orders/${orderId}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      })
-      console.log('Response status:', response.status)
-      
-      const data = await response.json()
-      console.log('Raw response data:', data)
-      
-      if (data.success) {
-        console.log('Order Details Data:', data.data)
-        setOrderDetails(data.data)
-      } else {
-        console.error('API Error:', data)
-        toast.error('Failed to fetch order details')
-      }
+      const data = await ordersApi.getById(orderId.toString())
+      console.log('Order Details Data:', data.data)
+      setOrderDetails(data.data)
     } catch (error) {
       console.error('Error fetching order details:', error)
       toast.error('Error fetching order details')
