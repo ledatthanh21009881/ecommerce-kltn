@@ -27,6 +27,15 @@ export async function DELETE(request: NextRequest) {
 
     console.log('Backend DELETE response status:', response.status)
 
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.log('Backend DELETE error response:', errorText)
+      return NextResponse.json(
+        { error: 'Backend request failed', status: response.status, details: errorText },
+        { status: response.status }
+      )
+    }
+
     const data = await response.json()
     console.log('Backend DELETE response data:', data)
 
