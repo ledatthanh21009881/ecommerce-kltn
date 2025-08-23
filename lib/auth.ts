@@ -107,7 +107,8 @@ export const authUtils = {
   // Get token from localStorage
   getToken: (): string | null => {
     if (typeof window !== 'undefined') {
-      return localStorage.getItem('auth_token')
+      // Try adminToken first (for admin login), then auth_token (for user login)
+      return localStorage.getItem('adminToken') || localStorage.getItem('auth_token')
     }
     return null
   },

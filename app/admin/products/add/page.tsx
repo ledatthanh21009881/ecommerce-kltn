@@ -85,7 +85,7 @@ export default function AddProductPage() {
   }
 
   const handleNameChange = (name: string) => {
-    setFormData(prev => ({
+    setFormData((prev: ProductFormData) => ({
       ...prev,
       product_name: name,
       slug: prev.slug || generateSlug(name)
@@ -391,7 +391,7 @@ export default function AddProductPage() {
                   <Input
                     id="slug"
                     value={formData.slug}
-                    onChange={(e) => setFormData(prev => ({ ...prev, slug: e.target.value }))}
+                    onChange={(e) => setFormData((prev: ProductFormData) => ({ ...prev, slug: e.target.value }))}
                     placeholder="product-slug"
                   />
                 </div>
@@ -430,7 +430,7 @@ export default function AddProductPage() {
                             key={category.category_id}
                             className="relative flex cursor-pointer select-none items-center px-2 py-1.5 text-sm hover:bg-gray-100"
                             onClick={() => {
-                              setFormData(prev => ({ ...prev, category_id: category.category_id }))
+                              setFormData((prev: ProductFormData) => ({ ...prev, category_id: category.category_id }))
                               setCategoryDropdownOpen(false)
                             }}
                           >
@@ -452,7 +452,7 @@ export default function AddProductPage() {
                   <Input
                     id="material"
                     value={formData.material}
-                    onChange={(e) => setFormData(prev => ({ ...prev, material: e.target.value }))}
+                    onChange={(e) => setFormData((prev: ProductFormData) => ({ ...prev, material: e.target.value }))}
                     placeholder="e.g., Cotton, Polyester"
                   />
                 </div>
@@ -462,7 +462,7 @@ export default function AddProductPage() {
                   <Textarea
                     id="short_description"
                     value={formData.short_description}
-                    onChange={(e) => setFormData(prev => ({ ...prev, short_description: e.target.value }))}
+                    onChange={(e) => setFormData((prev: ProductFormData) => ({ ...prev, short_description: e.target.value }))}
                     placeholder="Brief product description..."
                     rows={3}
                   />
@@ -473,7 +473,7 @@ export default function AddProductPage() {
                   <Textarea
                     id="description"
                     value={formData.description}
-                    onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                    onChange={(e) => setFormData((prev: ProductFormData) => ({ ...prev, description: e.target.value }))}
                     placeholder="Detailed product description..."
                     rows={6}
                   />
@@ -492,7 +492,7 @@ export default function AddProductPage() {
                       id="list_price"
                       type="number"
                       value={formData.list_price}
-                      onChange={(e) => setFormData(prev => ({ ...prev, list_price: parseFloat(e.target.value) || 0 }))}
+                      onChange={(e) => setFormData((prev: ProductFormData) => ({ ...prev, list_price: parseFloat(e.target.value) || 0 }))}
                       placeholder="0"
                       min="0"
                       step="1000"
@@ -512,7 +512,7 @@ export default function AddProductPage() {
                       id="compare_at_price"
                       type="number"
                       value={formData.compare_at_price}
-                      onChange={(e) => setFormData(prev => ({ ...prev, compare_at_price: parseFloat(e.target.value) || 0 }))}
+                      onChange={(e) => setFormData((prev: ProductFormData) => ({ ...prev, compare_at_price: parseFloat(e.target.value) || 0 }))}
                       placeholder="0"
                       min="0"
                       step="1000"
@@ -534,7 +534,7 @@ export default function AddProductPage() {
                       id="cost_price"
                       type="number"
                       value={formData.cost_price}
-                      onChange={(e) => setFormData(prev => ({ ...prev, cost_price: parseFloat(e.target.value) || 0 }))}
+                      onChange={(e) => setFormData((prev: ProductFormData) => ({ ...prev, cost_price: parseFloat(e.target.value) || 0 }))}
                       placeholder="0"
                       min="0"
                       step="1000"
@@ -556,7 +556,7 @@ export default function AddProductPage() {
                       id="stock_quantity"
                       type="number"
                       value={formData.stock_quantity}
-                      onChange={(e) => setFormData(prev => ({ ...prev, stock_quantity: parseInt(e.target.value) || 0 }))}
+                      onChange={(e) => setFormData((prev: ProductFormData) => ({ ...prev, stock_quantity: parseInt(e.target.value) || 0 }))}
                       placeholder="0"
                       min="0"
                       step="1"
@@ -634,7 +634,7 @@ export default function AddProductPage() {
                             key={status.value}
                             className="relative flex cursor-pointer select-none items-center px-2 py-1.5 text-sm hover:bg-gray-100"
                             onClick={() => {
-                              setFormData(prev => ({ ...prev, status: status.value as any }))
+                              setFormData((prev: ProductFormData) => ({ ...prev, status: status.value }))
                               setStatusDropdownOpen(false)
                             }}
                           >
@@ -656,7 +656,7 @@ export default function AddProductPage() {
                     type="checkbox"
                     id="is_featured"
                     checked={formData.is_featured}
-                    onChange={(e) => setFormData(prev => ({ ...prev, is_featured: e.target.checked }))}
+                    onChange={(e) => setFormData((prev: ProductFormData) => ({ ...prev, is_featured: e.target.checked }))}
                     className="rounded border-gray-300"
                   />
                   <Label htmlFor="is_featured">Featured Product</Label>

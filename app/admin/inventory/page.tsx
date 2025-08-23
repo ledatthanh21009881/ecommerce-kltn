@@ -15,6 +15,7 @@ import { getAuthData } from '@/lib/admin-auth'
 export default function AdminInventoryPage() {
   const [variants, setVariants] = useState<InventoryVariant[]>([])
   const [products, setProducts] = useState<Product[]>([])
+  const [categories, setCategories] = useState([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedProduct, setSelectedProduct] = useState('')
@@ -31,10 +32,13 @@ export default function AdminInventoryPage() {
       const { token } = getAuthData()
       
       // Use Next.js proxy to backend API
-      const response = await fetch('/api/backend/v1/inventory', {
+      const url = '/api/backend/v1/inventory-new'
+      console.log('🌐 Fetching inventory from:', url)
+      const response = await fetch(url, {
         method: 'GET',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         }
       })
       
@@ -62,20 +66,56 @@ export default function AdminInventoryPage() {
   // Fetch products for dropdown
   const fetchProducts = async () => {
     try {
-      const response = await fetch('/api/backend/v1/products?limit=1000')
+      const { token } = getAuthData()
+      console.log('🔄 Fetching products with token:', !!token)
+      
+      const response = await fetch('/api/backend/v1/products?limit=1000', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+      
+      console.log('📥 Products response status:', response.status)
+      
+      const data = await response.json()
+      console.log('📦 Products data:', data)
+      
+      if (data.success) {
+        // Backend returns paginated format with data.items
+        const productsData = data.data?.items || data.data || []
+        console.log('✅ Products fetched successfully, count:', productsData.length)
+        setProducts(productsData)
+      } else {
+        console.log('❌ Products fetch failed:', data.message)
+      }
+    } catch (error) {
+      console.error('❌ Error fetching products:', error)
+    }
+  }
+
+  // Fetch categories for filter
+  const fetchCategories = async () => {
+    try {
+      const { token } = getAuthData()
+      const response = await fetch('/api/backend/v1/categories', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
       const data = await response.json()
       
       if (data.success) {
-        setProducts(data.data || [])
+        setCategories(data.data || [])
       }
     } catch (error) {
-      console.error('Error fetching products:', error)
+      console.error('Error fetching categories:', error)
     }
   }
 
   useEffect(() => {
     fetchInventory()
     fetchProducts()
+    fetchCategories()
   }, [selectedProduct, selectedStatus])
 
   // Filter variants based on search term
@@ -113,7 +153,9 @@ export default function AdminInventoryPage() {
 
     try {
       const { token } = getAuthData()
-      const response = await fetch(`/api/backend/v1/inventory/${deletingVariantId}`, {
+      console.log('🗑️ Deleting inventory ID:', deletingVariantId)
+      
+      const response = await fetch(`/api/backend/v1/inventory/delete?id=${deletingVariantId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -121,7 +163,23 @@ export default function AdminInventoryPage() {
         }
       })
 
+      console.log('📥 Delete response status:', response.status)
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.log('❌ Delete error response:', errorText)
+        
+        if (response.status === 401) {
+          toast.error('Authentication failed. Please login again.')
+          return
+        }
+        
+        toast.error(`Delete failed: ${response.status} ${response.statusText}`)
+        return
+      }
+
       const data = await response.json()
+      console.log('✅ Delete response data:', data)
       
       if (data.success) {
         toast.success('Inventory deactivated successfully')
@@ -130,7 +188,15 @@ export default function AdminInventoryPage() {
         toast.error(data.message || 'Failed to deactivate inventory')
       }
     } catch (error) {
-      toast.error('Error deactivating inventory')
+      console.error('❌ Error deleting inventory:', error)
+      
+      if (error instanceof SyntaxError) {
+        toast.error('Invalid response from server. Please try again.')
+      } else if (error instanceof TypeError) {
+        toast.error('Network error. Please check your connection.')
+      } else {
+        toast.error(`Error deleting inventory: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      }
     } finally {
       setDeletingVariantId(null)
     }
@@ -415,6 +481,7 @@ export default function AdminInventoryPage() {
           }}
           variant={editingVariant}
           products={products}
+          categories={categories}
           onSaved={fetchInventory}
         />
 

@@ -134,7 +134,7 @@ export const inventoryApi = {
     apiFetch(`api/backend/v1/inventory${params ? `?${params}` : ''}`),
   
   delete: (id: string) => 
-    apiFetch(`api/backend/v1/inventory/${id}`, {
+    apiFetch(`api/backend/v1/inventory/delete?id=${id}`, {
       method: 'DELETE',
     }),
 };

@@ -189,3 +189,22 @@ export async function getCategories(): Promise<CategoriesResponse> {
     throw error
   }
 }
+
+// Form data interface for product creation/editing
+export interface ProductFormData {
+  product_name: string
+  slug: string
+  description: string
+  short_description: string
+  category_id: number
+  material: string
+  list_price: number
+  compare_at_price: number
+  cost_price: number
+  price: number
+  stock_quantity: number
+  status: string
+  is_featured: boolean
+  variants: ProductVariant[]
+  images: ProductImage[]
+}

@@ -10,6 +10,7 @@ import { Switch } from '@/components/ui/switch'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
 import { Product, ProductFormData, ProductVariant, ProductImage } from '@/lib/types'
+import { authUtils } from '@/lib/auth'
 
 interface ProductModalProps {
   isOpen: boolean
@@ -224,10 +225,21 @@ export default function ProductModal({ isOpen, onClose, product, categories, onS
          images: allImages
        }
 
-      const token = localStorage.getItem('adminToken')
+      const token = authUtils.getToken()
+      console.log('🔑 Token for product operation:', token ? 'Token exists' : 'No token found')
+      
+      if (!token) {
+        toast.error('No authentication token found. Please login again.')
+        return
+      }
+      
       const url = product 
-        ? `/api/backend/v1/products/${product.product_id}`
+        ? `/api/backend/v1/products/update?id=${product.product_id}`
         : '/api/backend/v1/products'
+      
+      console.log('🌐 Making request to:', url)
+      console.log('📤 Request method:', product ? 'PUT' : 'POST')
+      console.log('📋 Request data:', submitData)
       
       const response = await fetch(url, {
         method: product ? 'PUT' : 'POST',
@@ -238,7 +250,24 @@ export default function ProductModal({ isOpen, onClose, product, categories, onS
         body: JSON.stringify(submitData)
       })
 
+      console.log('📥 Response status:', response.status)
+      console.log('📥 Response headers:', Object.fromEntries(response.headers.entries()))
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.log('❌ Error response:', errorText)
+        
+        if (response.status === 401) {
+          toast.error('Authentication failed. Please login again.')
+          return
+        }
+        
+        toast.error(`Request failed: ${response.status} ${response.statusText}`)
+        return
+      }
+
       const result = await response.json()
+      console.log('✅ Response data:', result)
 
       if (result.success) {
         toast.success(product ? 'Product updated successfully!' : 'Product created successfully!')
@@ -247,8 +276,15 @@ export default function ProductModal({ isOpen, onClose, product, categories, onS
         toast.error(result.message || 'Failed to save product')
       }
     } catch (error) {
-      console.error('Error saving product:', error)
-      toast.error('Error saving product')
+      console.error('❌ Error saving product:', error)
+      
+      if (error instanceof SyntaxError) {
+        toast.error('Invalid response from server. Please try again.')
+      } else if (error instanceof TypeError) {
+        toast.error('Network error. Please check your connection.')
+      } else {
+        toast.error(`Error saving product: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      }
     } finally {
       setLoading(false)
     }

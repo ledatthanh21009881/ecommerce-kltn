@@ -87,10 +87,13 @@ export default function CategoryModal({ isOpen, onClose, category, categories, o
     try {
       const { token } = getAuthData()
       const url = category 
-        ? `/api/backend/v1/categories/${category.category_id}`
+        ? `/api/backend/v1/categories/update?id=${category.category_id}`
         : '/api/backend/v1/categories'
       
       const method = category ? 'PUT' : 'POST'
+      
+      console.log('🌐 Making category request to:', url)
+      console.log('📤 Request method:', method)
       
       const response = await fetch(url, {
         method,
@@ -107,7 +110,23 @@ export default function CategoryModal({ isOpen, onClose, category, categories, o
         })
       })
 
+      console.log('📥 Response status:', response.status)
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.log('❌ Error response:', errorText)
+        
+        if (response.status === 401) {
+          toast.error('Authentication failed. Please login again.')
+          return
+        }
+        
+        toast.error(`Request failed: ${response.status} ${response.statusText}`)
+        return
+      }
+
       const data = await response.json()
+      console.log('✅ Response data:', data)
       
       if (data.success) {
         toast.success(category ? 'Category updated successfully' : 'Category created successfully')
@@ -117,8 +136,15 @@ export default function CategoryModal({ isOpen, onClose, category, categories, o
         toast.error(data.message || 'Failed to save category')
       }
     } catch (error) {
-      console.error('Error saving category:', error)
-      toast.error('Error saving category')
+      console.error('❌ Error saving category:', error)
+      
+      if (error instanceof SyntaxError) {
+        toast.error('Invalid response from server. Please try again.')
+      } else if (error instanceof TypeError) {
+        toast.error('Network error. Please check your connection.')
+      } else {
+        toast.error(`Error saving category: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      }
     } finally {
       setLoading(false)
     }

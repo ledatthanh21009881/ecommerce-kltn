@@ -7,9 +7,12 @@ export async function GET(request: NextRequest) {
 
     // Get token from request headers
     const token = request.headers.get('authorization')
+    console.log('🔍 Products API called with limit:', limit)
+    console.log('🔑 Token present:', !!token)
     
     // Call backend API
     const backendUrl = `${process.env.BACKEND_URL || 'http://localhost:8000'}/api/v1/products?limit=${limit}`
+    console.log('🌐 Backend URL:', backendUrl)
     
     const response = await fetch(backendUrl, {
       headers: {
@@ -18,11 +21,16 @@ export async function GET(request: NextRequest) {
       },
     })
     
+    console.log('📥 Backend response status:', response.status)
+    
     if (!response.ok) {
+      const errorText = await response.text()
+      console.log('❌ Backend error response:', errorText)
       throw new Error(`Backend responded with status: ${response.status}`)
     }
     
     const data = await response.json()
+    console.log('✅ Backend data received, products count:', data.data?.length || 0)
     return NextResponse.json(data)
   } catch (error) {
     console.error('Error fetching products:', error)

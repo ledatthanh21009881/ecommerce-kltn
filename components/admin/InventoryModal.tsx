@@ -14,11 +14,13 @@ interface InventoryModalProps {
   onClose: () => void
   variant: InventoryVariant | null
   products: Product[]
+  categories: any[]
   onSaved: () => void
 }
 
-export default function InventoryModal({ isOpen, onClose, variant, products, onSaved }: InventoryModalProps) {
+export default function InventoryModal({ isOpen, onClose, variant, products, categories, onSaved }: InventoryModalProps) {
   const [loading, setLoading] = useState(false)
+  const [selectedCategory, setSelectedCategory] = useState('')
   const [formData, setFormData] = useState<InventoryFormData>({
     product_id: 0,
     size_id: 0,
@@ -46,8 +48,27 @@ export default function InventoryModal({ isOpen, onClose, variant, products, onS
         stock_quantity: 0,
         status: 'in_stock'
       })
+      setSelectedCategory('')
     }
   }, [variant])
+
+  // Filter products by selected category
+  const filteredProducts = selectedCategory 
+    ? (Array.isArray(products) ? products.filter(product => product.category_id.toString() === selectedCategory) : [])
+    : (Array.isArray(products) ? products : [])
+
+  // Auto-select category when product is selected
+  const handleProductChange = (productId: number) => {
+    handleInputChange('product_id', productId)
+    
+    // Auto-select category for the chosen product
+    if (productId > 0 && Array.isArray(products)) {
+      const selectedProduct = products.find(p => p.product_id === productId)
+      if (selectedProduct) {
+        setSelectedCategory(selectedProduct.category_id.toString())
+      }
+    }
+  }
 
   const handleInputChange = (field: keyof InventoryFormData, value: string | number) => {
     setFormData(prev => ({
@@ -93,10 +114,14 @@ export default function InventoryModal({ isOpen, onClose, variant, products, onS
     try {
       const { token } = getAuthData()
       const url = variant 
-        ? `/api/backend/v1/inventory/${variant.variant_id}`
-        : '/api/backend/v1/inventory'
+        ? `/api/backend/v1/inventory/update?id=${variant.variant_id}`
+        : '/api/backend/v1/inventory-new'
       
       const method = variant ? 'PUT' : 'POST'
+      
+      console.log('🌐 Making inventory request to:', url)
+      console.log('📤 Request method:', method)
+      console.log('📋 Request data:', formData)
       
       const response = await fetch(url, {
         method,
@@ -107,7 +132,23 @@ export default function InventoryModal({ isOpen, onClose, variant, products, onS
         body: JSON.stringify(formData)
       })
 
+      console.log('📥 Response status:', response.status)
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.log('❌ Error response:', errorText)
+        
+        if (response.status === 401) {
+          toast.error('Authentication failed. Please login again.')
+          return
+        }
+        
+        toast.error(`Request failed: ${response.status} ${response.statusText}`)
+        return
+      }
+
       const data = await response.json()
+      console.log('✅ Response data:', data)
       
       if (data.success) {
         toast.success(variant ? 'Inventory updated successfully' : 'Inventory created successfully')
@@ -117,8 +158,15 @@ export default function InventoryModal({ isOpen, onClose, variant, products, onS
         toast.error(data.message || 'Failed to save inventory')
       }
     } catch (error) {
-      console.error('Error saving inventory:', error)
-      toast.error('Error saving inventory')
+      console.error('❌ Error saving inventory:', error)
+      
+      if (error instanceof SyntaxError) {
+        toast.error('Invalid response from server. Please try again.')
+      } else if (error instanceof TypeError) {
+        toast.error('Network error. Please check your connection.')
+      } else {
+        toast.error(`Error saving inventory: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      }
     } finally {
       setLoading(false)
     }
@@ -156,6 +204,34 @@ export default function InventoryModal({ isOpen, onClose, variant, products, onS
         
         {/* Form */}
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
+          {/* Category Filter */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="category_filter" className="text-sm font-medium text-gray-700">
+                Filter by Category
+              </Label>
+              <span className="text-xs text-gray-500">
+                {filteredProducts.length} products
+              </span>
+            </div>
+            <select
+              id="category_filter"
+              value={selectedCategory}
+              onChange={(e) => setSelectedCategory(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="">All Categories ({Array.isArray(products) ? products.length : 0} products)</option>
+              {categories && categories.length > 0 && categories.map((category) => {
+                const categoryProductCount = Array.isArray(products) ? products.filter(p => p.category_id.toString() === category.category_id.toString()).length : 0
+                return (
+                  <option key={category.category_id} value={category.category_id}>
+                    {category.category_name} ({categoryProductCount} products)
+                  </option>
+                )
+              })}
+            </select>
+          </div>
+
           {/* Product Selection */}
           <div className="space-y-2">
             <Label htmlFor="product_id" className="text-sm font-medium text-gray-700">
@@ -164,17 +240,36 @@ export default function InventoryModal({ isOpen, onClose, variant, products, onS
             <select
               id="product_id"
               value={formData.product_id}
-              onChange={(e) => handleInputChange('product_id', parseInt(e.target.value))}
+              onChange={(e) => handleProductChange(parseInt(e.target.value))}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               required
             >
               <option value="">Select Product</option>
-              {products && products.length > 0 && products.map((product) => (
-                <option key={product.product_id} value={product.product_id}>
-                  {product.product_name}
-                </option>
-              ))}
+              {filteredProducts && filteredProducts.length > 0 ? (
+                filteredProducts.map((product) => (
+                  <option key={product.product_id} value={product.product_id}>
+                    {product.product_name}
+                  </option>
+                ))
+              ) : (
+                <option value="" disabled>No products found</option>
+              )}
             </select>
+            {filteredProducts.length === 0 && selectedCategory && (
+              <p className="text-xs text-gray-500">No products in this category</p>
+            )}
+            {formData.product_id > 0 && Array.isArray(products) && (
+              <div className="mt-2 p-3 bg-blue-50 rounded-md border border-blue-200">
+                <div className="text-sm">
+                  <div className="font-medium text-blue-900">
+                    {products.find(p => p.product_id === formData.product_id)?.product_name}
+                  </div>
+                  <div className="text-blue-700 text-xs">
+                    Price: {products.find(p => p.product_id === formData.product_id)?.list_price?.toLocaleString()} ₫
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Size Selection */}

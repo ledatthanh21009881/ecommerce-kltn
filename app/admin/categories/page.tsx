@@ -79,7 +79,9 @@ export default function AdminCategoriesPage() {
 
     try {
       const { token } = getAuthData()
-      const response = await fetch(`/api/backend/v1/categories/${deletingCategoryId}`, {
+      console.log('🗑️ Deleting category ID:', deletingCategoryId)
+      
+      const response = await fetch(`/api/backend/v1/categories/delete?id=${deletingCategoryId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -87,7 +89,23 @@ export default function AdminCategoriesPage() {
         }
       })
 
+      console.log('📥 Delete response status:', response.status)
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.log('❌ Delete error response:', errorText)
+        
+        if (response.status === 401) {
+          toast.error('Authentication failed. Please login again.')
+          return
+        }
+        
+        toast.error(`Delete failed: ${response.status} ${response.statusText}`)
+        return
+      }
+
       const data = await response.json()
+      console.log('✅ Delete response data:', data)
       
       if (data.success) {
         toast.success('Category deleted successfully')
@@ -96,7 +114,15 @@ export default function AdminCategoriesPage() {
         toast.error(data.message || 'Failed to delete category')
       }
     } catch (error) {
-      toast.error('Error deleting category')
+      console.error('❌ Error deleting category:', error)
+      
+      if (error instanceof SyntaxError) {
+        toast.error('Invalid response from server. Please try again.')
+      } else if (error instanceof TypeError) {
+        toast.error('Network error. Please check your connection.')
+      } else {
+        toast.error(`Error deleting category: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      }
     } finally {
       setDeletingCategoryId(null)
     }

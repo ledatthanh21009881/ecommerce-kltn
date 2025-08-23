@@ -144,7 +144,7 @@ export default function AdminProductsPage() {
 
     try {
       const { token } = getAuthData()
-      const response = await fetch(`/api/backend/v1/products/${deletingProductId}`, {
+      const response = await fetch(`/api/backend/v1/products/delete?id=${deletingProductId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
