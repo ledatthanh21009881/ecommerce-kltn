@@ -32,7 +32,7 @@ export default function AdminInventoryPage() {
       const { token } = getAuthData()
       
       // Use Next.js proxy to backend API
-      const url = '/api/backend/v1/inventory-new'
+      const url = '/api/backend/v1/inventory'
       console.log('🌐 Fetching inventory from:', url)
       const response = await fetch(url, {
         method: 'GET',

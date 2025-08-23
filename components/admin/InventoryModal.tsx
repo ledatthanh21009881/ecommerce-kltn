@@ -99,8 +99,19 @@ export default function InventoryModal({ isOpen, onClose, variant, products, cat
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    if (!formData.product_id || !formData.size_id || !formData.sku.trim()) {
-      toast.error('Please fill in all required fields')
+    // Validate required fields
+    if (!formData.product_id || formData.product_id <= 0) {
+      toast.error('Please select a product')
+      return
+    }
+    
+    if (!formData.size_id || formData.size_id <= 0) {
+      toast.error('Please select a size')
+      return
+    }
+    
+    if (!formData.sku.trim()) {
+      toast.error('Please enter SKU')
       return
     }
 
@@ -108,14 +119,18 @@ export default function InventoryModal({ isOpen, onClose, variant, products, cat
       toast.error('Stock quantity cannot be negative')
       return
     }
+    
+    console.log('✅ Form validation passed, data:', formData)
 
     setLoading(true)
 
     try {
       const { token } = getAuthData()
+      console.log('🔑 Token from getAuthData:', token ? 'Present' : 'Missing')
+      
       const url = variant 
         ? `/api/backend/v1/inventory/update?id=${variant.variant_id}`
-        : '/api/backend/v1/inventory-new'
+        : '/api/backend/v1/inventory'
       
       const method = variant ? 'PUT' : 'POST'
       
@@ -239,8 +254,8 @@ export default function InventoryModal({ isOpen, onClose, variant, products, cat
             </Label>
             <select
               id="product_id"
-              value={formData.product_id}
-              onChange={(e) => handleProductChange(parseInt(e.target.value))}
+              value={formData.product_id || ''}
+              onChange={(e) => handleProductChange(parseInt(e.target.value) || 0)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               required
             >
@@ -279,8 +294,8 @@ export default function InventoryModal({ isOpen, onClose, variant, products, cat
             </Label>
             <select
               id="size_id"
-              value={formData.size_id}
-              onChange={(e) => handleInputChange('size_id', parseInt(e.target.value))}
+              value={formData.size_id || ''}
+              onChange={(e) => handleInputChange('size_id', parseInt(e.target.value) || 0)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               required
             >

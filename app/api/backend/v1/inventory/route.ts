@@ -53,50 +53,42 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json()
-    console.log('Inventory POST proxy')
-    console.log('POST data:', body)
-    console.log('Authorization header:', request.headers.get('Authorization'))
-
-    const response = await fetch(`${BACKEND_URL}/api/v1/inventory`, {
+    const body = await request.json();
+    
+    // Get authorization header from request
+    const authHeader = request.headers.get('authorization');
+    
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+    
+    if (authHeader) {
+      headers['Authorization'] = authHeader;
+    }
+    
+    const response = await fetch('http://localhost:8000/api/v1/inventory', {
       method: 'POST',
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-        'Authorization': request.headers.get('Authorization') || '',
-      },
+      headers,
       body: JSON.stringify(body),
-    })
-
-    console.log('Backend POST response status:', response.status)
+    });
 
     if (!response.ok) {
-      console.log('Backend POST failed with status:', response.status)
-      const errorText = await response.text()
-      console.log('Backend POST error response:', errorText)
-
+      const errorText = await response.text();
+      console.error('Backend inventory POST failed:', response.status, errorText);
       return NextResponse.json(
-        { error: 'Backend request failed', status: response.status, details: errorText },
+        { success: false, message: 'Backend request failed', details: errorText },
         { status: response.status }
-      )
+      );
     }
 
-    const data = await response.json()
-    console.log('Backend POST response data:', data)
-
-    return NextResponse.json(data, {
-      status: response.status,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-      }
-    })
+    const data = await response.json();
+    
+    return NextResponse.json(data, { status: response.status });
   } catch (error) {
-    console.error('Inventory POST proxy error:', error)
+    console.error('Create inventory proxy error:', error);
     return NextResponse.json(
-      { error: 'Failed to create inventory', details: error instanceof Error ? error.message : 'Unknown error' },
+      { success: false, message: 'Internal server error' },
       { status: 500 }
-    )
+    );
   }
 }
