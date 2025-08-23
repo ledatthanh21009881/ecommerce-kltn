@@ -182,10 +182,10 @@ export default function AdminInventoryPage() {
       console.log('✅ Delete response data:', data)
       
       if (data.success) {
-        toast.success('Inventory deactivated successfully')
+        toast.success('Inventory deleted successfully')
         fetchInventory()
       } else {
-        toast.error(data.message || 'Failed to deactivate inventory')
+        toast.error(data.message || 'Failed to delete inventory')
       }
     } catch (error) {
       console.error('❌ Error deleting inventory:', error)

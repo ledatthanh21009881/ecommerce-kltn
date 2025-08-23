@@ -128,15 +128,35 @@ export default function InventoryModal({ isOpen, onClose, variant, products, cat
       const { token } = getAuthData()
       console.log('🔑 Token from getAuthData:', token ? 'Present' : 'Missing')
       
+      console.log('🔍 Variant ID debug:', variant?.variant_id, typeof variant?.variant_id)
+      
+      // Ensure variant_id is a clean number
+      const cleanVariantId = variant?.variant_id ? parseInt(variant.variant_id.toString().split(':')[0]) : null
+      console.log('🧹 Clean variant ID:', cleanVariantId)
+      
       const url = variant 
-        ? `/api/backend/v1/inventory/update?id=${variant.variant_id}`
+        ? `/api/backend/v1/inventory/update?id=${cleanVariantId}`
         : '/api/backend/v1/inventory'
       
       const method = variant ? 'PUT' : 'POST'
       
+      console.log('🔍 Original formData:', JSON.stringify(formData, null, 2))
+      
+      // For update, only send fields that can be changed
+      const requestData = variant 
+        ? {
+            size_id: formData.size_id,
+            sku: formData.sku,
+            stock_quantity: formData.stock_quantity,
+            status: formData.status
+          }
+        : formData
+      
+      console.log('🔍 Is update mode:', !!variant)
+      
       console.log('🌐 Making inventory request to:', url)
       console.log('📤 Request method:', method)
-      console.log('📋 Request data:', formData)
+      console.log('📋 Request data:', JSON.stringify(requestData, null, 2))
       
       const response = await fetch(url, {
         method,
@@ -144,7 +164,7 @@ export default function InventoryModal({ isOpen, onClose, variant, products, cat
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(formData)
+        body: JSON.stringify(requestData)
       })
 
       console.log('📥 Response status:', response.status)
