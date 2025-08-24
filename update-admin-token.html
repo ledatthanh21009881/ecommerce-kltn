@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Update Admin Token</title>
+</head>
+<body>
+    <h1>Update Admin Token</h1>
+    <button onclick="updateToken()">Update Token</button>
+    <div id="result"></div>
+
+    <script>
+        function updateToken() {
+            const newToken = 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJhY2NvdW50X2lkIjoxLCJhY2NvdW50X25hbWUiOiJhZG1pbiIsImFjY291bnRfdHlwZSI6ImxvY2FsIiwicm9sZXMiOlsiYWRtaW4iXSwiaXNfYWRtaW4iOnRydWUsImlhdCI6MTc1NjAxNjExOCwiZXhwIjoxNzU2MDE5NzE4fQ.ROjxNHLc49W_GZ6Q7ctBEX54VTqabsp8X4SuSxGq8E8';
+            
+            localStorage.setItem('adminToken', newToken);
+            
+            document.getElementById('result').innerHTML = `
+                <p>✅ Token updated successfully!</p>
+                <p>New token: ${newToken.substring(0, 50)}...</p>
+                <p><a href="/admin/users" target="_blank">Go to User Management</a></p>
+            `;
+        }
+    </script>
+</body>
+</html>

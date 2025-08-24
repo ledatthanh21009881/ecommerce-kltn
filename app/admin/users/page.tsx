@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Search, RefreshCw, Users, UserPlus, Mail, Phone, Calendar, Shield, X } from 'lucide-react'
+import { Search, RefreshCw, Users, UserPlus, Mail, Phone, Calendar, Shield, X, Truck } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { toast } from 'sonner'
 import { apiClient } from '@/lib/api-client'
 import { getAuthData, isAuthenticated } from '@/lib/admin-auth'
+import ConfirmModal from '@/components/ui/confirm-modal'
 
 interface User {
   user_id: number
@@ -21,7 +22,7 @@ interface User {
   last_name: string
   email: string
   phone?: string
-  roles: string // This comes as comma-separated string from backend
+  roles: string[] | string // This can be array or string from backend
   is_active: boolean
   created_at: string
   last_login_at?: string
@@ -69,7 +70,9 @@ export default function AdminUsersPage() {
   const [roleFilter, setRoleFilter] = useState('')
   const [showAddModal, setShowAddModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
+  const [deletingUserId, setDeletingUserId] = useState<number | null>(null)
   const [roles, setRoles] = useState<Array<{role_id: number, role_name: string}>>([])
 
   // Check authentication using admin auth system
@@ -88,9 +91,26 @@ export default function AdminUsersPage() {
   // Fetch roles for dropdown
   const fetchRoles = async () => {
     try {
-      const response = await apiClient.get('/roles/all')
-      if (response.success) {
-        setRoles(response.data || [])
+      const token = localStorage.getItem('adminToken')
+      if (!token) {
+        console.error('No admin token found')
+        return
+      }
+
+      const response = await fetch('/api/backend/v1/roles/all', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      })
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+
+      const data = await response.json()
+      if (data.success) {
+        setRoles(data.data || [])
       }
     } catch (error) {
       console.error('Error fetching roles:', error)
@@ -101,15 +121,42 @@ export default function AdminUsersPage() {
   const fetchUsers = async () => {
     try {
       setLoading(true)
-      const response = await apiClient.get('/users')
+      const token = localStorage.getItem('adminToken')
+      console.log('🔍 Fetching users with token:', token ? 'Token exists' : 'No token')
       
-      if (response.success) {
-        setUsers(response.data?.items || [])
+      if (!token) {
+        console.error('No admin token found')
+        return
+      }
+
+      console.log('📡 Making request to /api/backend/v1/users')
+      const response = await fetch('/api/backend/v1/users', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      })
+
+      console.log('📥 Response status:', response.status)
+      
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error('❌ Response error:', errorText)
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+
+      const data = await response.json()
+      console.log('📊 Response data:', data)
+      
+      if (data.success) {
+        console.log('✅ Users data:', data.data?.items || [])
+        setUsers(data.data?.items || [])
       } else {
+        console.error('❌ Failed to fetch users:', data.message)
         toast.error('Failed to fetch users')
       }
     } catch (error) {
-      console.error('Error fetching users:', error)
+      console.error('❌ Error fetching users:', error)
       toast.error('Error fetching users')
     } finally {
       setLoading(false)
@@ -119,10 +166,36 @@ export default function AdminUsersPage() {
   // Fetch stats
   const fetchStats = async () => {
     try {
-      const response = await apiClient.get('/users/stats')
+      const token = localStorage.getItem('adminToken')
+      console.log('🔍 Fetching stats with token:', token ? 'Token exists' : 'No token')
       
-      if (response.success) {
-        setStats(response.data || {
+      if (!token) {
+        console.error('No admin token found')
+        return
+      }
+
+      console.log('📡 Making request to /api/backend/v1/users/stats')
+      const response = await fetch('/api/backend/v1/users/stats', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      })
+
+      console.log('📥 Stats response status:', response.status)
+      
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error('❌ Stats response error:', errorText)
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+
+      const data = await response.json()
+      console.log('📊 Stats response data:', data)
+      
+      if (data.success) {
+        console.log('✅ Stats data:', data.data)
+        setStats(data.data || {
           total_users: 0,
           active_users: 0,
           admins: 0,
@@ -132,7 +205,7 @@ export default function AdminUsersPage() {
         })
       }
     } catch (error) {
-      console.error('Error fetching stats:', error)
+      console.error('❌ Error fetching stats:', error)
     }
   }
 
@@ -142,7 +215,7 @@ export default function AdminUsersPage() {
       user.account_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
       `${user.first_name} ${user.last_name}`.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesRole = !roleFilter || user.roles.split(',').includes(roleFilter)
+    const matchesRole = !roleFilter || (Array.isArray(user.roles) ? user.roles.includes(roleFilter) : user.roles === roleFilter)
     return matchesSearch && matchesRole
   })
 
@@ -156,6 +229,8 @@ export default function AdminUsersPage() {
         return 'bg-blue-100 text-blue-800 border-blue-200'
       case 'customer':
         return 'bg-green-100 text-green-800 border-green-200'
+      case 'shipper':
+        return 'bg-orange-100 text-orange-800 border-orange-200'
       default:
         return 'bg-gray-100 text-gray-800 border-gray-200'
     }
@@ -171,6 +246,8 @@ export default function AdminUsersPage() {
         return <UserPlus className="h-4 w-4" />
       case 'customer':
         return <Users className="h-4 w-4" />
+      case 'shipper':
+        return <Truck className="h-4 w-4" />
       default:
         return <Users className="h-4 w-4" />
     }
@@ -202,34 +279,79 @@ export default function AdminUsersPage() {
     setShowEditModal(true)
   }
 
-  const handleDeleteUser = async (userId: number) => {
-    if (!confirm('Bạn có chắc chắn muốn xóa user này?')) return
+  const handleDeleteUser = (userId: number) => {
+    setDeletingUserId(userId)
+    setShowDeleteModal(true)
+  }
+
+  const confirmDeleteUser = async () => {
+    if (!deletingUserId) return
     
     try {
-      const response = await apiClient.delete(`/users/${userId}`)
-      if (response.success) {
+      const token = localStorage.getItem('adminToken')
+      if (!token) {
+        toast.error('No admin token found')
+        return
+      }
+
+      const response = await fetch(`/api/backend/v1/users/delete?id=${deletingUserId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      })
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+
+      const data = await response.json()
+      if (data.success) {
         toast.success('User đã được xóa thành công')
         fetchUsers()
         fetchStats()
       } else {
-        toast.error(response.message || 'Xóa user thất bại')
+        toast.error(data.message || 'Xóa user thất bại')
       }
     } catch (error) {
       console.error('Error deleting user:', error)
       toast.error('Xóa user thất bại')
+    } finally {
+      setShowDeleteModal(false)
+      setDeletingUserId(null)
     }
   }
 
   const handleToggleLock = async (userId: number, isLocked: boolean) => {
     try {
-      const response = await apiClient.put(`/users/${userId}/lock`, {
-        locked_until: isLocked ? null : new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() // Lock for 24 hours
+      const token = localStorage.getItem('adminToken')
+      if (!token) {
+        toast.error('No admin token found')
+        return
+      }
+
+      const response = await fetch(`/api/backend/v1/users/update?id=${userId}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          locked_until: isLocked ? null : new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() // Lock for 24 hours
+        }),
       })
-      if (response.success) {
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+
+      const data = await response.json()
+      if (data.success) {
         toast.success(isLocked ? 'User đã được mở khóa' : 'User đã được khóa')
         fetchUsers()
       } else {
-        toast.error(response.message || 'Thao tác thất bại')
+        toast.error(data.message || 'Thao tác thất bại')
       }
     } catch (error) {
       console.error('Error toggling user lock:', error)
@@ -437,7 +559,7 @@ export default function AdminUsersPage() {
                         <p className="text-sm text-gray-600">@{user.account_name}</p>
                       </div>
                       <div className="flex flex-col items-end gap-2">
-                        {user.roles.split(',').map((role, index) => (
+                        {Array.isArray(user.roles) ? user.roles.map((role, index) => (
                           <Badge 
                             key={index}
                             variant="outline" 
@@ -446,7 +568,15 @@ export default function AdminUsersPage() {
                             {getRoleIcon(role)}
                             {role.charAt(0).toUpperCase() + role.slice(1)}
                           </Badge>
-                        ))}
+                        )) : (
+                          <Badge 
+                            variant="outline" 
+                            className={`flex items-center gap-1 ${getRoleColor(user.roles)}`}
+                          >
+                            {getRoleIcon(user.roles)}
+                            {user.roles.charAt(0).toUpperCase() + user.roles.slice(1)}
+                          </Badge>
+                        )}
                         <Badge variant={user.is_active ? 'default' : 'secondary'}>
                           {user.is_active ? 'Active' : 'Inactive'}
                         </Badge>
@@ -564,6 +694,20 @@ export default function AdminUsersPage() {
             )}
           </DialogContent>
         </Dialog>
+
+        {/* Delete Confirmation Modal */}
+        <ConfirmModal
+          isOpen={showDeleteModal}
+          onClose={() => {
+            setShowDeleteModal(false)
+            setDeletingUserId(null)
+          }}
+          onConfirm={confirmDeleteUser}
+          title="Xóa User"
+          description="Bạn có chắc chắn muốn xóa user này? Hành động này không thể hoàn tác."
+          confirmText="Xóa"
+          cancelText="Hủy"
+        />
       </div>
     </div>
   )
@@ -591,12 +735,31 @@ function AddUserForm({ roles, onSuccess, onCancel }: {
     setLoading(true)
 
     try {
-      const response = await apiClient.post('/users', formData)
-      if (response.success) {
+      const token = localStorage.getItem('adminToken')
+      if (!token) {
+        toast.error('No admin token found')
+        return
+      }
+
+      const response = await fetch('/api/backend/v1/users', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      })
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+
+      const data = await response.json()
+      if (data.success) {
         toast.success('User đã được tạo thành công')
         onSuccess()
       } else {
-        toast.error(response.message || 'Tạo user thất bại')
+        toast.error(data.message || 'Tạo user thất bại')
       }
     } catch (error) {
       console.error('Error creating user:', error)
@@ -710,10 +873,10 @@ function EditUserForm({ user, roles, onSuccess, onCancel }: {
     last_name: user.last_name,
     email: user.email,
     phone: user.phone || '',
-    role_ids: user.roles.split(',').map(role => {
-      const roleObj = roles.find(r => r.role_name === role.trim())
+    role_ids: Array.isArray(user.roles) ? user.roles.map(role => {
+      const roleObj = roles.find(r => r.role_name === role)
       return roleObj ? roleObj.role_id : 0
-    }).filter(id => id > 0)
+    }).filter(id => id > 0) : [roles.find(r => r.role_name === user.roles)?.role_id || 0].filter(id => id > 0)
   })
   const [loading, setLoading] = useState(false)
 
@@ -722,12 +885,31 @@ function EditUserForm({ user, roles, onSuccess, onCancel }: {
     setLoading(true)
 
     try {
-      const response = await apiClient.put(`/users/${user.user_id}`, formData)
-      if (response.success) {
+      const token = localStorage.getItem('adminToken')
+      if (!token) {
+        toast.error('No admin token found')
+        return
+      }
+
+      const response = await fetch(`/api/backend/v1/users/update?id=${user.user_id}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      })
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+
+      const data = await response.json()
+      if (data.success) {
         toast.success('User đã được cập nhật thành công')
         onSuccess()
       } else {
-        toast.error(response.message || 'Cập nhật user thất bại')
+        toast.error(data.message || 'Cập nhật user thất bại')
       }
     } catch (error) {
       console.error('Error updating user:', error)
