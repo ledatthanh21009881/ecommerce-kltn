@@ -124,9 +124,9 @@ export default function AdminLayout({
       href: '/admin/content'
     },
     {
-      name: 'Messages',
+      name: 'Messenger',
       icon: MessageSquare,
-      href: '/admin/messages'
+      href: '/admin/messenger'
     },
     {
       name: 'Analytics',

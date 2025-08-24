@@ -44,8 +44,8 @@ export default function AdminProductsPage() {
       } else {
         console.error('Failed to fetch products:', data)
         toast.error('Failed to fetch products')
-      }
-    } catch (error) {
+    }
+  } catch (error) {
       console.error('Error fetching products:', error)
       toast.error('Error fetching products')
     } finally {
@@ -120,7 +120,7 @@ export default function AdminProductsPage() {
         
         if (data.success) {
           setEditingProduct(data.data)
-        } else {
+      } else {
           setEditingProduct(viewingProduct)
           toast.error('Failed to fetch product details')
         }
@@ -176,21 +176,21 @@ export default function AdminProductsPage() {
     fetchProducts()
     handleModalClose()
   }
-
-  return (
+    
+    return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-6">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-slate-900 mb-2">Product Management</h1>
           <p className="text-slate-600">Manage your product catalog with ease</p>
-        </div>
+      </div>
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           <Card className="bg-white shadow-sm">
             <CardContent className="p-6">
-              <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-slate-600">Total Products</p>
                   <p className="text-2xl font-bold text-slate-900">{products.length}</p>
@@ -198,7 +198,7 @@ export default function AdminProductsPage() {
                 <div className="h-12 w-12 bg-blue-100 rounded-lg flex items-center justify-center">
                   <span className="text-blue-600 text-xl">📦</span>
                 </div>
-              </div>
+        </div>
             </CardContent>
           </Card>
 
@@ -210,11 +210,11 @@ export default function AdminProductsPage() {
                   <p className="text-2xl font-bold text-slate-900">
                     {products.filter(p => p.status === 'active').length}
                   </p>
-                </div>
+        </div>
                 <div className="h-12 w-12 bg-green-100 rounded-lg flex items-center justify-center">
                   <span className="text-green-600 text-xl">✅</span>
                 </div>
-              </div>
+                  </div>
             </CardContent>
           </Card>
 
@@ -230,24 +230,24 @@ export default function AdminProductsPage() {
                 <div className="h-12 w-12 bg-yellow-100 rounded-lg flex items-center justify-center">
                   <span className="text-yellow-600 text-xl">⭐</span>
                 </div>
-              </div>
+                </div>
             </CardContent>
           </Card>
 
           <Card className="bg-white shadow-sm">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
-                <div>
+            <div>
                   <p className="text-sm font-medium text-slate-600">Categories</p>
                   <p className="text-2xl font-bold text-slate-900">{categories.length}</p>
-                </div>
+            </div>
                 <div className="h-12 w-12 bg-purple-100 rounded-lg flex items-center justify-center">
                   <span className="text-purple-600 text-xl">🏷️</span>
-                </div>
+            </div>
               </div>
             </CardContent>
           </Card>
-        </div>
+            </div>
 
         {/* Controls */}
         <Card className="bg-white shadow-sm mb-6">
@@ -257,14 +257,14 @@ export default function AdminProductsPage() {
                 {/* Search */}
                 <div className="relative flex-1 max-w-md">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 h-4 w-4" />
-                  <Input
+              <Input
                     placeholder="Search products..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="pl-10"
-                  />
-                </div>
-
+              />
+            </div>
+            
                 {/* Category Filter */}
                 <select
                   value={selectedCategory}
@@ -278,27 +278,27 @@ export default function AdminProductsPage() {
                     </option>
                   ))}
                 </select>
-              </div>
+            </div>
 
               <div className="flex gap-2">
-                <Button
-                  variant="outline"
+              <Button 
+                variant="outline" 
                   onClick={fetchProducts}
                   disabled={loading}
                   className="flex items-center gap-2"
                 >
                   <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
                   Refresh
-                </Button>
-                <Button
+              </Button>
+              <Button 
                   onClick={handleCreateProduct}
                   className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700"
                 >
                   <Plus className="h-4 w-4" />
                   Add Product
-                </Button>
-              </div>
+              </Button>
             </div>
+          </div>
           </CardContent>
         </Card>
 

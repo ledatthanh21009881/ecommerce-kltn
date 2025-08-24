@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { Menu, Search, ShoppingBag, User, X, LogOut, Shield } from "lucide-react"
+import { Menu, Search, ShoppingBag, User, X, LogOut, Shield, MessageCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useMobile } from "@/hooks/use-mobile"
 import { authUtils, logoutUser, type User as UserType } from "@/lib/auth"
@@ -151,6 +151,14 @@ export default function Header() {
             <Button variant="ghost" size="icon" className={`hidden sm:inline-flex ${!isScrolled ? "text-white" : ""}`}>
               <Search className="h-5 w-5" />
               <span className="sr-only">{t('nav.search')}</span>
+            </Button>
+          </Link>
+
+          {/* Messenger */}
+          <Link href="/messenger">
+            <Button variant="ghost" size="icon" className={`hidden sm:inline-flex ${!isScrolled ? "text-white" : ""}`}>
+              <MessageCircle className="h-5 w-5" />
+              <span className="sr-only">Messenger</span>
             </Button>
           </Link>
 
@@ -355,6 +363,14 @@ export default function Header() {
                 >
                   <Search className="h-5 w-5" />
                   Search
+                </Link>
+                <Link
+                  href="/messenger"
+                  className="flex items-center gap-2 text-lg tracking-wider"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  <MessageCircle className="h-5 w-5" />
+                  Messenger
                 </Link>
                 <Link
                   href="/cart"
