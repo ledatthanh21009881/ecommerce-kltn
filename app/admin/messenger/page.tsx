@@ -67,6 +67,7 @@ export default function AdminMessengerPage() {
   const [selectedMessages, setSelectedMessages] = useState<number[]>([])
   const [isSelectionMode, setIsSelectionMode] = useState(false)
   const [selectedImage, setSelectedImage] = useState<string | null>(null)
+  const [showScrollToBottom, setShowScrollToBottom] = useState(false)
 
   const getAdminToken = () => {
     return localStorage.getItem('adminToken')
@@ -90,24 +91,37 @@ export default function AdminMessengerPage() {
   }, [messages])
 
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as Element
-      if (!target.closest('.more-menu-container')) {
-        setShowMoreMenu(false)
-      }
-      if (!target.closest('.emoji-picker-container')) {
-        setShowEmojiPicker(false)
-      }
+    if (selectedConversation) {
+      // Đảm bảo cuộn xuống tin nhắn gần nhất khi chọn conversation mới
+      setTimeout(() => {
+        scrollToBottom()
+      }, 100)
     }
+  }, [selectedConversation])
 
-    if (showMoreMenu || showEmojiPicker) {
-      document.addEventListener('mousedown', handleClickOutside)
-    }
+     useEffect(() => {
+     const handleClickOutside = (event: MouseEvent) => {
+       const target = event.target as Element
+       if (!target.closest('.more-menu-container')) {
+         setShowMoreMenu(false)
+       }
+       if (!target.closest('.emoji-picker-container')) {
+         setShowEmojiPicker(false)
+       }
+       // Đóng message menu khi click ra ngoài
+       if (!target.closest('.message-menu-container')) {
+         setMessageActions(prev => prev.map(action => ({ ...action, showMenu: false })))
+       }
+     }
 
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside)
-    }
-  }, [showMoreMenu, showEmojiPicker])
+     if (showMoreMenu || showEmojiPicker || messageActions.some(action => action.showMenu)) {
+       document.addEventListener('mousedown', handleClickOutside)
+     }
+
+     return () => {
+       document.removeEventListener('mousedown', handleClickOutside)
+     }
+   }, [showMoreMenu, showEmojiPicker, messageActions])
 
   const connectWebSocket = () => {
     const token = localStorage.getItem('adminToken')
@@ -405,20 +419,20 @@ export default function AdminMessengerPage() {
     const isMediaUrl = isValidUrlString && isDirectMediaUrl(messageContent)
     const mediaType = isMediaUrl ? getMediaTypeFromUrl(messageContent) : null
 
-    const optimisticMessage: Message = {
-      message_id: Date.now(),
-      sender_id: 1,
-      content: isMediaUrl ? `[${mediaType === 'video' ? 'Video' : 'Image'}]` : messageContent,
-      sent_at: new Date().toISOString().replace('T', ' ').replace('Z', ''),
-      is_read: false,
-      media: isMediaUrl ? [{
-        media_id: Date.now(),
-        url: messageContent,
-        type: mediaType === 'video' ? 'video/mp4' : 'image/jpeg',
-        file_name: 'Link media'
-      }] : undefined,
-      is_link: isValidUrlString && !isMediaUrl
-    }
+         const optimisticMessage: Message = {
+       message_id: Date.now(),
+       sender_id: 1,
+       content: messageContent,
+       sent_at: new Date().toISOString().replace('T', ' ').replace('Z', ''),
+       is_read: false,
+       media: isMediaUrl ? [{
+         media_id: Date.now(),
+         url: messageContent,
+         type: mediaType === 'video' ? 'video/mp4' : 'image/jpeg',
+         file_name: 'Link media'
+       }] : undefined,
+       is_link: isValidUrlString
+     }
 
     setMessages(prev => [...prev, optimisticMessage])
 
@@ -432,18 +446,18 @@ export default function AdminMessengerPage() {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          conversation_id: selectedConversation.conversation_id,
-          content: isMediaUrl ? `[${mediaType === 'video' ? 'Video' : 'Image'}]` : messageContent,
-          media: isMediaUrl ? [{
-            name: 'Link media',
-            type: mediaType === 'video' ? 'video/mp4' : 'image/jpeg',
-            size: 0,
-            url: messageContent,
-            public_id: null
-          }] : undefined,
-          is_link: isValidUrlString && !isMediaUrl
-        })
+                 body: JSON.stringify({
+           conversation_id: selectedConversation.conversation_id,
+           content: messageContent,
+           media: isMediaUrl ? [{
+             name: 'Link media',
+             type: mediaType === 'video' ? 'video/mp4' : 'image/jpeg',
+             size: 0,
+             url: messageContent,
+             public_id: null
+           }] : undefined,
+           is_link: isValidUrlString
+         })
       })
 
       if (response.ok) {
@@ -471,20 +485,20 @@ export default function AdminMessengerPage() {
   const uploadMedia = async (file: File) => {
     if (!selectedConversation) return
 
-    const optimisticMessage: Message = {
-      message_id: Date.now(),
-      sender_id: 1,
-      content: file.type.startsWith('image/') ? '[Image]' : '[Video]',
-      sent_at: new Date().toISOString().replace('T', ' ').replace('Z', ''),
-      is_read: false,
-      isUploading: true,
-      media: [{
-        media_id: Date.now(),
-        url: URL.createObjectURL(file),
-        type: file.type,
-        file_name: file.name
-      }]
-    }
+         const optimisticMessage: Message = {
+       message_id: Date.now(),
+       sender_id: 1,
+       content: '',
+       sent_at: new Date().toISOString().replace('T', ' ').replace('Z', ''),
+       is_read: false,
+       isUploading: true,
+       media: [{
+         media_id: Date.now(),
+         url: URL.createObjectURL(file),
+         type: file.type,
+         file_name: file.name
+       }]
+     }
 
     setMessages(prev => [...prev, optimisticMessage])
 
@@ -517,17 +531,17 @@ export default function AdminMessengerPage() {
               'Authorization': `Bearer ${token}`,
               'Content-Type': 'application/json'
             },
-            body: JSON.stringify({
-              conversation_id: selectedConversation.conversation_id,
-              content: file.type.startsWith('image/') ? '[Image]' : '[Video]',
-              media: [{
-                name: file.name,
-                type: file.type,
-                size: file.size,
-                url: data.data.url,
-                public_id: data.data.public_id
-              }]
-            })
+                         body: JSON.stringify({
+               conversation_id: selectedConversation.conversation_id,
+               content: '',
+               media: [{
+                 name: file.name,
+                 type: file.type,
+                 size: file.size,
+                 url: data.data.url,
+                 public_id: data.data.public_id
+               }]
+             })
           })
 
           if (messageResponse.ok) {
@@ -579,6 +593,12 @@ export default function AdminMessengerPage() {
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }
+
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const { scrollTop, scrollHeight, clientHeight } = e.currentTarget
+    const isNearBottom = scrollHeight - scrollTop - clientHeight < 50
+    setShowScrollToBottom(!isNearBottom)
   }
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -914,8 +934,11 @@ export default function AdminMessengerPage() {
                </div>
              </div>
 
-                         {/* Messages Area */}
-             <div className={`flex-1 overflow-y-auto p-4 space-y-4 ${isDarkMode ? 'bg-gray-900' : 'bg-gray-50'} ${isSelectionMode ? 'pl-16' : ''}`}>
+                                                   {/* Messages Area */}
+              <div 
+                className={`flex-1 overflow-y-auto p-4 space-y-4 ${isDarkMode ? 'bg-gray-900' : 'bg-gray-50'} ${isSelectionMode ? 'pl-16' : ''} relative`}
+                onScroll={handleScroll}
+              >
               {loading ? (
                 <div className="text-center py-8">
                   <p className={`${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Loading messages...</p>
@@ -925,9 +948,10 @@ export default function AdminMessengerPage() {
                   <p className={`${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>No messages yet. Start a conversation!</p>
                 </div>
               ) : (
-                messages.map((message) => {
-                  const messageAction = messageActions.find(action => action.messageId === message.message_id)
-                  const showMenu = messageAction?.showMenu || false
+                                 messages.map((message) => {
+                   const messageAction = messageActions.find(action => action.messageId === message.message_id)
+                   const showMenu = messageAction?.showMenu || false
+                   console.log('Message ID:', message.message_id, 'Show Menu:', showMenu, 'Message Actions:', messageActions)
                   
                   return (
                     <div
@@ -953,191 +977,246 @@ export default function AdminMessengerPage() {
                            </div>
                          </div>
                        )}
-                      <div
-                        className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg relative ${
-                          message.sender_id === 1
-                            ? 'bg-blue-500 text-white'
-                            : isDarkMode 
-                              ? 'bg-gray-700 text-white'
-                              : 'bg-gray-200 text-gray-900'
-                                                 } ${isSelectionMode && selectedMessages.includes(message.message_id) ? 'ring-2 ring-blue-400 bg-blue-50' : ''}`}
-                      >
-                        {/* Message Actions - Only show on hover for admin messages when not in selection mode */}
-                        {message.sender_id === 1 && !isSelectionMode && (
-                          <div className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex space-x-1">
-                            {/* Reply Button */}
-                            <button
-                              onClick={() => setReplyTo(message)}
-                              className="p-1 bg-gray-800 text-white rounded-full hover:bg-gray-700 transition-colors"
-                              title="Reply"
-                            >
-                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
-                              </svg>
-                            </button>
-                            
-                            {/* More Options Button */}
-                            <button
-                              onClick={() => toggleMessageMenu(message.message_id)}
-                              className="p-1 bg-gray-800 text-white rounded-full hover:bg-gray-700 transition-colors"
-                              title="More options"
-                            >
-                              <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
-                                <path d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
-                              </svg>
-                            </button>
-                          </div>
-                        )}
+                                                                    <div
+                         className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg relative ${
+                           message.sender_id === 1
+                             ? (message.content && message.content.trim() !== '') ? 'bg-blue-500 text-white' : 'bg-transparent'
+                             : isDarkMode 
+                               ? (message.content && message.content.trim() !== '') ? 'bg-gray-700 text-white' : 'bg-transparent'
+                               : (message.content && message.content.trim() !== '') ? 'bg-gray-200 text-gray-900' : 'bg-transparent'
+                                                    } ${isSelectionMode && selectedMessages.includes(message.message_id) ? 'ring-2 ring-blue-400 bg-blue-50' : ''}`}
+                       >
+                                                                        {/* Message Actions - Only show on hover for admin messages when not in selection mode */}
+                                               {message.sender_id === 1 && !isSelectionMode && (
+                          <div className="absolute left-0 top-1/2 transform -translate-y-1/2 -translate-x-24 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex space-x-2 relative">
+                           {/* Reply Button */}
+                           <button
+                             onClick={() => setReplyTo(message)}
+                             className="p-2 bg-blue-500 text-white rounded-full hover:bg-blue-600 transition-all duration-200 hover:scale-110 shadow-lg"
+                             title="Reply"
+                           >
+                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+                             </svg>
+                           </button>
+                           
+                           {/* More Options Button */}
+                           <button
+                             onClick={() => toggleMessageMenu(message.message_id)}
+                             className="p-2 bg-blue-500 text-white rounded-full hover:bg-blue-600 transition-all duration-200 hover:scale-110 shadow-lg"
+                             title="More options"
+                           >
+                             <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                               <path d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+                             </svg>
+                           </button>
+                           
+                                                                                                                                           {/* Message Menu Dropdown */}
+                               {showMenu && (
+                                 <div className="absolute bg-white border border-gray-200 rounded-lg shadow-lg min-w-[120px] message-menu-container" style={{ zIndex: 9999999, top: '0', left: '-200px' }}>
+                               <button
+                                 onClick={() => startDeleteSelection()}
+                                 className="w-full px-3 py-2 text-left text-sm text-red-600 hover:bg-gray-100 rounded-t-lg"
+                               >
+                                 Thu hồi
+                               </button>
+                               <button
+                                 onClick={() => {
+                                   toggleMessageMenu(message.message_id)
+                                 }}
+                                 className="w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 rounded-b-lg"
+                               >
+                                 Chuyển tiếp
+                               </button>
+                             </div>
+                           )}
+                         </div>
+                       )}
                         
                                                  {/* Message Content */}
                          {(() => { console.log('Message:', message.content, 'is_link:', message.is_link); return null; })()}
-                         {message.is_link ? (
+                         {message.content && message.is_link ? (
                            <div className="space-y-2">
-                             <a
-                               href={message.content}
-                               target="_blank"
-                               rel="noopener noreferrer"
-                               className="block p-3 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors cursor-pointer"
-                             >
-                               <div className="flex items-center space-x-2">
-                                 <div className="w-8 h-8 bg-blue-500 rounded flex items-center justify-center">
-                                   <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
-                                     <path fillRule="evenodd" d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" clipRule="evenodd" />
-                                   </svg>
-                                 </div>
-                                 <div className="flex-1 min-w-0">
-                                   <p className="text-sm font-medium text-blue-600 dark:text-blue-400 truncate">
-                                     {getDomainFromUrl(message.content)}
-                                   </p>
-                                   <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                                     {message.content}
-                                   </p>
-                                 </div>
-                                 <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                                 </svg>
-                               </div>
-                             </a>
-                           </div>
-                         ) : (
-                           <p className="text-sm">{message.content}</p>
-                         )}
-                        
-                        {message.media && message.media.length > 0 && (
-                          <div className="mt-2 space-y-2">
-                            {message.media.map((media) => (
-                              <div key={media.media_id} className="relative">
-                                {message.isUploading && (
-                                  <div className="absolute inset-0 bg-black bg-opacity-50 rounded flex items-center justify-center z-10">
-                                    <div className="text-white text-center">
-                                      {media.type.startsWith('video/') ? (
-                                        <div className="w-48">
-                                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto mb-2"></div>
-                                          <p className="text-sm mb-2">Đang tải video...</p>
-                                          <div className="w-full bg-gray-700 rounded-full h-2">
-                                            <div className="bg-blue-500 h-2 rounded-full animate-pulse" style={{width: '60%'}}></div>
-                                          </div>
-                                          <p className="text-xs mt-1">60%</p>
-                                        </div>
-                                      ) : (
-                                        <div>
-                                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto mb-2"></div>
-                                          <p className="text-sm">Đang tải lên...</p>
-                                        </div>
-                                      )}
-                                    </div>
-                                  </div>
-                                )}
-                                {(() => {
-                                  const getMediaType = (url: string, type?: string) => {
-                                    if (type && type.startsWith('image/')) return 'image';
-                                    if (type && type.startsWith('video/')) return 'video';
-                                    
-                                    const urlLower = url.toLowerCase();
-                                    if (urlLower.includes('.jpg') || urlLower.includes('.jpeg') || 
-                                        urlLower.includes('.png') || urlLower.includes('.gif') || 
-                                        urlLower.includes('.webp') || urlLower.includes('.bmp')) {
-                                      return 'image';
-                                    }
-                                    if (urlLower.includes('.mp4') || urlLower.includes('.avi') || 
-                                        urlLower.includes('.mov') || urlLower.includes('.wmv') || 
-                                        urlLower.includes('.flv') || urlLower.includes('.webm')) {
-                                      return 'video';
-                                    }
-                                    return 'file';
-                                  };
-                                  
-                                  const mediaType = getMediaType(media.url, media.type);
-                                  
-                                    if (mediaType === 'image') {
+                             {/* If it's a direct media link, show media directly */}
+                             {isDirectMediaUrl(message.content) ? (
+                               <div>
+                                 {(() => {
+                                   const mediaType = getMediaTypeFromUrl(message.content);
+                                   if (mediaType === 'image') {
                                      return (
                                        <img
-                                         src={media.url}
-                                         alt="Media"
+                                         src={message.content}
+                                         alt="Link media"
                                          className="max-w-full rounded cursor-pointer hover:opacity-90 transition-opacity"
-                                         onClick={() => setSelectedImage(media.url)}
+                                         onClick={() => setSelectedImage(message.content)}
                                        />
                                      );
-                                  } else if (mediaType === 'video') {
-                                    return (
-                                      <video
-                                        src={media.url}
-                                        controls
-                                        className="max-w-full rounded"
-                                        preload="metadata"
-                                      >
-                                        Your browser does not support the video tag.
-                                      </video>
-                                    );
-                                  } else {
-                                    return (
-                                      <a
-                                        href={media.url}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="text-blue-500 underline hover:text-blue-700"
-                                      >
-                                        {media.file_name || 'Download file'}
-                                      </a>
-                                    );
-                                  }
-                                })()}
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                        <p className={`text-xs mt-1 ${
-                          message.sender_id === 1 ? 'text-blue-100' : isDarkMode ? 'text-gray-400' : 'text-gray-500'
-                        }`}>
+                                   } else if (mediaType === 'video') {
+                                     return (
+                                       <video
+                                         src={message.content}
+                                         controls
+                                         className="max-w-full rounded"
+                                         preload="metadata"
+                                       >
+                                         Your browser does not support the video tag.
+                                       </video>
+                                     );
+                                   }
+                                   return null;
+                                 })()}
+                               </div>
+                             ) : (
+                               /* If it's a regular link, show link preview card */
+                               <div className="space-y-2">
+                                 <p className="text-sm">{message.content}</p>
+                                 <a
+                                   href={message.content}
+                                   target="_blank"
+                                   rel="noopener noreferrer"
+                                   className="block p-3 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors cursor-pointer"
+                                 >
+                                   <div className="flex items-center space-x-2">
+                                     <div className="w-8 h-8 bg-blue-500 rounded flex items-center justify-center">
+                                       <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                         <path fillRule="evenodd" d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" clipRule="evenodd" />
+                                       </svg>
+                                     </div>
+                                     <div className="flex-1 min-w-0">
+                                       <p className="text-sm font-medium text-blue-600 dark:text-blue-400 truncate">
+                                         {getDomainFromUrl(message.content)}
+                                       </p>
+                                       <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                                         {message.content}
+                                       </p>
+                                     </div>
+                                     <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                     </svg>
+                                   </div>
+                                 </a>
+                               </div>
+                             )}
+                           </div>
+                         ) : message.content ? (
+                           <p className="text-sm">{message.content}</p>
+                         ) : null}
+                        
+                                                 {/* Only show media for uploaded files, not for link media */}
+                         {message.media && message.media.length > 0 && !message.is_link && (
+                           <div className="mt-2 space-y-2">
+                             {message.media.map((media) => (
+                               <div key={media.media_id} className="relative">
+                                 {message.isUploading && (
+                                   <div className="absolute inset-0 bg-black bg-opacity-50 rounded flex items-center justify-center z-10">
+                                     <div className="text-white text-center">
+                                       {media.type.startsWith('video/') ? (
+                                         <div className="w-48">
+                                           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto mb-2"></div>
+                                           <p className="text-sm mb-2">Đang tải video...</p>
+                                           <div className="w-full bg-gray-700 rounded-full h-2">
+                                             <div className="bg-blue-500 h-2 rounded-full animate-pulse" style={{width: '60%'}}></div>
+                                           </div>
+                                           <p className="text-xs mt-1">60%</p>
+                                         </div>
+                                       ) : (
+                                         <div>
+                                           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto mb-2"></div>
+                                           <p className="text-sm">Đang tải lên...</p>
+                                         </div>
+                                       )}
+                                     </div>
+                                   </div>
+                                 )}
+                                 {(() => {
+                                   const getMediaType = (url: string, type?: string) => {
+                                     if (type && type.startsWith('image/')) return 'image';
+                                     if (type && type.startsWith('video/')) return 'video';
+                                     
+                                     const urlLower = url.toLowerCase();
+                                     if (urlLower.includes('.jpg') || urlLower.includes('.jpeg') || 
+                                         urlLower.includes('.png') || urlLower.includes('.gif') || 
+                                         urlLower.includes('.webp') || urlLower.includes('.bmp')) {
+                                       return 'image';
+                                     }
+                                     if (urlLower.includes('.mp4') || urlLower.includes('.avi') || 
+                                         urlLower.includes('.mov') || urlLower.includes('.wmv') || 
+                                         urlLower.includes('.flv') || urlLower.includes('.webm')) {
+                                       return 'video';
+                                     }
+                                     return 'file';
+                                   };
+                                   
+                                   const mediaType = getMediaType(media.url, media.type);
+                                   
+                                     if (mediaType === 'image') {
+                                      return (
+                                        <img
+                                          src={media.url}
+                                          alt="Media"
+                                          className="max-w-full rounded cursor-pointer hover:opacity-90 transition-opacity"
+                                          onClick={() => setSelectedImage(media.url)}
+                                        />
+                                      );
+                                   } else if (mediaType === 'video') {
+                                     return (
+                                       <video
+                                         src={media.url}
+                                         controls
+                                         className="max-w-full rounded"
+                                         preload="metadata"
+                                       >
+                                         Your browser does not support the video tag.
+                                       </video>
+                                     );
+                                   } else {
+                                     return (
+                                       <a
+                                         href={media.url}
+                                         target="_blank"
+                                         rel="noopener noreferrer"
+                                         className="text-blue-500 underline hover:text-blue-700"
+                                       >
+                                         {media.file_name || 'Download file'}
+                                       </a>
+                                     );
+                                   }
+                                 })()}
+                               </div>
+                             ))}
+                           </div>
+                         )}
+                                                 <p className={`text-xs mt-1 ${
+                           message.sender_id === 1 
+                             ? (message.content && message.content.trim() !== '') ? 'text-blue-100' : 'text-gray-500' 
+                             : isDarkMode ? 'text-gray-400' : 'text-gray-500'
+                         }`}>
                           {formatTime(message.sent_at)}
                         </p>
-                      </div>
-                      
-                      {/* Message Menu Dropdown */}
-                      {showMenu && (
-                        <div className="absolute top-0 right-0 mt-8 mr-2 bg-white border border-gray-200 rounded-lg shadow-lg z-50 min-w-[120px]">
-                                                     <button
-                             onClick={() => startDeleteSelection()}
-                             className="w-full px-3 py-2 text-left text-sm text-red-600 hover:bg-gray-100 rounded-t-lg"
-                           >
-                             Thu hồi
-                           </button>
-                          <button
-                            onClick={() => {
-                              toggleMessageMenu(message.message_id)
-                            }}
-                            className="w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 rounded-b-lg"
-                          >
-                            Chuyển tiếp
-                          </button>
-                        </div>
-                      )}
+                                             </div>
                     </div>
                   )
                 })
-              )}
-              <div ref={messagesEndRef} />
-            </div>
+                             )}
+               <div ref={messagesEndRef} />
+               
+                               {/* Scroll to Bottom Button */}
+                {showScrollToBottom && (
+                  <button
+                    onClick={scrollToBottom}
+                    className={`absolute bottom-4 left-1/2 transform -translate-x-1/2 p-3 rounded-full shadow-lg transition-all duration-200 hover:scale-110 z-50 ${
+                      isDarkMode 
+                        ? 'bg-gray-700 text-white hover:bg-gray-600' 
+                        : 'bg-white text-gray-600 hover:bg-gray-100'
+                    }`}
+                    title="Cuộn xuống tin nhắn gần nhất"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                    </svg>
+                  </button>
+                )}
+             </div>
 
             {/* Reply to Message */}
             {replyToMessage && (
