@@ -485,10 +485,14 @@ export default function AdminMessengerPage() {
   const uploadMedia = async (file: File) => {
     if (!selectedConversation) return
 
+    // Xác định loại media để gửi content phù hợp
+    const isVideo = file.type.startsWith('video/')
+    const content = isVideo ? '[Video]' : '[Image]'
+
          const optimisticMessage: Message = {
        message_id: Date.now(),
        sender_id: 1,
-       content: '',
+       content: content, // Gửi [Image] hoặc [Video] để lưu vào database
        sent_at: new Date().toISOString().replace('T', ' ').replace('Z', ''),
        is_read: false,
        isUploading: true,
@@ -533,7 +537,7 @@ export default function AdminMessengerPage() {
             },
                          body: JSON.stringify({
                conversation_id: selectedConversation.conversation_id,
-               content: '',
+               content: content, // Gửi [Image] hoặc [Video] để lưu vào database
                media: [{
                  name: file.name,
                  type: file.type,
@@ -1043,27 +1047,27 @@ export default function AdminMessengerPage() {
                                <div>
                                  {(() => {
                                    const mediaType = getMediaTypeFromUrl(message.content);
-                                   if (mediaType === 'image') {
-                                     return (
-                                       <img
-                                         src={message.content}
-                                         alt="Link media"
-                                         className="max-w-full rounded cursor-pointer hover:opacity-90 transition-opacity"
-                                         onClick={() => setSelectedImage(message.content)}
-                                       />
-                                     );
-                                   } else if (mediaType === 'video') {
-                                     return (
-                                       <video
-                                         src={message.content}
-                                         controls
-                                         className="max-w-full rounded"
-                                         preload="metadata"
-                                       >
-                                         Your browser does not support the video tag.
-                                       </video>
-                                     );
-                                   }
+                                                                       if (mediaType === 'image') {
+                                      return (
+                                        <img
+                                          src={message.content}
+                                          alt="Link media"
+                                          className="max-w-[350px] max-h-[250px] rounded cursor-pointer hover:opacity-90 transition-opacity object-cover"
+                                          onClick={() => setSelectedImage(message.content)}
+                                        />
+                                      );
+                                    } else if (mediaType === 'video') {
+                                      return (
+                                        <video
+                                          src={message.content}
+                                          controls
+                                          className="max-w-[500px] max-h-[400px] rounded object-contain"
+                                          preload="metadata"
+                                        >
+                                          Your browser does not support the video tag.
+                                        </video>
+                                      );
+                                    }
                                    return null;
                                  })()}
                                </div>
@@ -1099,12 +1103,12 @@ export default function AdminMessengerPage() {
                                </div>
                              )}
                            </div>
-                         ) : message.content ? (
-                           <p className="text-sm">{message.content}</p>
-                         ) : null}
+                                                   ) : message.content && message.content !== '[Image]' && message.content !== '[Video]' ? (
+                            <p className="text-sm">{message.content}</p>
+                          ) : null}
                         
                                                  {/* Only show media for uploaded files, not for link media */}
-                         {message.media && message.media.length > 0 && !message.is_link && (
+                                                   {message.media && message.media.length > 0 && !message.is_link && (message.content === '[Image]' || message.content === '[Video]' || !message.content) && (
                            <div className="mt-2 space-y-2">
                              {message.media.map((media) => (
                                <div key={media.media_id} className="relative">
@@ -1151,26 +1155,26 @@ export default function AdminMessengerPage() {
                                    const mediaType = getMediaType(media.url, media.type);
                                    
                                      if (mediaType === 'image') {
+                                                                             return (
+                                         <img
+                                           src={media.url}
+                                           alt="Media"
+                                           className="max-w-[350px] max-h-[250px] rounded cursor-pointer hover:opacity-90 transition-opacity object-cover"
+                                           onClick={() => setSelectedImage(media.url)}
+                                         />
+                                       );
+                                                                       } else if (mediaType === 'video') {
                                       return (
-                                        <img
+                                        <video
                                           src={media.url}
-                                          alt="Media"
-                                          className="max-w-full rounded cursor-pointer hover:opacity-90 transition-opacity"
-                                          onClick={() => setSelectedImage(media.url)}
-                                        />
+                                          controls
+                                          className="max-w-[500px] max-h-[400px] rounded object-contain"
+                                          preload="metadata"
+                                        >
+                                          Your browser does not support the video tag.
+                                        </video>
                                       );
-                                   } else if (mediaType === 'video') {
-                                     return (
-                                       <video
-                                         src={media.url}
-                                         controls
-                                         className="max-w-full rounded"
-                                         preload="metadata"
-                                       >
-                                         Your browser does not support the video tag.
-                                       </video>
-                                     );
-                                   } else {
+                                    } else {
                                      return (
                                        <a
                                          href={media.url}
@@ -1343,10 +1347,267 @@ export default function AdminMessengerPage() {
             </div>
           </div>
                  )}
-       </div>
-       
-               {/* Image Modal */}
-        {selectedImage && (
+               </div>
+        
+        {/* Right Sidebar */}
+        {showSidebar && (
+          <div className={`w-80 ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border-l flex flex-col`}>
+            {/* Sidebar Header */}
+            <div className={`p-4 border-b ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+              <div className="flex items-center justify-between">
+                <h3 className={`text-lg font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                  {sidebarTab === 'media' ? 'Media' : sidebarTab === 'files' ? 'Files' : 'Links'}
+                </h3>
+                <button
+                  onClick={() => setShowSidebar(false)}
+                  className={`p-2 rounded-lg ${isDarkMode ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-700'}`}
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              
+              {/* Sidebar Tabs */}
+              <div className="flex space-x-1 mt-3">
+                <button
+                  onClick={() => setSidebarTab('media')}
+                  className={`px-3 py-1 text-xs rounded-full transition-colors ${
+                    sidebarTab === 'media'
+                      ? 'bg-blue-500 text-white'
+                      : isDarkMode 
+                        ? 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  Media
+                </button>
+                <button
+                  onClick={() => setSidebarTab('files')}
+                  className={`px-3 py-1 text-xs rounded-full transition-colors ${
+                    sidebarTab === 'files'
+                      ? 'bg-blue-500 text-white'
+                      : isDarkMode 
+                        ? 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  Files
+                </button>
+                <button
+                  onClick={() => setSidebarTab('links')}
+                  className={`px-3 py-1 text-xs rounded-full transition-colors ${
+                    sidebarTab === 'links'
+                      ? 'bg-blue-500 text-white'
+                      : isDarkMode 
+                        ? 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  Links
+                </button>
+              </div>
+            </div>
+            
+            {/* Sidebar Content */}
+            <div className="flex-1 overflow-y-auto p-4">
+              {sidebarTab === 'media' && (
+                <div className="space-y-4">
+                  <h4 className={`text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                    Shared Media
+                  </h4>
+                  <div className="grid grid-cols-2 gap-2">
+                    {(() => {
+                      // Debug: Log messages to see structure
+                      console.log('=== SIDEBAR MEDIA DEBUG ===');
+                      console.log('All messages:', messages);
+                      
+                      // Tìm tất cả tin nhắn có media
+                      const mediaMessages = messages.filter(msg => {
+                        const hasMediaArray = msg.media && msg.media.length > 0;
+                        const hasMediaContent = msg.content && isDirectMediaUrl(msg.content);
+                        const hasImageContent = msg.content === '[Image]' || msg.content === '[Video]';
+                        const hasUploadedMedia = msg.media && msg.media.length > 0 && (msg.content === '[Image]' || msg.content === '[Video]');
+                        
+                        console.log(`Message ${msg.message_id}:`, {
+                          content: msg.content,
+                          media: msg.media,
+                          hasMediaArray,
+                          hasMediaContent,
+                          hasImageContent,
+                          hasUploadedMedia,
+                          isDirectMediaUrl: msg.content ? isDirectMediaUrl(msg.content) : false
+                        });
+                        return hasMediaArray || hasMediaContent || hasImageContent || hasUploadedMedia;
+                      });
+                      
+                      console.log('Media messages found:', mediaMessages.length);
+                      
+                      // Thu thập tất cả media
+                      const allMedia = mediaMessages.flatMap(msg => {
+                        const mediaFromArray = msg.media || [];
+                        const mediaFromContent = msg.content && isDirectMediaUrl(msg.content) ? [{
+                          media_id: msg.message_id,
+                          url: msg.content,
+                          type: getMediaTypeFromUrl(msg.content) === 'video' ? 'video/mp4' : 'image/jpeg',
+                          file_name: 'Link media'
+                        }] : [];
+                        
+                        // Xử lý tin nhắn có [Image] hoặc [Video] content - lấy media từ array
+                        const mediaFromImageContent = (msg.content === '[Image]' || msg.content === '[Video]') && msg.media && msg.media.length > 0 ? msg.media : [];
+                        
+                        console.log(`Message ${msg.message_id} media:`, {
+                          fromArray: mediaFromArray,
+                          fromContent: mediaFromContent,
+                          fromImageContent: mediaFromImageContent
+                        });
+                        
+                        // Nếu có [Image] hoặc [Video] content, ưu tiên lấy media từ array
+                        if (msg.content === '[Image]' || msg.content === '[Video]') {
+                          return mediaFromImageContent;
+                        }
+                        
+                        return [...mediaFromArray, ...mediaFromContent];
+                      });
+                      
+                      console.log('All media collected:', allMedia);
+                      
+                      // Lọc media (ảnh và video)
+                      const filteredMedia = allMedia.filter(media => {
+                        // Kiểm tra type từ media.type
+                        const isImage = media.type && media.type.startsWith('image/');
+                        const isVideo = media.type && media.type.startsWith('video/');
+                        
+                        // Nếu type là null, kiểm tra từ URL
+                        const urlLower = media.url.toLowerCase();
+                        const hasImageExt = urlLower.includes('.jpg') || urlLower.includes('.jpeg') || 
+                                          urlLower.includes('.png') || urlLower.includes('.gif') || 
+                                          urlLower.includes('.webp') || urlLower.includes('.bmp');
+                        const hasVideoExt = urlLower.includes('.mp4') || urlLower.includes('.avi') || 
+                                          urlLower.includes('.mov') || urlLower.includes('.wmv') || 
+                                          urlLower.includes('.flv') || urlLower.includes('.webm');
+                        
+                        console.log(`Media ${media.media_id}:`, {
+                          url: media.url,
+                          type: media.type,
+                          isImage,
+                          isVideo,
+                          hasImageExt,
+                          hasVideoExt
+                        });
+                        
+                        return isImage || isVideo || hasImageExt || hasVideoExt;
+                      });
+                      
+                      console.log('Filtered media (images + videos):', filteredMedia);
+                      console.log('=== END DEBUG ===');
+                      
+                      return filteredMedia.slice(0, 10).map((media, index) => {
+                        // Xác định loại media từ type hoặc URL
+                        const isImage = media.type ? media.type.startsWith('image/') : 
+                                      media.url.toLowerCase().includes('.jpg') || media.url.toLowerCase().includes('.jpeg') || 
+                                      media.url.toLowerCase().includes('.png') || media.url.toLowerCase().includes('.gif') || 
+                                      media.url.toLowerCase().includes('.webp') || media.url.toLowerCase().includes('.bmp');
+                        
+                        const isVideo = media.type ? media.type.startsWith('video/') : 
+                                      media.url.toLowerCase().includes('.mp4') || media.url.toLowerCase().includes('.avi') || 
+                                      media.url.toLowerCase().includes('.mov') || media.url.toLowerCase().includes('.wmv') || 
+                                      media.url.toLowerCase().includes('.flv') || media.url.toLowerCase().includes('.webm');
+                        
+                        return (
+                          <div key={index} className="relative group">
+                            {isImage ? (
+                              <img
+                                src={media.url}
+                                alt="Shared media"
+                                className="w-full h-24 object-cover rounded cursor-pointer hover:opacity-90 transition-opacity"
+                                onClick={() => setSelectedImage(media.url)}
+                              />
+                            ) : isVideo ? (
+                              <div className="relative w-full h-24 rounded cursor-pointer hover:opacity-90 transition-opacity overflow-hidden">
+                                <video
+                                  src={media.url}
+                                  className="w-full h-full object-contain"
+                                  preload="metadata"
+                                />
+                                <div className="absolute inset-0 flex items-center justify-center">
+                                  <svg className="w-8 h-8 text-white bg-black bg-opacity-50 rounded-full p-1" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M8 5v14l11-7z"/>
+                                  </svg>
+                                </div>
+                              </div>
+                            ) : null}
+                          </div>
+                        );
+                      });
+                    })()}
+                  </div>
+                </div>
+              )}
+              
+              {sidebarTab === 'files' && (
+                <div className="space-y-4">
+                  <h4 className={`text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                    Shared Files
+                  </h4>
+                  <div className="space-y-2">
+                    {messages
+                      .filter(msg => msg.media && msg.media.length > 0)
+                      .flatMap(msg => msg.media || [])
+                      .filter(media => !media.type.startsWith('image/') && !media.type.startsWith('video/'))
+                      .slice(0, 10)
+                      .map((media, index) => (
+                        <div key={index} className={`p-3 rounded-lg ${isDarkMode ? 'bg-gray-700' : 'bg-gray-100'}`}>
+                          <div className="flex items-center space-x-3">
+                            <FileText className={`w-5 h-5 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`} />
+                            <div className="flex-1 min-w-0">
+                              <p className={`text-sm font-medium truncate ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                                {media.file_name || 'Unknown file'}
+                              </p>
+                              <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                                {media.type}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                </div>
+              )}
+              
+              {sidebarTab === 'links' && (
+                <div className="space-y-4">
+                  <h4 className={`text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                    Shared Links
+                  </h4>
+                  <div className="space-y-2">
+                    {messages
+                      .filter(msg => msg.is_link && msg.content)
+                      .slice(0, 10)
+                      .map((message, index) => (
+                        <div key={index} className={`p-3 rounded-lg ${isDarkMode ? 'bg-gray-700' : 'bg-gray-100'}`}>
+                          <div className="flex items-center space-x-3">
+                            <Link className={`w-5 h-5 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`} />
+                            <div className="flex-1 min-w-0">
+                              <p className={`text-sm font-medium truncate ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                                {getDomainFromUrl(message.content)}
+                              </p>
+                              <p className={`text-xs truncate ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                                {message.content}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+        
+                {/* Image Modal */}
+         {selectedImage && (
           <div 
             className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50 p-6"
             onClick={() => setSelectedImage(null)}
