@@ -30,6 +30,7 @@ interface Message {
   is_read: boolean
   media?: MessageMedia[]
   isUploading?: boolean
+  is_link?: boolean
 }
 
 interface MessageActions {
@@ -340,18 +341,83 @@ export default function AdminMessengerPage() {
     }
   }
 
+  // Hàm kiểm tra xem có phải là URL hợp lệ không
+  const isValidUrl = (string: string) => {
+    try {
+      new URL(string)
+      return true
+    } catch (_) {
+      return false
+    }
+  }
+
+  // Hàm kiểm tra xem URL có phải là ảnh/video trực tiếp không
+  const isDirectMediaUrl = (url: string) => {
+    const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.svg']
+    const videoExtensions = ['.mp4', '.avi', '.mov', '.wmv', '.flv', '.webm', '.mkv']
+    
+    const urlLower = url.toLowerCase()
+    
+    // Kiểm tra extension
+    const hasImageExt = imageExtensions.some(ext => urlLower.includes(ext))
+    const hasVideoExt = videoExtensions.some(ext => urlLower.includes(ext))
+    
+    // Kiểm tra các domain phổ biến cho media
+    const imageDomains = ['imgur.com', 'i.imgur.com', 'images.unsplash.com', 'picsum.photos', 'via.placeholder.com']
+    const videoDomains = ['youtube.com', 'youtu.be', 'vimeo.com', 'dailymotion.com']
+    
+    const hasImageDomain = imageDomains.some(domain => urlLower.includes(domain))
+    const hasVideoDomain = videoDomains.some(domain => urlLower.includes(domain))
+    
+    return hasImageExt || hasVideoExt || hasImageDomain || hasVideoDomain
+  }
+
+  // Hàm lấy loại media từ URL
+  const getMediaTypeFromUrl = (url: string) => {
+    const videoExtensions = ['.mp4', '.avi', '.mov', '.wmv', '.flv', '.webm', '.mkv']
+    const videoDomains = ['youtube.com', 'youtu.be', 'vimeo.com', 'dailymotion.com']
+    
+    const urlLower = url.toLowerCase()
+    const hasVideoExt = videoExtensions.some(ext => urlLower.includes(ext))
+    const hasVideoDomain = videoDomains.some(domain => urlLower.includes(domain))
+    
+    return hasVideoExt || hasVideoDomain ? 'video' : 'image'
+  }
+
+  // Hàm trích xuất domain từ URL
+  const getDomainFromUrl = (url: string) => {
+    try {
+      const urlObj = new URL(url)
+      return urlObj.hostname.replace('www.', '')
+    } catch {
+      return ''
+    }
+  }
+
   const sendMessage = async () => {
     if (!selectedConversation || !newMessage.trim()) return
 
     const messageContent = newMessage.trim()
     setNewMessage('')
 
+    // Kiểm tra xem có phải là URL hợp lệ không
+    const isValidUrlString = isValidUrl(messageContent)
+    const isMediaUrl = isValidUrlString && isDirectMediaUrl(messageContent)
+    const mediaType = isMediaUrl ? getMediaTypeFromUrl(messageContent) : null
+
     const optimisticMessage: Message = {
       message_id: Date.now(),
       sender_id: 1,
-      content: messageContent,
+      content: isMediaUrl ? `[${mediaType === 'video' ? 'Video' : 'Image'}]` : messageContent,
       sent_at: new Date().toISOString().replace('T', ' ').replace('Z', ''),
-      is_read: false
+      is_read: false,
+      media: isMediaUrl ? [{
+        media_id: Date.now(),
+        url: messageContent,
+        type: mediaType === 'video' ? 'video/mp4' : 'image/jpeg',
+        file_name: 'Link media'
+      }] : undefined,
+      is_link: isValidUrlString && !isMediaUrl
     }
 
     setMessages(prev => [...prev, optimisticMessage])
@@ -368,7 +434,15 @@ export default function AdminMessengerPage() {
         },
         body: JSON.stringify({
           conversation_id: selectedConversation.conversation_id,
-          content: messageContent
+          content: isMediaUrl ? `[${mediaType === 'video' ? 'Video' : 'Image'}]` : messageContent,
+          media: isMediaUrl ? [{
+            name: 'Link media',
+            type: mediaType === 'video' ? 'video/mp4' : 'image/jpeg',
+            size: 0,
+            url: messageContent,
+            public_id: null
+          }] : undefined,
+          is_link: isValidUrlString && !isMediaUrl
         })
       })
 
@@ -579,10 +653,19 @@ export default function AdminMessengerPage() {
     setIsDarkMode(!isDarkMode)
   }
 
-  return (
-    <div className={`flex h-screen ${isDarkMode ? 'bg-gray-900' : 'bg-gray-100'}`}>
-      {/* Sidebar - Conversations List */}
-      <div className={`w-80 ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border-r flex flex-col`}>
+                                               return (
+              <div className={`flex h-[calc(100vh-6rem)] ${isDarkMode ? 'bg-gray-900' : 'bg-gray-100'} overflow-hidden`} style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+                <style jsx global>{`
+                  html, body {
+                    scrollbar-width: none !important;
+                    -ms-overflow-style: none !important;
+                  }
+                  html::-webkit-scrollbar, body::-webkit-scrollbar {
+                    display: none !important;
+                  }
+                `}</style>
+       {/* Sidebar - Conversations List */}
+       <div className={`w-80 ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border-r flex flex-col`}>
         {/* Header */}
         <div className={`p-4 border-b ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
           <div className="flex items-center justify-between">
@@ -906,8 +989,39 @@ export default function AdminMessengerPage() {
                           </div>
                         )}
                         
-                        {/* Message Content */}
-                        <p className="text-sm">{message.content}</p>
+                                                 {/* Message Content */}
+                         {(() => { console.log('Message:', message.content, 'is_link:', message.is_link); return null; })()}
+                         {message.is_link ? (
+                           <div className="space-y-2">
+                             <a
+                               href={message.content}
+                               target="_blank"
+                               rel="noopener noreferrer"
+                               className="block p-3 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors cursor-pointer"
+                             >
+                               <div className="flex items-center space-x-2">
+                                 <div className="w-8 h-8 bg-blue-500 rounded flex items-center justify-center">
+                                   <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                     <path fillRule="evenodd" d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" clipRule="evenodd" />
+                                   </svg>
+                                 </div>
+                                 <div className="flex-1 min-w-0">
+                                   <p className="text-sm font-medium text-blue-600 dark:text-blue-400 truncate">
+                                     {getDomainFromUrl(message.content)}
+                                   </p>
+                                   <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                                     {message.content}
+                                   </p>
+                                 </div>
+                                 <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                 </svg>
+                               </div>
+                             </a>
+                           </div>
+                         ) : (
+                           <p className="text-sm">{message.content}</p>
+                         )}
                         
                         {message.media && message.media.length > 0 && (
                           <div className="mt-2 space-y-2">
@@ -1051,49 +1165,68 @@ export default function AdminMessengerPage() {
             )}
 
                          {/* Message Input */}
-             <div className={`${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border-t p-0.5 relative`}>
-              <div className="flex items-center space-x-2">
-                                 <Button
+             <div className={`${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border-t p-3 relative`}>
+               <div className="flex items-center space-x-3">
+                 {/* Voice Button */}
+                 <Button
                    variant="ghost"
                    size="sm"
-                   className={`h-5 w-5 p-0 ${isDarkMode ? 'text-gray-400 hover:text-white' : 'text-gray-600 hover:text-gray-900'}`}
+                   className={`h-10 w-10 p-0 ${isDarkMode ? 'text-gray-300 hover:text-white' : 'text-gray-500 hover:text-gray-700'}`}
+                   title="Voice message"
                  >
-                   <Mic className="w-2.5 h-2.5" />
+                   <Mic className="w-5 h-5" />
                  </Button>
-                
-                                 <Button
+                 
+                 {/* Image/Video Button */}
+                 <Button
                    variant="ghost"
                    size="sm"
                    onClick={handleImageVideoUpload}
-                   className={`h-5 w-5 p-0 ${isDarkMode ? 'text-gray-400 hover:text-white' : 'text-gray-600 hover:text-gray-900'}`}
+                   className={`h-10 w-10 p-0 ${isDarkMode ? 'text-gray-300 hover:text-white' : 'text-gray-500 hover:text-gray-700'}`}
+                   title="Send image or video"
                  >
-                   <Image className="w-2.5 h-2.5" />
+                   <Image className="w-5 h-5" />
                  </Button>
-                
-                                 <Button
+                 
+                 {/* File Button */}
+                 <Button
+                   variant="ghost"
+                   size="sm"
+                   className={`h-10 w-10 p-0 ${isDarkMode ? 'text-gray-300 hover:text-white' : 'text-gray-500 hover:text-gray-700'}`}
+                   title="Send file"
+                 >
+                   <FileText className="w-5 h-5" />
+                 </Button>
+                 
+                 {/* Emoji Button */}
+                 <Button
                    variant="ghost"
                    size="sm"
                    onClick={(e) => {
                      e.stopPropagation();
                      handleStickerPicker();
                    }}
-                   className={`h-5 w-5 p-0 ${isDarkMode ? 'text-gray-400 hover:text-white' : 'text-gray-600 hover:text-gray-900'}`}
+                   className={`h-10 w-10 p-0 ${isDarkMode ? 'text-gray-300 hover:text-white' : 'text-gray-500 hover:text-gray-700'}`}
+                   title="Emoji"
                  >
-                   <Smile className="w-2.5 h-2.5" />
+                   <Smile className="w-5 h-5" />
                  </Button>
-                
-                                 <Input
+                 
+                 {/* Message Input */}
+                 <Input
                    id="message-input"
                    placeholder="Type a message..."
                    value={newMessage}
                    onChange={(e) => setNewMessage(e.target.value)}
                    onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
-                   className={`flex-1 h-5 text-xs ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' : ''}`}
+                   className={`flex-1 h-10 text-base ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' : ''}`}
                  />
-                                 <Button onClick={sendMessage} disabled={!newMessage.trim()} size="sm" className="h-5 px-1">
-                   <Send className="w-2.5 h-2.5" />
+                 
+                 {/* Send Button */}
+                 <Button onClick={sendMessage} disabled={!newMessage.trim()} size="sm" className="h-10 px-4">
+                   <Send className="w-5 h-5" />
                  </Button>
-              </div>
+               </div>
               
               {/* Emoji Picker */}
               {showEmojiPicker && (
