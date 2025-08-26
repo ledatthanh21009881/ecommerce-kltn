@@ -597,8 +597,9 @@ export default function AdminMessengerPage() {
 
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
     const { scrollTop, scrollHeight, clientHeight } = e.currentTarget
-    const isNearBottom = scrollHeight - scrollTop - clientHeight < 50
-    setShowScrollToBottom(!isNearBottom)
+    const isNearBottom = scrollHeight - scrollTop - clientHeight < 100
+    const shouldShow = !isNearBottom && scrollHeight > clientHeight
+    setShowScrollToBottom(shouldShow)
   }
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -1200,22 +1201,22 @@ export default function AdminMessengerPage() {
                              )}
                <div ref={messagesEndRef} />
                
-                               {/* Scroll to Bottom Button */}
-                {showScrollToBottom && (
-                  <button
-                    onClick={scrollToBottom}
-                    className={`absolute bottom-4 left-1/2 transform -translate-x-1/2 p-3 rounded-full shadow-lg transition-all duration-200 hover:scale-110 z-50 ${
-                      isDarkMode 
-                        ? 'bg-gray-700 text-white hover:bg-gray-600' 
-                        : 'bg-white text-gray-600 hover:bg-gray-100'
-                    }`}
-                    title="Cuộn xuống tin nhắn gần nhất"
-                  >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-                    </svg>
-                  </button>
-                )}
+                                                               {/* Scroll to Bottom Button */}
+                 {showScrollToBottom && (
+                   <button
+                     onClick={scrollToBottom}
+                     className={`sticky bottom-4 left-1/2 transform -translate-x-1/2 p-3 rounded-full shadow-lg transition-all duration-200 hover:scale-110 z-50 mx-auto ${
+                       isDarkMode 
+                         ? 'bg-gray-700 text-white hover:bg-gray-600' 
+                         : 'bg-white text-gray-600 hover:bg-gray-100'
+                     }`}
+                     title="Cuộn xuống tin nhắn gần nhất"
+                   >
+                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                     </svg>
+                   </button>
+                 )}
              </div>
 
             {/* Reply to Message */}
