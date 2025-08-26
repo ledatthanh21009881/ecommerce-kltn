@@ -97,26 +97,47 @@ export interface AdminLoginResponse {
 
 // Auth utilities
 export const authUtils = {
-  // Save token to localStorage
+  // Save user token to localStorage
   saveToken: (token: string) => {
     if (typeof window !== 'undefined') {
       localStorage.setItem('auth_token', token)
     }
   },
 
-  // Get token from localStorage
+  // Get user token from localStorage
   getToken: (): string | null => {
     if (typeof window !== 'undefined') {
-      // Try adminToken first (for admin login), then auth_token (for user login)
-      return localStorage.getItem('adminToken') || localStorage.getItem('auth_token')
+      return localStorage.getItem('auth_token')
     }
     return null
   },
 
-  // Remove token
+  // Save admin token to localStorage
+  saveAdminToken: (token: string) => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('adminToken', token)
+    }
+  },
+
+  // Get admin token from localStorage
+  getAdminToken: (): string | null => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('adminToken')
+    }
+    return null
+  },
+
+  // Remove user token
   removeToken: () => {
     if (typeof window !== 'undefined') {
       localStorage.removeItem('auth_token')
+    }
+  },
+
+  // Remove admin token
+  removeAdminToken: () => {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('adminToken')
     }
   },
 
@@ -165,6 +186,22 @@ export const authUtils = {
     }
   },
 
+  // Check if user is logged in
+  isLoggedIn: (): boolean => {
+    if (typeof window !== 'undefined') {
+      return !!localStorage.getItem('auth_token')
+    }
+    return false
+  },
+
+  // Check if admin is logged in
+  isAdminLoggedIn: (): boolean => {
+    if (typeof window !== 'undefined') {
+      return !!localStorage.getItem('adminToken')
+    }
+    return false
+  },
+
   // Logout với API call
   logout: async () => {
     try {
@@ -177,14 +214,11 @@ export const authUtils = {
       console.error('Logout API call failed:', error)
     } finally {
       // Xóa tất cả token và user data
-      tokenManager.clearTokens()
+      authUtils.removeToken()
+      authUtils.removeAdminToken()
+      authUtils.removeRefreshToken()
       authUtils.removeUser()
     }
-  },
-
-  // Check if user is logged in
-  isLoggedIn: (): boolean => {
-    return !!tokenManager.getAccessToken()
   },
 
   // Check if user is admin
@@ -243,12 +277,10 @@ export async function loginUser(data: LoginData): Promise<ApiResponse<LoginRespo
     
     // Lưu token và refresh token nếu có
     if (result.success && result.data) {
-      const tokenData = {
-        token: result.data.token,
-        refresh_token: result.data.refresh_token || '',
-        expires_at: Date.now() + (60 * 60 * 1000) // 1 giờ
+      authUtils.saveToken(result.data.token)
+      if (result.data.refresh_token) {
+        authUtils.saveRefreshToken(result.data.refresh_token)
       }
-      tokenManager.saveTokens(tokenData)
     }
     
     return result
@@ -283,6 +315,12 @@ export async function loginAdmin(data: AdminLoginData): Promise<ApiResponse<Admi
 
     const result = await response.json()
     console.log('Admin login response:', result)
+    
+    // Lưu admin token nếu đăng nhập thành công
+    if (result.success && result.data) {
+      authUtils.saveAdminToken(result.data.token)
+    }
+    
     return result
   } catch (error) {
     console.error('Admin login error:', error)

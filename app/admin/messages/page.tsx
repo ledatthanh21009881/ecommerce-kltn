@@ -1,13 +1,14 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Search, RefreshCw, MessageSquare, Mail, Phone, Clock, CheckCircle, AlertCircle } from 'lucide-react'
+import { Search, RefreshCw, MessageSquare, Mail, Phone, Clock, CheckCircle, AlertCircle, Send, Paperclip, Image as ImageIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
 import { getAuthData } from '@/lib/admin-auth'
+import EmojiPicker from 'emoji-picker-react'
 
 interface Message {
   message_id: number
@@ -29,6 +30,8 @@ export default function AdminMessagesPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
   const [typeFilter, setTypeFilter] = useState('')
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false)
+  const [newMessage, setNewMessage] = useState('')
 
   // Fetch messages
   const fetchMessages = async () => {
@@ -53,6 +56,23 @@ export default function AdminMessagesPage() {
   useEffect(() => {
     fetchMessages()
   }, [])
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Element
+      if (!target.closest('.emoji-picker-container')) {
+        setShowEmojiPicker(false)
+      }
+    }
+
+    if (showEmojiPicker) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [showEmojiPicker])
 
   // Filter messages
   const filteredMessages = messages.filter(message => {
@@ -135,6 +155,29 @@ export default function AdminMessagesPage() {
   const truncateMessage = (message: string, maxLength: number = 100) => {
     if (message.length <= maxLength) return message
     return message.substring(0, maxLength) + '...'
+  }
+
+  const onEmojiClick = (emojiObject: any) => {
+    setNewMessage(prev => prev + emojiObject.emoji)
+    setShowEmojiPicker(false)
+  }
+
+  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (file) {
+      // TODO: Implement image/video upload to server
+      console.log('Media selected:', file)
+      toast.info('Media upload feature coming soon!')
+    }
+  }
+
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (file) {
+      // TODO: Implement file upload to server
+      console.log('File selected:', file)
+      toast.info('File upload feature coming soon!')
+    }
   }
 
   return (
@@ -286,13 +329,99 @@ export default function AdminMessagesPage() {
                   <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
                   Refresh
                 </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Message Input Section */}
+        <Card className="bg-white shadow-sm mb-6">
+          <CardContent className="p-6">
+            <div className="flex items-center space-x-3">
+              {/* Image/Video Button */}
+              <div className="relative">
+                <input
+                  type="file"
+                  accept="image/*,video/*"
+                  onChange={handleImageUpload}
+                  className="hidden"
+                  id="admin-image-upload"
+                />
                 <Button
-                  className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700"
+                  variant="ghost"
+                  size="sm"
+                  className="p-2 h-10 w-10 rounded-full bg-gray-100 hover:bg-gray-200"
+                  title="Send Photo/Video"
+                  onClick={() => document.getElementById('admin-image-upload')?.click()}
                 >
-                  <MessageSquare className="h-4 w-4" />
-                  Send Message
+                  <ImageIcon className="w-5 h-5 text-gray-600" />
                 </Button>
               </div>
+              
+              {/* File Button */}
+              <div className="relative">
+                <input
+                  type="file"
+                  onChange={handleFileUpload}
+                  className="hidden"
+                  id="admin-file-upload"
+                />
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="p-2 h-10 w-10 rounded-full bg-gray-100 hover:bg-gray-200"
+                  title="Send File"
+                  onClick={() => document.getElementById('admin-file-upload')?.click()}
+                >
+                  <Paperclip className="w-5 h-5 text-gray-600" />
+                </Button>
+              </div>
+              
+              {/* Emoji Button */}
+              <div className="relative">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="p-2 h-10 w-10 rounded-full bg-gray-100 hover:bg-gray-200"
+                  title="Emoji"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowEmojiPicker(!showEmojiPicker);
+                  }}
+                >
+                  <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h1m4 0h1m-6 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  
+                  {/* Emoji Picker */}
+                  {showEmojiPicker && (
+                    <div className="absolute bottom-full right-0 mb-2 z-50 emoji-picker-container">
+                      <EmojiPicker
+                        onEmojiClick={onEmojiClick}
+                        width={300}
+                        height={400}
+                      />
+                    </div>
+                  )}
+                </Button>
+              </div>
+
+              {/* Message Input */}
+              <Input
+                value={newMessage}
+                onChange={(e) => setNewMessage(e.target.value)}
+                placeholder="Type your message..."
+                className="flex-1"
+              />
+              
+              {/* Send Button */}
+              <Button
+                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700"
+                disabled={!newMessage.trim()}
+              >
+                <Send className="h-4 w-4" />
+                Send
+              </Button>
             </div>
           </CardContent>
         </Card>

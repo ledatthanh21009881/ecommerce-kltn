@@ -26,19 +26,19 @@ const nextConfig = {
     return [
       {
         source: '/api/backend/:path*',
-        destination: 'http://127.0.0.1/ecommerce/api/:path*',
+        destination: 'http://localhost:8000/api/:path*',
       },
       {
         source: '/api/v1/:path*',
-        destination: 'http://127.0.0.1/ecommerce/api/v1/:path*',
+        destination: 'http://localhost:8000/api/v1/:path*',
       },
       {
         source: '/api/products/:path*',
-        destination: 'http://127.0.0.1/ecommerce/api/products/:path*',
+        destination: 'http://localhost:8000/api/products/:path*',
       },
       {
         source: '/api/products',
-        destination: 'http://127.0.0.1/ecommerce/api/products',
+        destination: 'http://localhost:8000/api/products',
       },
     ]
   },
