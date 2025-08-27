@@ -8,6 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { toast } from 'sonner'
 import { Send, Image, Video, Search, MoreVertical, FileText, Link, Phone, Video as VideoCall, UserPlus, Archive, Trash2, Mic, Smile, Sun, Moon } from 'lucide-react'
 import EmojiPicker, { EmojiClickData } from 'emoji-picker-react'
+import { useWebSocket } from "@/hooks/useWebSocket"
 
 interface Conversation {
   conversation_id: number
@@ -53,7 +54,48 @@ export default function AdminMessengerPage() {
   const [newMessage, setNewMessage] = useState('')
   const [loading, setLoading] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
-  const [ws, setWs] = useState<WebSocket | null>(null)
+  // WebSocket hook
+  const {
+    isConnected,
+    isConnecting,
+    connect,
+    disconnect,
+    joinConversation,
+    leaveConversation,
+    sendTypingStart,
+    sendTypingStop,
+    sendMessage: sendMessageViaWebSocket
+  } = useWebSocket({
+    onMessage: (message) => {
+      console.log('🔍 Debug - New message received:', message)
+      setMessages(prev => {
+        // Check if message already exists
+        const exists = prev.some(msg => msg.message_id === message.message_id)
+        if (exists) return prev
+        return [...prev, message]
+      })
+    },
+    onTypingStart: (conversationId) => {
+      console.log('🔍 Debug - Typing start for conversation:', conversationId)
+      if (selectedConversation && conversationId === selectedConversation.conversation_id) {
+        setIsTyping(true)
+      }
+    },
+    onTypingStop: (conversationId) => {
+      console.log('🔍 Debug - Typing stop for conversation:', conversationId)
+      if (selectedConversation && conversationId === selectedConversation.conversation_id) {
+        setIsTyping(false)
+      }
+    },
+    onConnect: () => {
+      console.log('🔍 Debug - WebSocket connected')
+      toast.success('Connected to chat server')
+    },
+    onDisconnect: () => {
+      console.log('🔍 Debug - WebSocket disconnected')
+      toast.error('Disconnected from chat server')
+    }
+  })
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [activeFilter, setActiveFilter] = useState<'all' | 'customers' | 'staff' | 'shippers'>('all')
@@ -68,6 +110,8 @@ export default function AdminMessengerPage() {
   const [isSelectionMode, setIsSelectionMode] = useState(false)
   const [selectedImage, setSelectedImage] = useState<string | null>(null)
   const [showScrollToBottom, setShowScrollToBottom] = useState(false)
+  const [isTyping, setIsTyping] = useState(false)
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   const getAdminToken = () => {
     return localStorage.getItem('adminToken')
@@ -77,6 +121,13 @@ export default function AdminMessengerPage() {
   useEffect(() => {
     fetchConversations()
     connectWebSocket()
+    
+    // Cleanup timeout on unmount
+    return () => {
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current)
+      }
+    }
   }, [])
 
   useEffect(() => {
@@ -126,63 +177,42 @@ export default function AdminMessengerPage() {
   const connectWebSocket = () => {
     const token = localStorage.getItem('adminToken')
     if (!token) return
-
-    if (ws) {
-      ws.close()
-    }
-
-    const websocket = new WebSocket('ws://localhost:8080')
-    
-    websocket.onopen = () => {
-      websocket.send(JSON.stringify({
-        type: 'auth',
-        token: token
-      }))
-    }
-
-    websocket.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data)
-        if (data.type === 'new_message') {
-          handleNewMessage(data.message)
-        }
-      } catch (error) {
-        console.error('Error parsing WebSocket message:', error)
-      }
-    }
-
-    websocket.onerror = (error) => {
-      console.error('WebSocket error:', error)
-    }
-
-    websocket.onclose = () => {
-      setTimeout(() => {
-        if (document.visibilityState === 'visible') {
-          connectWebSocket()
-        }
-      }, 3000)
-    }
-
-    setWs(websocket)
-  }
-
-  const joinConversation = (conversationId: number) => {
-    if (ws && ws.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify({
-        type: 'join_conversation',
-        conversation_id: conversationId
-      }))
-    }
+    connect(token)
   }
 
   const handleNewMessage = (message: Message) => {
     setMessages(prev => {
-      const messageExists = prev.some(msg => msg.message_id === message.message_id)
-      if (messageExists) {
-        return prev
-      }
+      // Check if message already exists
+      const exists = prev.some(msg => msg.message_id === message.message_id)
+      if (exists) return prev
       return [...prev, message]
     })
+  }
+
+  // Handle typing indicator
+  const handleTyping = () => {
+    if (isConnected && selectedConversation) {
+      console.log('🔍 Debug - Sending typing_start for conversation:', selectedConversation.conversation_id)
+      sendTypingStart(selectedConversation.conversation_id)
+      
+      // Clear existing timeout
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current)
+      }
+      
+      // Set new timeout to stop typing after 2 seconds
+      typingTimeoutRef.current = setTimeout(() => {
+        handleTypingStop()
+      }, 2000)
+    }
+  }
+
+  // Handle typing stop
+  const handleTypingStop = () => {
+    if (isConnected && selectedConversation) {
+      console.log('🔍 Debug - Sending typing_stop for conversation:', selectedConversation.conversation_id)
+      sendTypingStop(selectedConversation.conversation_id)
+    }
   }
 
   const toggleMessageMenu = (messageId: number) => {
@@ -411,6 +441,9 @@ export default function AdminMessengerPage() {
   const sendMessage = async () => {
     if (!selectedConversation || !newMessage.trim()) return
 
+    // Stop typing indicator
+    handleTypingStop()
+
     const messageContent = newMessage.trim()
     setNewMessage('')
 
@@ -419,20 +452,20 @@ export default function AdminMessengerPage() {
     const isMediaUrl = isValidUrlString && isDirectMediaUrl(messageContent)
     const mediaType = isMediaUrl ? getMediaTypeFromUrl(messageContent) : null
 
-         const optimisticMessage: Message = {
-       message_id: Date.now(),
-       sender_id: 1,
-       content: messageContent,
-       sent_at: new Date().toISOString().replace('T', ' ').replace('Z', ''),
-       is_read: false,
-       media: isMediaUrl ? [{
-         media_id: Date.now(),
-         url: messageContent,
-         type: mediaType === 'video' ? 'video/mp4' : 'image/jpeg',
-         file_name: 'Link media'
-       }] : undefined,
-       is_link: isValidUrlString
-     }
+    const optimisticMessage: Message = {
+      message_id: Date.now(),
+      sender_id: 1,
+      content: messageContent,
+      sent_at: new Date().toISOString().replace('T', ' ').replace('Z', ''),
+      is_read: false,
+      media: isMediaUrl ? [{
+        media_id: Date.now(),
+        url: messageContent,
+        type: mediaType === 'video' ? 'video/mp4' : 'image/jpeg',
+        file_name: 'Link media'
+      }] : undefined,
+      is_link: isValidUrlString
+    }
 
     setMessages(prev => [...prev, optimisticMessage])
 
@@ -440,36 +473,46 @@ export default function AdminMessengerPage() {
       const token = localStorage.getItem('adminToken')
       if (!token) return
 
+      // Send via HTTP API first
       const response = await fetch(`${API_BASE}/messages`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
-                 body: JSON.stringify({
-           conversation_id: selectedConversation.conversation_id,
-           content: messageContent,
-           media: isMediaUrl ? [{
-             name: 'Link media',
-             type: mediaType === 'video' ? 'video/mp4' : 'image/jpeg',
-             size: 0,
-             url: messageContent,
-             public_id: null
-           }] : undefined,
-           is_link: isValidUrlString
-         })
+        body: JSON.stringify({
+          conversation_id: selectedConversation.conversation_id,
+          content: messageContent,
+          media: isMediaUrl ? [{
+            name: 'Link media',
+            type: mediaType === 'video' ? 'video/mp4' : 'image/jpeg',
+            size: 0,
+            url: messageContent,
+            public_id: null
+          }] : undefined,
+          is_link: isValidUrlString
+        })
       })
 
       if (response.ok) {
         const data = await response.json()
+        const savedMessage = data.data
+        
+        // Update optimistic message with real data
         setMessages(prev => {
           const updated = prev.map(msg => 
             msg.message_id === optimisticMessage.message_id 
-              ? data.data 
+              ? savedMessage 
               : msg
           )
           return updated
         })
+
+        // Send via WebSocket for real-time
+        if (isConnected) {
+          console.log('🔍 Debug - Sending message via WebSocket:', savedMessage)
+          sendMessageViaWebSocket(savedMessage, selectedConversation.conversation_id)
+        }
       } else {
         setMessages(prev => prev.filter(msg => msg.message_id !== optimisticMessage.message_id))
         setNewMessage(messageContent)
@@ -1203,6 +1246,28 @@ export default function AdminMessengerPage() {
                   )
                 })
                              )}
+                             {/* Typing Indicator */}
+              {(() => { console.log('🔍 Debug - isTyping state:', isTyping); return null; })()}
+              {isTyping && (
+                 <div className="flex justify-start">
+                   <div className="flex items-end space-x-2 max-w-md">
+                     <Avatar className="w-8 h-8">
+                       <AvatarImage src={selectedConversation?.avatar_url} />
+                       <AvatarFallback className="text-xs">
+                         {selectedConversation ? `${selectedConversation.first_name[0]}${selectedConversation.last_name[0]}` : 'CU'}
+                       </AvatarFallback>
+                     </Avatar>
+                     <div className={`px-3 py-2 rounded-2xl ${isDarkMode ? 'bg-gray-700 text-white' : 'bg-gray-200 text-gray-900'}`}>
+                       <div className="flex space-x-1">
+                         <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce"></div>
+                         <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                         <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                       </div>
+                     </div>
+                   </div>
+                 </div>
+               )}
+               
                <div ref={messagesEndRef} />
                
                                                                {/* Scroll to Bottom Button */}
@@ -1301,8 +1366,16 @@ export default function AdminMessengerPage() {
                    id="message-input"
                    placeholder="Type a message..."
                    value={newMessage}
-                   onChange={(e) => setNewMessage(e.target.value)}
-                   onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
+                                                           onChange={(e) => {
+                      setNewMessage(e.target.value)
+                      handleTyping()
+                    }}
+                    onKeyPress={(e) => {
+                      if (e.key === 'Enter') {
+                        handleTypingStop()
+                        sendMessage()
+                      }
+                    }}
                    className={`flex-1 h-10 text-base ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' : ''}`}
                  />
                  
