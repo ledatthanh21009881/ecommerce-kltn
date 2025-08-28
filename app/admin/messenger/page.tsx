@@ -7,6 +7,8 @@ import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { toast } from 'sonner'
 import { Send, Image, Video, Search, MoreVertical, FileText, Link, Phone, Video as VideoCall, UserPlus, Archive, Trash2, Mic, Smile, Sun, Moon } from 'lucide-react'
+import { VoiceRecorder } from "@/components/VoiceRecorder"
+import { AudioPlayer } from "@/components/AudioPlayer"
 import EmojiPicker, { EmojiClickData } from 'emoji-picker-react'
 import { useWebSocket } from "@/hooks/useWebSocket"
 
@@ -54,6 +56,7 @@ export default function AdminMessengerPage() {
   const [newMessage, setNewMessage] = useState('')
   const [loading, setLoading] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
+  const [showVoiceRecorder, setShowVoiceRecorder] = useState(false)
   // WebSocket hook
   const {
     isConnected,
@@ -435,6 +438,78 @@ export default function AdminMessengerPage() {
       return urlObj.hostname.replace('www.', '')
     } catch {
       return ''
+    }
+  }
+
+  const handleVoiceRecordingComplete = async (audioBlob: Blob) => {
+    if (!selectedConversation) return
+
+    try {
+      // Create a file from the blob
+      const audioFile = new File([audioBlob], 'voice-message.webm', { type: 'audio/webm' })
+      
+      const formData = new FormData()
+      formData.append('media', audioFile)
+      
+      const token = localStorage.getItem('adminToken')
+      if (!token) {
+        toast.error('Please login to send voice message')
+        return
+      }
+
+      const response = await fetch('/api/messenger', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        body: formData
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        if (data.success) {
+          // Send message with audio media
+          const messageResponse = await fetch('/api/messenger', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              action: 'send_message',
+              conversation_id: selectedConversation.conversation_id,
+              content: '',
+              media: [{
+                name: 'voice-message.webm',
+                type: 'audio/webm',
+                size: audioBlob.size,
+                url: data.data.url,
+                public_id: data.data.public_id
+              }]
+            })
+          })
+
+          if (messageResponse.ok) {
+            const messageData = await messageResponse.json()
+            if (messageData.success) {
+              setMessages(prev => [...prev, messageData.data])
+              setShowVoiceRecorder(false)
+              toast.success('Voice message sent successfully')
+            } else {
+              toast.error(messageData.message || 'Failed to send voice message')
+            }
+          } else {
+            toast.error('Failed to send voice message')
+          }
+        } else {
+          toast.error(data.message || 'Failed to upload voice message')
+        }
+      } else {
+        toast.error('Failed to upload voice message')
+      }
+    } catch (error) {
+      console.error('Voice message error:', error)
+      toast.error('Failed to send voice message')
     }
   }
 
@@ -1151,7 +1226,7 @@ export default function AdminMessengerPage() {
                           ) : null}
                         
                                                  {/* Only show media for uploaded files, not for link media */}
-                                                   {message.media && message.media.length > 0 && !message.is_link && (message.content === '[Image]' || message.content === '[Video]' || !message.content) && (
+                                                   {message.media && message.media.length > 0 && !message.is_link && (message.content === '[Image]' || message.content === '[Video]' || message.content === '[Voice Message]' || !message.content) && (
                            <div className="mt-2 space-y-2">
                              {message.media.map((media) => (
                                <div key={media.media_id} className="relative">
@@ -1180,6 +1255,7 @@ export default function AdminMessengerPage() {
                                    const getMediaType = (url: string, type?: string) => {
                                      if (type && type.startsWith('image/')) return 'image';
                                      if (type && type.startsWith('video/')) return 'video';
+                                     if (type && type.startsWith('audio/')) return 'audio';
                                      
                                      const urlLower = url.toLowerCase();
                                      if (urlLower.includes('.jpg') || urlLower.includes('.jpeg') || 
@@ -1191,6 +1267,10 @@ export default function AdminMessengerPage() {
                                          urlLower.includes('.mov') || urlLower.includes('.wmv') || 
                                          urlLower.includes('.flv') || urlLower.includes('.webm')) {
                                        return 'video';
+                                     }
+                                     if (urlLower.includes('.mp3') || urlLower.includes('.wav') || 
+                                         urlLower.includes('.ogg') || urlLower.includes('.webm')) {
+                                       return 'audio';
                                      }
                                      return 'file';
                                    };
@@ -1216,6 +1296,10 @@ export default function AdminMessengerPage() {
                                         >
                                           Your browser does not support the video tag.
                                         </video>
+                                      );
+                                    } else if (mediaType === 'audio') {
+                                      return (
+                                        <AudioPlayer audioUrl={media.url} />
                                       );
                                     } else {
                                      return (
@@ -1317,14 +1401,22 @@ export default function AdminMessengerPage() {
              <div className={`${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border-t p-3 relative`}>
                <div className="flex items-center space-x-3">
                  {/* Voice Button */}
-                 <Button
-                   variant="ghost"
-                   size="sm"
-                   className={`h-10 w-10 p-0 ${isDarkMode ? 'text-gray-300 hover:text-white' : 'text-gray-500 hover:text-gray-700'}`}
-                   title="Voice message"
-                 >
-                   <Mic className="w-5 h-5" />
-                 </Button>
+                 {showVoiceRecorder ? (
+                   <VoiceRecorder
+                     onRecordingComplete={handleVoiceRecordingComplete}
+                     onCancel={() => setShowVoiceRecorder(false)}
+                   />
+                 ) : (
+                   <Button
+                     variant="ghost"
+                     size="sm"
+                     className={`h-10 w-10 p-0 ${isDarkMode ? 'text-gray-300 hover:text-white' : 'text-gray-500 hover:text-gray-700'}`}
+                     title="Voice message"
+                     onClick={() => setShowVoiceRecorder(true)}
+                   >
+                     <Mic className="w-5 h-5" />
+                   </Button>
+                 )}
                  
                  {/* Image/Video Button */}
                  <Button

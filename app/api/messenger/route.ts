@@ -97,6 +97,8 @@ export async function POST(request: NextRequest) {
       const backendFormData = new FormData()
       backendFormData.append('media', media)
       
+      console.log('🔍 Debug - Backend upload URL:', `${BACKEND_BASE_URL}/messages/upload-media`)
+      
       const uploadResponse = await fetch(`${BACKEND_BASE_URL}/messages/upload-media`, {
         method: 'POST',
         headers: {
@@ -105,7 +107,15 @@ export async function POST(request: NextRequest) {
         body: backendFormData
       })
       
+      console.log('🔍 Debug - Upload response status:', uploadResponse.status)
       const uploadData = await uploadResponse.json()
+      console.log('🔍 Debug - Upload response data:', uploadData)
+      
+      if (!uploadResponse.ok) {
+        console.log('🔍 Debug - Upload failed with status:', uploadResponse.status)
+        console.log('🔍 Debug - Upload error response:', uploadData)
+      }
+      
       return NextResponse.json(uploadData, { status: uploadResponse.status })
     } else {
       // Handle JSON requests

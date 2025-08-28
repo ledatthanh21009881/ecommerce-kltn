@@ -6,6 +6,8 @@ import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Send, Paperclip, Image as ImageIcon, Video, MessageCircle, User, ArrowLeft, Mic, Smile } from "lucide-react"
+import { VoiceRecorder } from "@/components/VoiceRecorder"
+import { AudioPlayer } from "@/components/AudioPlayer"
 import { toast } from "sonner"
 import Link from "next/link"
 import EmojiPicker from 'emoji-picker-react'
@@ -58,6 +60,7 @@ export default function MessengerPage() {
   const [showScrollToBottom, setShowScrollToBottom] = useState(false)
   const [isTyping, setIsTyping] = useState(false)
   const [typingTimeout, setTypingTimeout] = useState<NodeJS.Timeout | null>(null)
+  const [showVoiceRecorder, setShowVoiceRecorder] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // WebSocket hook
@@ -494,11 +497,84 @@ export default function MessengerPage() {
     }
   }
 
+  const handleVoiceRecordingComplete = async (audioBlob: Blob) => {
+    if (!conversationId) return
+
+    try {
+      // Create a file from the blob
+      const audioFile = new File([audioBlob], 'voice-message.webm', { type: 'audio/webm' })
+      
+      const formData = new FormData()
+      formData.append('media', audioFile)
+      
+      const token = localStorage.getItem('token') || localStorage.getItem('access_token') || localStorage.getItem('auth_token')
+      if (!token) {
+        toast.error('Please login to send voice message')
+        return
+      }
+
+      const response = await fetch('/api/messenger', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        body: formData
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        if (data.success) {
+          // Send message with audio media
+          const messageResponse = await fetch('/api/messenger', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              action: 'send_message',
+              conversation_id: conversationId,
+              content: '',
+              media: [{
+                name: 'voice-message.webm',
+                type: 'audio/webm',
+                size: audioBlob.size,
+                url: data.data.url,
+                public_id: data.data.public_id
+              }]
+            })
+          })
+
+          if (messageResponse.ok) {
+            const messageData = await messageResponse.json()
+            if (messageData.success) {
+              setMessages(prev => [...prev, messageData.data])
+              setShowVoiceRecorder(false)
+              toast.success('Voice message sent successfully')
+            } else {
+              toast.error(messageData.message || 'Failed to send voice message')
+            }
+          } else {
+            toast.error('Failed to send voice message')
+          }
+        } else {
+          toast.error(data.message || 'Failed to upload voice message')
+        }
+      } else {
+        toast.error('Failed to upload voice message')
+      }
+    } catch (error) {
+      console.error('Voice message error:', error)
+      toast.error('Failed to send voice message')
+    }
+  }
+
   const uploadMedia = async (file: File) => {
     if (!conversationId) return
 
     const isVideo = file.type.startsWith('video/')
-    const content = isVideo ? '[Video]' : '[Image]'
+    const isAudio = file.type.startsWith('audio/')
+    const content = isVideo ? '[Video]' : isAudio ? '' : '[Image]'
 
     // Get current user ID from token
     const token = localStorage.getItem('token') || localStorage.getItem('access_token') || localStorage.getItem('auth_token')
@@ -834,7 +910,7 @@ export default function MessengerPage() {
                       ) : null}
                       
                       {/* Only show media for uploaded files, not for link media */}
-                      {message.media && message.media.length > 0 && !message.is_link && (message.content === '[Image]' || message.content === '[Video]' || !message.content) && (
+                      {message.media && message.media.length > 0 && !message.is_link && (message.content === '[Image]' || message.content === '[Video]' || message.content === '[Voice Message]' || !message.content) && (
                         <div className="mt-2 space-y-2">
                           {message.media.map((media) => (
                             <div key={media.media_id} className="relative">
@@ -863,6 +939,7 @@ export default function MessengerPage() {
                                 const getMediaType = (url: string, type?: string) => {
                                   if (type && type.startsWith('image/')) return 'image';
                                   if (type && type.startsWith('video/')) return 'video';
+                                  if (type && type.startsWith('audio/')) return 'audio';
                                   
                                   const urlLower = url.toLowerCase();
                                   if (urlLower.includes('.jpg') || urlLower.includes('.jpeg') || 
@@ -874,6 +951,10 @@ export default function MessengerPage() {
                                       urlLower.includes('.mov') || urlLower.includes('.wmv') || 
                                       urlLower.includes('.flv') || urlLower.includes('.webm')) {
                                     return 'video';
+                                  }
+                                  if (urlLower.includes('.mp3') || urlLower.includes('.wav') || 
+                                      urlLower.includes('.ogg') || urlLower.includes('.webm')) {
+                                    return 'audio';
                                   }
                                   return 'file';
                                 };
@@ -899,6 +980,10 @@ export default function MessengerPage() {
                                     >
                                       Your browser does not support the video tag.
                                     </video>
+                                  );
+                                } else if (mediaType === 'audio') {
+                                  return (
+                                    <AudioPlayer audioUrl={media.url} />
                                   );
                                 } else {
                                   return (
@@ -963,18 +1048,25 @@ export default function MessengerPage() {
             )}
           </div>
 
-          {/* Message Input - Facebook Messenger Style */}
+                      {/* Message Input - Facebook Messenger Style */}
           <div className="bg-white border-t border-gray-200 p-3">
-            <div className="flex items-center space-x-2">
-              {/* Microphone Button */}
-              <Button
-                variant="ghost"
-                size="sm"
-                className="p-2 h-10 w-10 rounded-full bg-gray-100 hover:bg-gray-200"
-                title="Voice Message"
-              >
-                <Mic className="w-5 h-5 text-gray-600" />
-              </Button>
+            {showVoiceRecorder ? (
+              <VoiceRecorder
+                onRecordingComplete={handleVoiceRecordingComplete}
+                onCancel={() => setShowVoiceRecorder(false)}
+              />
+            ) : (
+              <div className="flex items-center space-x-2">
+                {/* Microphone Button */}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="p-2 h-10 w-10 rounded-full bg-gray-100 hover:bg-gray-200"
+                  title="Voice Message"
+                  onClick={() => setShowVoiceRecorder(true)}
+                >
+                  <Mic className="w-5 h-5 text-gray-600" />
+                </Button>
               
                {/* Image/Video Button */}
                <div className="relative">
@@ -1060,6 +1152,7 @@ export default function MessengerPage() {
                 <Send className="w-5 h-5" />
               </Button>
             </div>
+            )}
           </div>
         </div>
 
