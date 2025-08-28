@@ -69,7 +69,7 @@ export default function ProductModal({ isOpen, onClose, product, categories, onS
          console.log('ProductModal - Image URLs:', urls)
          setImageUrls(urls)
          // Find main image index
-         const mainImage = product.images.find(img => img.is_main === 1 || img.is_main === true)
+         const mainImage = product.images.find(img => Boolean(img.is_main))
          console.log('ProductModal - Main image:', mainImage)
          if (mainImage) {
            const mainIndex = product.images.findIndex(img => (img.image_url || img.url) === (mainImage.image_url || mainImage.url))
@@ -93,11 +93,16 @@ export default function ProductModal({ isOpen, onClose, product, categories, onS
         is_featured: false,
         variants: [
           {
+            variant_id: 0,
+            product_id: 0,
             size_id: 1,
+            size_name: 'S',
             sku: '',
             stock_quantity: 0,
             status: 'in_stock',
-            is_active: true
+            is_active: true,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
           }
         ],
         images: []
@@ -127,11 +132,16 @@ export default function ProductModal({ isOpen, onClose, product, categories, onS
       variants: [
         ...prev.variants,
         {
+          variant_id: 0,
+          product_id: 0,
           size_id: 1,
+          size_name: 'S',
           sku: '',
           stock_quantity: 0,
           status: 'in_stock',
-          is_active: true
+          is_active: true,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
         }
       ]
     }))
@@ -193,24 +203,36 @@ export default function ProductModal({ isOpen, onClose, product, categories, onS
 
     try {
              // Convert files to base64
-       const fileImages: ProductImage[] = await Promise.all(
-         selectedFiles
-           .filter(file => file && file.size > 0)
-           .map(async (file, index) => ({
-             file: await convertFileToBase64(file),
-             alt_text: `${formData.product_name} - Image ${index + 1}`,
-             image_type: 'gallery'
-           }))
-       )
+               const fileImages: ProductImage[] = await Promise.all(
+          selectedFiles
+            .filter(file => file && file.size > 0)
+            .map(async (file, index) => ({
+              image_id: 0,
+              product_id: 0,
+              file: await convertFileToBase64(file),
+              alt_text: `${formData.product_name} - Image ${index + 1}`,
+              image_type: 'gallery',
+              is_main: false,
+              position: index,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            }))
+        )
 
-       // Add existing image URLs
-       const urlImages: ProductImage[] = imageUrls
-         .filter(url => url && url.trim() !== '')
-         .map((url, index) => ({
-           url,
-           alt_text: `${formData.product_name} - Image ${index + 1}`,
-           image_type: 'gallery'
-         }))
+        // Add existing image URLs
+        const urlImages: ProductImage[] = imageUrls
+          .filter(url => url && url.trim() !== '')
+          .map((url, index) => ({
+            image_id: 0,
+            product_id: 0,
+            url,
+            alt_text: `${formData.product_name} - Image ${index + 1}`,
+            image_type: 'gallery',
+            is_main: false,
+            position: index,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          }))
 
        // Combine all images and set main image
        const allImages = [...fileImages, ...urlImages]
@@ -225,8 +247,27 @@ export default function ProductModal({ isOpen, onClose, product, categories, onS
          images: allImages
        }
 
-      const token = authUtils.getToken()
+      const token = authUtils.getAdminToken()
       console.log('🔑 Token for product operation:', token ? 'Token exists' : 'No token found')
+      console.log('🔑 Token value:', token)
+      console.log('🔑 Token length:', token?.length)
+      console.log('🔑 Token starts with:', token?.substring(0, 20) + '...')
+      
+      // Decode token để xem payload
+      if (token) {
+        try {
+          const parts = token.split('.')
+          if (parts.length === 3) {
+            const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')))
+            console.log('🔑 Token payload:', payload)
+            console.log('🔑 Token expires at:', new Date(payload.exp * 1000))
+            console.log('🔑 Current time:', new Date())
+            console.log('🔑 Is expired:', payload.exp < Date.now() / 1000)
+          }
+        } catch (e) {
+          console.log('🔑 Error decoding token:', e)
+        }
+      }
       
       if (!token) {
         toast.error('No authentication token found. Please login again.')
