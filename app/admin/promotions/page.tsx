@@ -9,6 +9,8 @@ import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
 import ConfirmModal from '@/components/ui/confirm-modal'
 import { Plus, Edit, Trash2, Search, Filter } from 'lucide-react'
+import { getAuthData } from '@/lib/admin-auth'
+import { useLanguage } from '@/contexts/LanguageContext'
 
 interface Voucher {
   voucher_id: number
@@ -25,6 +27,7 @@ interface Voucher {
 }
 
 export default function PromotionsPage() {
+  const { t } = useLanguage()
   const [vouchers, setVouchers] = useState<Voucher[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
@@ -45,8 +48,7 @@ export default function PromotionsPage() {
     status: 'active'
   })
 
-  const API_BASE = 'http://localhost:8000/api/backend/v1'
-  const ADMIN_TOKEN = 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJhY2NvdW50X2lkIjoxLCJhY2NvdW50X25hbWUiOiJhZG1pbiIsImFjY291bnRfdHlwZSI6ImxvY2FsIiwicm9sZXMiOlsiYWRtaW4iXSwiaXNfYWRtaW4iOnRydWUsImlhdCI6MTc1NjAyNTI0NiwiZXhwIjoxNzU2MDI4ODQ2fQ.KqNDJswMrgIVw_Y6N0FGJX-bWe65I8xe1iiXPNmKecI'
+  // Use Next.js proxy API instead of direct backend calls
 
   useEffect(() => {
     fetchVouchers()
@@ -54,21 +56,27 @@ export default function PromotionsPage() {
 
   const fetchVouchers = async () => {
     try {
-      const response = await fetch(`${API_BASE}/vouchers`, {
+      setLoading(true)
+      const { token } = getAuthData()
+      
+      const response = await fetch('/api/backend/v1/vouchers', {
         headers: {
-          'Authorization': `Bearer ${ADMIN_TOKEN}`,
+          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       })
       
-      if (response.ok) {
-        const data = await response.json()
-        setVouchers(data.data.items || [])
+      const data = await response.json()
+      console.log('Vouchers API Response:', data)
+      
+      if (data.success) {
+        setVouchers(data.data?.items || data.data || [])
       } else {
-        toast.error('Failed to fetch vouchers')
+        toast.error(data.message || t('failedToFetchVouchers'))
       }
     } catch (error) {
-      toast.error('Error fetching vouchers')
+      console.error('Error fetching vouchers:', error)
+      toast.error(t('errorFetchingVouchers'))
     } finally {
       setLoading(false)
     }
@@ -78,16 +86,18 @@ export default function PromotionsPage() {
     e.preventDefault()
     
     try {
+      const { token } = getAuthData()
+      
       const url = editingVoucher 
-        ? `${API_BASE}/vouchers/${editingVoucher.voucher_id}`
-        : `${API_BASE}/vouchers`
+        ? `/api/backend/v1/vouchers/${editingVoucher.voucher_id}`
+        : '/api/backend/v1/vouchers'
       
       const method = editingVoucher ? 'PUT' : 'POST'
       
       const response = await fetch(url, {
         method,
         headers: {
-          'Authorization': `Bearer ${ADMIN_TOKEN}`,
+          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
@@ -98,17 +108,20 @@ export default function PromotionsPage() {
         })
       })
 
-      if (response.ok) {
-        toast.success(editingVoucher ? 'Voucher updated successfully' : 'Voucher created successfully')
+      const data = await response.json()
+      
+      if (data.success) {
+        toast.success(editingVoucher ? t('voucherUpdatedSuccessfully') : t('voucherCreatedSuccessfully'))
         setShowForm(false)
         setEditingVoucher(null)
         resetForm()
         fetchVouchers()
       } else {
-        toast.error('Failed to save voucher')
+        toast.error(data.message || t('failedToSaveVoucher'))
       }
     } catch (error) {
-      toast.error('Error saving voucher')
+      console.error('Error saving voucher:', error)
+      toast.error(t('errorSavingVoucher'))
     }
   }
 
@@ -136,22 +149,27 @@ export default function PromotionsPage() {
     if (!deletingVoucherId) return
     
     try {
-      const response = await fetch(`${API_BASE}/vouchers/${deletingVoucherId}`, {
+      const { token } = getAuthData()
+      
+      const response = await fetch(`/api/backend/v1/vouchers/${deletingVoucherId}`, {
         method: 'DELETE',
         headers: {
-          'Authorization': `Bearer ${ADMIN_TOKEN}`,
+          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       })
 
-      if (response.ok) {
-        toast.success('Voucher deleted successfully')
+      const data = await response.json()
+
+      if (data.success) {
+        toast.success(t('voucherDeletedSuccessfully'))
         fetchVouchers()
       } else {
-        toast.error('Failed to delete voucher')
+        toast.error(data.message || t('failedToDeleteVoucher'))
       }
     } catch (error) {
-      toast.error('Error deleting voucher')
+      console.error('Error deleting voucher:', error)
+      toast.error(t('errorDeletingVoucher'))
     } finally {
       setShowDeleteModal(false)
       setDeletingVoucherId(null)
@@ -183,7 +201,7 @@ export default function PromotionsPage() {
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading promotions...</p>
+          <p className="text-gray-600">{t('loadingPromotions')}</p>
         </div>
       </div>
     )
@@ -192,10 +210,10 @@ export default function PromotionsPage() {
   return (
     <div className="container mx-auto p-6">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold text-gray-900">Promotions Management</h1>
+        <h1 className="text-3xl font-bold text-gray-900">{t('promotionsManagement')}</h1>
         <Button onClick={() => setShowForm(true)}>
           <Plus className="w-4 h-4 mr-2" />
-          Add Voucher
+          {t('addVoucher')}
         </Button>
       </div>
 
@@ -203,7 +221,7 @@ export default function PromotionsPage() {
         <div className="relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
           <Input
-            placeholder="Search vouchers..."
+            placeholder={t('searchVouchers')}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-10"
@@ -213,30 +231,30 @@ export default function PromotionsPage() {
         <div className="flex flex-wrap gap-4">
           <div className="flex items-center space-x-2">
             <Filter className="w-4 h-4 text-gray-500" />
-            <Label htmlFor="status-filter" className="text-sm font-medium">Status:</Label>
+            <Label htmlFor="status-filter" className="text-sm font-medium">{t('status')}:</Label>
             <select
               id="status-filter"
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
               className="px-3 py-1 border rounded-md text-sm"
             >
-              <option value="all">All</option>
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
+              <option value="all">{t('all')}</option>
+              <option value="active">{t('active')}</option>
+              <option value="inactive">{t('inactive')}</option>
             </select>
           </div>
           
           <div className="flex items-center space-x-2">
-            <Label htmlFor="type-filter" className="text-sm font-medium">Type:</Label>
+            <Label htmlFor="type-filter" className="text-sm font-medium">{t('type')}:</Label>
             <select
               id="type-filter"
               value={typeFilter}
               onChange={(e) => setTypeFilter(e.target.value)}
               className="px-3 py-1 border rounded-md text-sm"
             >
-              <option value="all">All</option>
-              <option value="percent">Percentage</option>
-              <option value="amount">Fixed Amount</option>
+              <option value="all">{t('all')}</option>
+              <option value="percent">{t('percentage')}</option>
+              <option value="amount">{t('fixedAmount')}</option>
             </select>
           </div>
         </div>
@@ -245,13 +263,13 @@ export default function PromotionsPage() {
       {showForm && (
         <Card className="mb-6">
           <CardHeader>
-            <CardTitle>{editingVoucher ? 'Edit Voucher' : 'Add New Voucher'}</CardTitle>
+            <CardTitle>{editingVoucher ? t('editVoucher') : t('addNewVoucher')}</CardTitle>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="code">Code</Label>
+                  <Label htmlFor="code">{t('code')}</Label>
                   <Input
                     id="code"
                     value={formData.code}
@@ -260,19 +278,19 @@ export default function PromotionsPage() {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="discount_type">Discount Type</Label>
+                  <Label htmlFor="discount_type">{t('discountType')}</Label>
                   <select
                     id="discount_type"
                     value={formData.discount_type}
                     onChange={(e) => setFormData({...formData, discount_type: e.target.value as 'percent' | 'amount'})}
                     className="w-full p-2 border rounded-md"
                   >
-                    <option value="percent">Percentage</option>
-                    <option value="amount">Fixed Amount</option>
+                    <option value="percent">{t('percentage')}</option>
+                    <option value="amount">{t('fixedAmount')}</option>
                   </select>
                 </div>
                 <div>
-                  <Label htmlFor="discount_amount">Discount Amount</Label>
+                  <Label htmlFor="discount_amount">{t('discountAmount')}</Label>
                   <Input
                     id="discount_amount"
                     type="number"
@@ -283,7 +301,7 @@ export default function PromotionsPage() {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="min_order_total">Minimum Order Total</Label>
+                  <Label htmlFor="min_order_total">{t('minimumOrderTotal')}</Label>
                   <Input
                     id="min_order_total"
                     type="number"
@@ -294,7 +312,7 @@ export default function PromotionsPage() {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="max_usage">Maximum Uses</Label>
+                  <Label htmlFor="max_usage">{t('maximumUses')}</Label>
                   <Input
                     id="max_usage"
                     type="number"
@@ -304,7 +322,7 @@ export default function PromotionsPage() {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="start_date">Start Date</Label>
+                  <Label htmlFor="start_date">{t('startDate')}</Label>
                   <Input
                     id="start_date"
                     type="date"
@@ -314,7 +332,7 @@ export default function PromotionsPage() {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="end_date">End Date</Label>
+                  <Label htmlFor="end_date">{t('endDate')}</Label>
                   <Input
                     id="end_date"
                     type="date"
@@ -331,18 +349,18 @@ export default function PromotionsPage() {
                   checked={formData.status === 'active'}
                   onChange={(e) => setFormData({...formData, status: e.target.checked ? 'active' : 'inactive'})}
                 />
-                <Label htmlFor="status">Active</Label>
+                <Label htmlFor="status">{t('active')}</Label>
               </div>
               <div className="flex space-x-2">
                 <Button type="submit">
-                  {editingVoucher ? 'Update' : 'Create'} Voucher
+                  {editingVoucher ? t('update') : t('create')} {t('voucher')}
                 </Button>
                 <Button type="button" variant="outline" onClick={() => {
                   setShowForm(false)
                   setEditingVoucher(null)
                   resetForm()
                 }}>
-                  Cancel
+                  {t('cancel')}
                 </Button>
               </div>
             </form>
@@ -357,7 +375,7 @@ export default function PromotionsPage() {
               <div className="flex justify-between items-start">
                 <CardTitle className="text-lg">{voucher.code}</CardTitle>
                 <Badge variant={voucher.status === 'active' ? "default" : "secondary"}>
-                  {voucher.status === 'active' ? 'Active' : 'Inactive'}
+                  {voucher.status === 'active' ? t('active') : t('inactive')}
                 </Badge>
               </div>
             </CardHeader>
@@ -392,7 +410,7 @@ export default function PromotionsPage() {
 
       {filteredVouchers.length === 0 && (
         <div className="text-center py-8">
-          <p className="text-gray-500">No vouchers found</p>
+          <p className="text-gray-500">{t('noVouchersFound')}</p>
         </div>
       )}
 
@@ -404,10 +422,10 @@ export default function PromotionsPage() {
           setDeletingVoucherId(null)
         }}
         onConfirm={confirmDelete}
-        title="Delete Voucher"
-        description="Are you sure you want to delete this voucher? This action cannot be undone."
-        confirmText="Delete"
-        cancelText="Cancel"
+        title={t('deleteVoucher')}
+        description={t('deleteVoucherConfirm')}
+        confirmText={t('delete')}
+        cancelText={t('cancel')}
       />
     </div>
   )
