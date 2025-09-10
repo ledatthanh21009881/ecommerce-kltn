@@ -9,6 +9,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { toast } from 'sonner'
 import { Order } from '@/lib/types'
 import { getAuthData } from '@/lib/admin-auth'
+import { useLanguage } from '@/contexts/LanguageContext'
 
 interface OrderStatusModalProps {
   isOpen: boolean
@@ -17,16 +18,17 @@ interface OrderStatusModalProps {
   onStatusUpdate?: () => void
 }
 
-const statusOptions = [
-  { value: 'pending', label: 'Pending', icon: Clock, color: 'bg-amber-50 text-amber-700 border-amber-200' },
-  { value: 'processing', label: 'Processing', icon: Package, color: 'bg-blue-50 text-blue-700 border-blue-200' },
-  { value: 'shipping', label: 'Shipping', icon: Truck, color: 'bg-purple-50 text-purple-700 border-purple-200' },
-  { value: 'completed', label: 'Completed', icon: CheckCircle, color: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
-  { value: 'cancelled', label: 'Cancelled', icon: XCircle, color: 'bg-red-50 text-red-700 border-red-200' },
-  { value: 'returned', label: 'Returned', icon: XCircle, color: 'bg-orange-50 text-orange-700 border-orange-200' }
+const getStatusOptions = (t: (key: string) => string) => [
+  { value: 'pending', label: t('pending'), icon: Clock, color: 'bg-amber-50 text-amber-700 border-amber-200' },
+  { value: 'processing', label: t('processing'), icon: Package, color: 'bg-blue-50 text-blue-700 border-blue-200' },
+  { value: 'shipping', label: t('shipping'), icon: Truck, color: 'bg-purple-50 text-purple-700 border-purple-200' },
+  { value: 'completed', label: t('completed'), icon: CheckCircle, color: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+  { value: 'cancelled', label: t('cancelled'), icon: XCircle, color: 'bg-red-50 text-red-700 border-red-200' },
+  { value: 'returned', label: t('returned'), icon: XCircle, color: 'bg-orange-50 text-orange-700 border-orange-200' }
 ]
 
 export default function OrderStatusModal({ isOpen, onClose, order, onStatusUpdate }: OrderStatusModalProps) {
+  const { t } = useLanguage()
   const [selectedStatus, setSelectedStatus] = useState('')
   const [reason, setReason] = useState('')
   const [loading, setLoading] = useState(false)
@@ -176,9 +178,9 @@ export default function OrderStatusModal({ isOpen, onClose, order, onStatusUpdat
             </div>
             <div>
               <h3 className="text-lg font-bold text-slate-900 font-sans tracking-tight">
-                Update Order Status
+                {t('updateOrderStatus')}
               </h3>
-              <p className="text-xs text-slate-600">Order #{order?.invoice_number}</p>
+              <p className="text-xs text-slate-600">{t('orderNumber')}{order?.invoice_number}</p>
             </div>
           </div>
           <button
@@ -197,14 +199,14 @@ export default function OrderStatusModal({ isOpen, onClose, order, onStatusUpdat
               <div className="h-6 w-6 bg-gradient-to-br from-blue-500 to-blue-600 rounded-md flex items-center justify-center">
                 <Package className="h-3 w-3 text-white" />
               </div>
-              <span className="text-sm font-semibold text-slate-900">Current Status</span>
+              <span className="text-sm font-semibold text-slate-900">{t('currentStatus')}</span>
             </div>
             <Badge 
               variant="outline" 
               className={`flex items-center gap-2 px-3 py-1 text-xs font-medium w-fit ${getStatusColor(order?.status || '')}`}
             >
               {getStatusIcon(order?.status || '')}
-              {order?.status?.charAt(0).toUpperCase() + order?.status?.slice(1)}
+              {t(order?.status as any) || order?.status?.charAt(0).toUpperCase() + order?.status?.slice(1)}
             </Badge>
           </div>
 
@@ -214,12 +216,12 @@ export default function OrderStatusModal({ isOpen, onClose, order, onStatusUpdat
               <div className="h-6 w-6 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-md flex items-center justify-center">
                 <AlertCircle className="h-3 w-3 text-white" />
               </div>
-              <span className="text-sm font-semibold text-slate-900">Status Flow Guide</span>
+              <span className="text-sm font-semibold text-slate-900">{t('statusFlowGuide')}</span>
             </div>
             <div className="text-xs text-slate-700 space-y-1">
-              <p><strong>Normal:</strong> Pending → Processing → Shipping → Completed</p>
-              <p><strong>Cancel:</strong> Any status → Cancelled</p>
-              <p><strong>Return:</strong> Completed → Returned</p>
+              <p><strong>{t('normal')}:</strong> {t('pending')} → {t('processing')} → {t('shipping')} → {t('completed')}</p>
+              <p><strong>{t('cancel')}:</strong> {t('anyStatus')} → {t('cancelled')}</p>
+              <p><strong>{t('return')}:</strong> {t('completed')} → {t('returned')}</p>
             </div>
           </div>
 
@@ -229,10 +231,10 @@ export default function OrderStatusModal({ isOpen, onClose, order, onStatusUpdat
               <div className="h-6 w-6 bg-gradient-to-br from-purple-500 to-purple-600 rounded-md flex items-center justify-center">
                 <Package className="h-3 w-3 text-white" />
               </div>
-              <span className="text-sm font-semibold text-slate-900">Select New Status</span>
+              <span className="text-sm font-semibold text-slate-900">{t('selectNewStatus')}</span>
             </div>
             <div className="grid grid-cols-2 gap-2">
-              {statusOptions.map((option) => {
+              {getStatusOptions(t).map((option) => {
                 const Icon = option.icon
                 return (
                   <button
@@ -264,10 +266,10 @@ export default function OrderStatusModal({ isOpen, onClose, order, onStatusUpdat
               <div className="h-6 w-6 bg-gradient-to-br from-amber-500 to-orange-600 rounded-md flex items-center justify-center">
                 <AlertCircle className="h-3 w-3 text-white" />
               </div>
-              <span className="text-sm font-semibold text-slate-900">Reason (Optional)</span>
+              <span className="text-sm font-semibold text-slate-900">{t('reasonOptional')}</span>
             </div>
             <Textarea
-              placeholder="Enter a reason for the status change..."
+              placeholder={t('enterReasonForStatusChange')}
               value={reason}
               onChange={(e) => setReason(e.target.value)}
               className="min-h-[80px] bg-white/50 border-slate-200 focus:bg-white focus:border-blue-500 transition-all duration-200 text-sm"
@@ -283,7 +285,7 @@ export default function OrderStatusModal({ isOpen, onClose, order, onStatusUpdat
             size="sm"
             className="bg-white/80 backdrop-blur-sm border-slate-200 hover:bg-white"
           >
-            Cancel
+            {t('cancel')}
           </Button>
           <Button
             onClick={handleSubmit}
@@ -291,7 +293,7 @@ export default function OrderStatusModal({ isOpen, onClose, order, onStatusUpdat
             size="sm"
             className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white shadow-lg"
           >
-            {loading ? 'Updating...' : 'Update Status'}
+            {loading ? t('updating') : t('updateStatus')}
           </Button>
         </div>
       </div>

@@ -28,14 +28,24 @@ import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
 import UserHeader from '@/components/ui/user-header'
 import { getAuthData, clearAuthData, AdminUser } from '@/lib/admin-auth'
+import { LanguageProvider, useLanguage } from '@/contexts/LanguageContext'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Languages } from 'lucide-react'
 
-export default function AdminLayout({
+function AdminLayoutContent({
   children,
 }: {
   children: React.ReactNode
 }) {
   const router = useRouter()
   const pathname = usePathname()
+  const { language, setLanguage, t } = useLanguage()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [user, setUser] = useState<AdminUser | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -72,84 +82,84 @@ export default function AdminLayout({
     toast.success('Logged out successfully')
   }
 
-  const menuItems = [
-    {
-      name: 'Dashboard',
-      icon: LayoutDashboard,
-      href: '/admin/dashboard'
+      const menuItems = [
+      {
+        name: t('dashboard'),
+        icon: LayoutDashboard,
+        href: '/admin/dashboard'
+      },
+      {
+        name: t('products'),
+        icon: ShoppingBag,
+        href: '/admin/products'
+      },
+      {
+        name: t('categories'),
+        icon: FolderOpen,
+        href: '/admin/categories'
+      },
+      {
+        name: t('orders'),
+        icon: ShoppingCart,
+        href: '/admin/orders'
+      },
+      {
+        name: t('users'),
+        icon: Users,
+        href: '/admin/users'
     },
     {
-      name: 'Products',
-      icon: ShoppingBag,
-      href: '/admin/products'
-    },
-    {
-      name: 'Categories',
-      icon: FolderOpen,
-      href: '/admin/categories'
-    },
-    {
-      name: 'Orders',
-      icon: ShoppingCart,
-      href: '/admin/orders'
-    },
-    {
-      name: 'Users',
-      icon: Users,
-      href: '/admin/users'
-    },
-    {
-      name: 'Inventory',
+      name: t('inventory'),
       icon: Package,
       href: '/admin/inventory'
     },
     {
-      name: 'Shipping',
+      name: t('shipping'),
       icon: Truck,
       href: '/admin/shipping'
     },
     {
-      name: 'Promotions',
+      name: t('promotions'),
       icon: Tag,
       href: '/admin/promotions'
     },
     {
-      name: 'Suppliers',
+      name: t('suppliers'),
       icon: Building2,
       href: '/admin/suppliers'
     },
     {
-      name: 'Content',
+      name: t('content'),
       icon: FileText,
       href: '/admin/content'
     },
     {
-      name: 'Messenger',
+      name: t('messenger'),
       icon: MessageSquare,
       href: '/admin/messenger'
     },
     {
-      name: 'Analytics',
+      name: t('analytics'),
       icon: BarChart3,
       href: '/admin/analytics'
     },
     {
-      name: 'Payments',
+      name: t('payments'),
       icon: CreditCard,
       href: '/admin/payments'
     },
     {
-      name: 'Tracking',
+      name: t('tracking'),
       icon: Truck,
       href: '/admin/tracking'
     },
     {
-      name: 'Reviews',
+      name: t('reviews'),
       icon: Star,
       href: '/admin/reviews'
     },
     {
-      name: 'Settings',
+      name: t('settings'),
       icon: Settings,
       href: '/admin/settings'
     }
@@ -202,7 +212,7 @@ export default function AdminLayout({
                 onClick={handleLogout}
               >
                 <LogOut className="mr-3 h-5 w-5" />
-                Logout
+                {t('logout')}
               </Button>
             </div>
           </div>
@@ -238,7 +248,7 @@ export default function AdminLayout({
               onClick={handleLogout}
             >
               <LogOut className="mr-3 h-5 w-5" />
-              Logout
+              {t('logout')}
             </Button>
           </div>
         </div>
@@ -260,6 +270,18 @@ export default function AdminLayout({
           <div className="flex flex-1 gap-x-4 self-stretch lg:gap-x-6">
             <div className="flex flex-1"></div>
             <div className="flex items-center gap-x-4 lg:gap-x-6">
+              {/* Language Selector */}
+              <Select value={language} onValueChange={(value: 'en' | 'vi') => setLanguage(value)}>
+                <SelectTrigger className="w-32">
+                  <Languages className="h-4 w-4 mr-2" />
+                  <SelectValue placeholder={t('language')} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="en">{t('english')}</SelectItem>
+                  <SelectItem value="vi">{t('vietnamese')}</SelectItem>
+                </SelectContent>
+              </Select>
+
               <UserHeader
                 userName={user.account_name || 'Admin User'}
                 userEmail={user.account_name ? `${user.account_name}@example.com` : 'admin@example.com'}
@@ -275,5 +297,19 @@ export default function AdminLayout({
         </main>
       </div>
     </div>
+  )
+}
+
+export default function AdminLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
+  return (
+    <LanguageProvider>
+      <AdminLayoutContent>
+        {children}
+      </AdminLayoutContent>
+    </LanguageProvider>
   )
 }

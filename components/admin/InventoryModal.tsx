@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label'
 import { toast } from 'sonner'
 import { InventoryVariant, InventoryFormData, Product } from '@/lib/types'
 import { getAuthData } from '@/lib/admin-auth'
+import { useLanguage } from '@/contexts/LanguageContext'
 
 interface InventoryModalProps {
   isOpen: boolean
@@ -19,6 +20,7 @@ interface InventoryModalProps {
 }
 
 export default function InventoryModal({ isOpen, onClose, variant, products, categories, onSaved }: InventoryModalProps) {
+  const { t } = useLanguage()
   const [loading, setLoading] = useState(false)
   const [selectedCategory, setSelectedCategory] = useState('')
   const [formData, setFormData] = useState<InventoryFormData>({
@@ -101,22 +103,22 @@ export default function InventoryModal({ isOpen, onClose, variant, products, cat
     
     // Validate required fields
     if (!formData.product_id || formData.product_id <= 0) {
-      toast.error('Please select a product')
+      toast.error(t('pleaseSelectProduct'))
       return
     }
     
     if (!formData.size_id || formData.size_id <= 0) {
-      toast.error('Please select a size')
+      toast.error(t('pleaseSelectSize'))
       return
     }
     
     if (!formData.sku.trim()) {
-      toast.error('Please enter SKU')
+      toast.error(t('pleaseEnterSku'))
       return
     }
 
     if (formData.stock_quantity < 0) {
-      toast.error('Stock quantity cannot be negative')
+      toast.error(t('stockQuantityCannotBeNegative'))
       return
     }
     
@@ -174,11 +176,11 @@ export default function InventoryModal({ isOpen, onClose, variant, products, cat
         console.log('❌ Error response:', errorText)
         
         if (response.status === 401) {
-          toast.error('Authentication failed. Please login again.')
+          toast.error(t('authenticationFailed'))
           return
         }
         
-        toast.error(`Request failed: ${response.status} ${response.statusText}`)
+        toast.error(t('requestFailed'))
         return
       }
 
@@ -186,19 +188,19 @@ export default function InventoryModal({ isOpen, onClose, variant, products, cat
       console.log('✅ Response data:', data)
       
       if (data.success) {
-        toast.success(variant ? 'Inventory updated successfully' : 'Inventory created successfully')
+        toast.success(variant ? t('inventoryUpdatedSuccessfully') : t('inventoryCreatedSuccessfully'))
         onSaved()
         onClose()
       } else {
-        toast.error(data.message || 'Failed to save inventory')
+        toast.error(data.message || t('failedToSaveInventory'))
       }
     } catch (error) {
       console.error('❌ Error saving inventory:', error)
       
       if (error instanceof SyntaxError) {
-        toast.error('Invalid response from server. Please try again.')
+        toast.error(t('invalidResponse'))
       } else if (error instanceof TypeError) {
-        toast.error('Network error. Please check your connection.')
+        toast.error(t('networkError'))
       } else {
         toast.error(`Error saving inventory: ${error instanceof Error ? error.message : 'Unknown error'}`)
       }
@@ -226,7 +228,7 @@ export default function InventoryModal({ isOpen, onClose, variant, products, cat
               <Package className="h-4 w-4 text-blue-600" />
             </div>
             <h2 className="text-lg font-semibold text-gray-900">
-              {variant ? 'Edit Inventory' : 'Add New Inventory'}
+              {variant ? t('editInventory') : t('addNewInventory')}
             </h2>
           </div>
           <button
@@ -243,10 +245,10 @@ export default function InventoryModal({ isOpen, onClose, variant, products, cat
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <Label htmlFor="category_filter" className="text-sm font-medium text-gray-700">
-                Filter by Category
+                {t('filterByCategory')}
               </Label>
               <span className="text-xs text-gray-500">
-                {filteredProducts.length} products
+                {filteredProducts.length} {t('products')}
               </span>
             </div>
             <select
@@ -255,12 +257,12 @@ export default function InventoryModal({ isOpen, onClose, variant, products, cat
               onChange={(e) => setSelectedCategory(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
-              <option value="">All Categories ({Array.isArray(products) ? products.length : 0} products)</option>
+              <option value="">{t('allCategories')} ({Array.isArray(products) ? products.length : 0} {t('products')})</option>
               {categories && categories.length > 0 && categories.map((category) => {
                 const categoryProductCount = Array.isArray(products) ? products.filter(p => p.category_id.toString() === category.category_id.toString()).length : 0
                 return (
                   <option key={category.category_id} value={category.category_id}>
-                    {category.category_name} ({categoryProductCount} products)
+                    {category.category_name} ({categoryProductCount} {t('products')})
                   </option>
                 )
               })}
@@ -270,7 +272,7 @@ export default function InventoryModal({ isOpen, onClose, variant, products, cat
           {/* Product Selection */}
           <div className="space-y-2">
             <Label htmlFor="product_id" className="text-sm font-medium text-gray-700">
-              Product *
+              {t('product')} *
             </Label>
             <select
               id="product_id"
@@ -279,7 +281,7 @@ export default function InventoryModal({ isOpen, onClose, variant, products, cat
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               required
             >
-              <option value="">Select Product</option>
+              <option value="">{t('selectProduct')}</option>
               {filteredProducts && filteredProducts.length > 0 ? (
                 filteredProducts.map((product) => (
                   <option key={product.product_id} value={product.product_id}>
@@ -287,11 +289,11 @@ export default function InventoryModal({ isOpen, onClose, variant, products, cat
                   </option>
                 ))
               ) : (
-                <option value="" disabled>No products found</option>
+                <option value="" disabled>{t('noProductsFound')}</option>
               )}
             </select>
             {filteredProducts.length === 0 && selectedCategory && (
-              <p className="text-xs text-gray-500">No products in this category</p>
+              <p className="text-xs text-gray-500">{t('noProductsInThisCategory')}</p>
             )}
             {formData.product_id > 0 && Array.isArray(products) && (
               <div className="mt-2 p-3 bg-blue-50 rounded-md border border-blue-200">
@@ -310,7 +312,7 @@ export default function InventoryModal({ isOpen, onClose, variant, products, cat
           {/* Size Selection */}
           <div className="space-y-2">
             <Label htmlFor="size_id" className="text-sm font-medium text-gray-700">
-              Size *
+              {t('size')} *
             </Label>
             <select
               id="size_id"
@@ -319,7 +321,7 @@ export default function InventoryModal({ isOpen, onClose, variant, products, cat
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               required
             >
-              <option value="">Select Size</option>
+              <option value="">{t('selectSize')}</option>
               <option value={1}>S</option>
               <option value={2}>M</option>
               <option value={3}>L</option>
@@ -331,7 +333,7 @@ export default function InventoryModal({ isOpen, onClose, variant, products, cat
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <Label htmlFor="sku" className="text-sm font-medium text-gray-700">
-                SKU *
+                {t('sku')} *
               </Label>
               <Button
                 type="button"
@@ -340,26 +342,26 @@ export default function InventoryModal({ isOpen, onClose, variant, products, cat
                 onClick={generateSKU}
                 className="text-xs"
               >
-                Generate SKU
+                {t('generateSku')}
               </Button>
             </div>
             <Input
               id="sku"
               value={formData.sku}
               onChange={(e) => handleInputChange('sku', e.target.value)}
-              placeholder="e.g., PROD-S-001"
+              placeholder={t('skuPlaceholder')}
               className="w-full"
               required
             />
             <p className="text-xs text-gray-500">
-              Stock Keeping Unit - unique identifier for this variant
+              {t('skuHelperText')}
             </p>
           </div>
 
           {/* Stock Quantity */}
           <div className="space-y-2">
             <Label htmlFor="stock_quantity" className="text-sm font-medium text-gray-700">
-              Stock Quantity *
+              {t('stockQuantity')} *
             </Label>
             <Input
               id="stock_quantity"
@@ -372,14 +374,14 @@ export default function InventoryModal({ isOpen, onClose, variant, products, cat
               required
             />
             <p className="text-xs text-gray-500">
-              Current stock level for this variant
+              {t('stockQuantityHelperText')}
             </p>
           </div>
 
           {/* Status */}
           <div className="space-y-2">
             <Label htmlFor="status" className="text-sm font-medium text-gray-700">
-              Status *
+              {t('status')} *
             </Label>
             <select
               id="status"
@@ -388,29 +390,29 @@ export default function InventoryModal({ isOpen, onClose, variant, products, cat
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               required
             >
-              <option value="in_stock">In Stock</option>
-              <option value="out_of_stock">Out of Stock</option>
+              <option value="in_stock">{t('inStock')}</option>
+              <option value="out_of_stock">{t('outOfStock')}</option>
             </select>
             <p className="text-xs text-gray-500">
-              Current availability status
+              {t('currentAvailabilityStatus')}
             </p>
           </div>
 
           {/* Actions */}
           <div className="flex justify-end gap-3 pt-6 border-t">
             <Button type="button" variant="outline" onClick={onClose}>
-              Cancel
+              {t('cancel')}
             </Button>
             <Button type="submit" disabled={loading}>
               {loading ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Saving...
+                  {t('saving')}
                 </>
               ) : (
                 <>
                   <Save className="h-4 w-4 mr-2" />
-                  {variant ? 'Update Inventory' : 'Create Inventory'}
+                  {variant ? t('updateInventory') : t('createInventory')}
                 </>
               )}
             </Button>

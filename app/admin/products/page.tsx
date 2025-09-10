@@ -13,8 +13,10 @@ import ProductGrid from '@/components/admin/ProductGrid'
 import ConfirmModal from '@/components/ui/confirm-modal'
 import { Product } from '@/lib/types'
 import { getAuthData } from '@/lib/admin-auth'
+import { useLanguage } from '@/contexts/LanguageContext'
 
 export default function AdminProductsPage() {
+  const { t } = useLanguage()
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
@@ -41,13 +43,13 @@ export default function AdminProductsPage() {
       if (data.success) {
         setProducts(data.data.items || [])
         console.log('Products set:', data.data.items?.length || 0, 'items')
-      } else {
-        console.error('Failed to fetch products:', data)
-        toast.error('Failed to fetch products')
-    }
-  } catch (error) {
-      console.error('Error fetching products:', error)
-      toast.error('Error fetching products')
+              } else {
+          console.error('Failed to fetch products:', data)
+          toast.error(t('failedToFetch'))
+      }
+    } catch (error) {
+        console.error('Error fetching products:', error)
+        toast.error(t('errorFetching'))
     } finally {
       setLoading(false)
     }
@@ -182,8 +184,8 @@ export default function AdminProductsPage() {
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-slate-900 mb-2">Product Management</h1>
-          <p className="text-slate-600">Manage your product catalog with ease</p>
+                      <h1 className="text-3xl font-bold text-slate-900 mb-2">{t('productManagement')}</h1>
+            <p className="text-slate-600">{t('manageYourCatalog')}</p>
       </div>
 
         {/* Stats Cards */}
@@ -192,8 +194,8 @@ export default function AdminProductsPage() {
             <CardContent className="p-6">
       <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-slate-600">Total Products</p>
-                  <p className="text-2xl font-bold text-slate-900">{products.length}</p>
+                                      <p className="text-sm font-medium text-slate-600">{t('totalProducts')}</p>
+                    <p className="text-2xl font-bold text-slate-900">{products.length}</p>
                 </div>
                 <div className="h-12 w-12 bg-blue-100 rounded-lg flex items-center justify-center">
                   <span className="text-blue-600 text-xl">📦</span>
@@ -206,10 +208,10 @@ export default function AdminProductsPage() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-slate-600">Active Products</p>
-                  <p className="text-2xl font-bold text-slate-900">
-                    {products.filter(p => p.status === 'active').length}
-                  </p>
+                                      <p className="text-sm font-medium text-slate-600">{t('activeProducts')}</p>
+                    <p className="text-2xl font-bold text-slate-900">
+                      {products.filter(p => p.status === 'active').length}
+                    </p>
         </div>
                 <div className="h-12 w-12 bg-green-100 rounded-lg flex items-center justify-center">
                   <span className="text-green-600 text-xl">✅</span>
@@ -222,10 +224,10 @@ export default function AdminProductsPage() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-slate-600">Featured Products</p>
-                  <p className="text-2xl font-bold text-slate-900">
-                    {products.filter(p => p.is_featured).length}
-                  </p>
+                                      <p className="text-sm font-medium text-slate-600">{t('featuredProducts')}</p>
+                    <p className="text-2xl font-bold text-slate-900">
+                      {products.filter(p => p.is_featured).length}
+                    </p>
                 </div>
                 <div className="h-12 w-12 bg-yellow-100 rounded-lg flex items-center justify-center">
                   <span className="text-yellow-600 text-xl">⭐</span>
@@ -238,8 +240,8 @@ export default function AdminProductsPage() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
             <div>
-                  <p className="text-sm font-medium text-slate-600">Categories</p>
-                  <p className="text-2xl font-bold text-slate-900">{categories.length}</p>
+                                      <p className="text-sm font-medium text-slate-600">{t('categories')}</p>
+                    <p className="text-2xl font-bold text-slate-900">{categories.length}</p>
             </div>
                 <div className="h-12 w-12 bg-purple-100 rounded-lg flex items-center justify-center">
                   <span className="text-purple-600 text-xl">🏷️</span>
@@ -256,13 +258,13 @@ export default function AdminProductsPage() {
               <div className="flex flex-col sm:flex-row gap-4 flex-1">
                 {/* Search */}
                 <div className="relative flex-1 max-w-md">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 h-4 w-4" />
-              <Input
-                    placeholder="Search products..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10"
-              />
+                                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 h-4 w-4" />
+                    <Input
+                      placeholder={t('searchProducts')}
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="pl-10"
+                    />
             </div>
             
                 {/* Category Filter */}
@@ -287,15 +289,15 @@ export default function AdminProductsPage() {
                   disabled={loading}
                   className="flex items-center gap-2"
                 >
-                  <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-                  Refresh
+                                      <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                    {t('refresh')}
               </Button>
               <Button 
                   onClick={handleCreateProduct}
                   className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700"
                 >
-                  <Plus className="h-4 w-4" />
-                  Add Product
+                                      <Plus className="h-4 w-4" />
+                    {t('addProduct')}
               </Button>
             </div>
           </div>

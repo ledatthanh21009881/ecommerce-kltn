@@ -11,8 +11,10 @@ import ConfirmModal from '@/components/ui/confirm-modal'
 import InventoryModal from '@/components/admin/InventoryModal'
 import { InventoryVariant, Product } from '@/lib/types'
 import { getAuthData } from '@/lib/admin-auth'
+import { useLanguage } from '@/contexts/LanguageContext'
 
 export default function AdminInventoryPage() {
+  const { t } = useLanguage()
   const [variants, setVariants] = useState<InventoryVariant[]>([])
   const [products, setProducts] = useState<Product[]>([])
   const [categories, setCategories] = useState([])
@@ -52,12 +54,12 @@ export default function AdminInventoryPage() {
         console.log('Variants set:', inventoryData)
       } else {
         console.error('API Error:', data)
-        toast.error(data.message || 'Failed to fetch inventory')
+        toast.error(data.message || t('failedToFetch'))
       }
     } catch (error) {
       console.error('Fetch Inventory Error:', error)
       const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-      toast.error(`Error fetching inventory: ${errorMessage}`)
+      toast.error(t('errorFetching'))
     } finally {
       setLoading(false)
     }
@@ -170,11 +172,11 @@ export default function AdminInventoryPage() {
         console.log('❌ Delete error response:', errorText)
         
         if (response.status === 401) {
-          toast.error('Authentication failed. Please login again.')
+          toast.error(t('authenticationFailed'))
           return
         }
         
-        toast.error(`Delete failed: ${response.status} ${response.statusText}`)
+        toast.error(t('deleteFailed'))
         return
       }
 
@@ -182,18 +184,18 @@ export default function AdminInventoryPage() {
       console.log('✅ Delete response data:', data)
       
       if (data.success) {
-        toast.success('Inventory deleted successfully')
+        toast.success(t('inventoryDeletedSuccessfully'))
         fetchInventory()
       } else {
-        toast.error(data.message || 'Failed to delete inventory')
+        toast.error(data.message || t('failedToDeleteInventory'))
       }
     } catch (error) {
       console.error('❌ Error deleting inventory:', error)
       
       if (error instanceof SyntaxError) {
-        toast.error('Invalid response from server. Please try again.')
+        toast.error(t('invalidResponse'))
       } else if (error instanceof TypeError) {
-        toast.error('Network error. Please check your connection.')
+        toast.error(t('networkError'))
       } else {
         toast.error(`Error deleting inventory: ${error instanceof Error ? error.message : 'Unknown error'}`)
       }
@@ -221,8 +223,8 @@ export default function AdminInventoryPage() {
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-slate-900 mb-2">Inventory Management</h1>
-          <p className="text-slate-600">Manage product variants, stock levels, and availability</p>
+          <h1 className="text-3xl font-bold text-slate-900 mb-2">{t('inventoryManagement')}</h1>
+          <p className="text-slate-600">{t('inventoryManagementDesc')}</p>
         </div>
 
         {/* Stats Cards */}
@@ -231,7 +233,7 @@ export default function AdminInventoryPage() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-slate-600">Total Variants</p>
+                  <p className="text-sm font-medium text-slate-600">{t('totalVariants')}</p>
                   <p className="text-2xl font-bold text-slate-900">{totalVariants}</p>
                 </div>
                 <div className="h-12 w-12 bg-blue-100 rounded-lg flex items-center justify-center">
@@ -245,7 +247,7 @@ export default function AdminInventoryPage() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-slate-600">In Stock</p>
+                  <p className="text-sm font-medium text-slate-600">{t('inStock')}</p>
                   <p className="text-2xl font-bold text-green-600">{inStockVariants}</p>
                 </div>
                 <div className="h-12 w-12 bg-green-100 rounded-lg flex items-center justify-center">
@@ -259,7 +261,7 @@ export default function AdminInventoryPage() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-slate-600">Out of Stock</p>
+                  <p className="text-sm font-medium text-slate-600">{t('outOfStock')}</p>
                   <p className="text-2xl font-bold text-red-600">{outOfStockVariants}</p>
                 </div>
                 <div className="h-12 w-12 bg-red-100 rounded-lg flex items-center justify-center">
@@ -273,7 +275,7 @@ export default function AdminInventoryPage() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-slate-600">Low Stock</p>
+                  <p className="text-sm font-medium text-slate-600">{t('lowStock')}</p>
                   <p className="text-2xl font-bold text-orange-600">{lowStockVariants}</p>
                 </div>
                 <div className="h-12 w-12 bg-orange-100 rounded-lg flex items-center justify-center">
@@ -293,7 +295,7 @@ export default function AdminInventoryPage() {
                 <div className="relative flex-1 max-w-md">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 h-4 w-4" />
                   <Input
-                    placeholder="Search by product, SKU, or size..."
+                    placeholder={t('searchByProductSkuSize')}
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="pl-10"
@@ -307,7 +309,7 @@ export default function AdminInventoryPage() {
                     onChange={(e) => setSelectedProduct(e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   >
-                    <option value="">All Products</option>
+                    <option value="">{t('allProducts')}</option>
                     {products && products.length > 0 && products.map((product) => (
                       <option key={product.product_id} value={product.product_id}>
                         {product.product_name}
@@ -323,9 +325,9 @@ export default function AdminInventoryPage() {
                     onChange={(e) => setSelectedStatus(e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   >
-                    <option value="">All Status</option>
-                    <option value="in_stock">In Stock</option>
-                    <option value="out_of_stock">Out of Stock</option>
+                    <option value="">{t('allStatus')}</option>
+                    <option value="in_stock">{t('inStock')}</option>
+                    <option value="out_of_stock">{t('outOfStock')}</option>
                   </select>
                 </div>
               </div>
@@ -338,14 +340,14 @@ export default function AdminInventoryPage() {
                   className="flex items-center gap-2"
                 >
                   <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-                  Refresh
+                  {t('refresh')}
                 </Button>
                 <Button
                   onClick={handleAddVariant}
                   className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700"
                 >
                   <Plus className="h-4 w-4" />
-                  Add Inventory
+                  {t('addInventory')}
                 </Button>
               </div>
             </div>
@@ -375,20 +377,20 @@ export default function AdminInventoryPage() {
             ) : filteredVariants.length === 0 ? (
               <div className="text-center py-12">
                 <Package className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No inventory found</h3>
-                <p className="text-gray-600">Get started by adding your first inventory item.</p>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">{t('noInventoryFound')}</h3>
+                <p className="text-gray-600">{t('getStartedByCreatingInventory')}</p>
               </div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-gray-200">
-                      <th className="text-left py-3 px-4 font-medium text-gray-900">Product</th>
-                      <th className="text-left py-3 px-4 font-medium text-gray-900">Size</th>
-                      <th className="text-left py-3 px-4 font-medium text-gray-900">SKU</th>
-                      <th className="text-left py-3 px-4 font-medium text-gray-900">Stock</th>
-                      <th className="text-left py-3 px-4 font-medium text-gray-900">Status</th>
-                      <th className="text-left py-3 px-4 font-medium text-gray-900">Actions</th>
+                      <th className="text-left py-3 px-4 font-medium text-gray-900">{t('product')}</th>
+                      <th className="text-left py-3 px-4 font-medium text-gray-900">{t('size')}</th>
+                      <th className="text-left py-3 px-4 font-medium text-gray-900">{t('sku')}</th>
+                      <th className="text-left py-3 px-4 font-medium text-gray-900">{t('stock')}</th>
+                      <th className="text-left py-3 px-4 font-medium text-gray-900">{t('status')}</th>
+                      <th className="text-left py-3 px-4 font-medium text-gray-900">{t('actions')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -428,7 +430,7 @@ export default function AdminInventoryPage() {
                           </td>
                           <td className="py-4 px-4">
                             <Badge variant={variant.status === 'in_stock' ? 'default' : 'secondary'}>
-                              {variant.status === 'in_stock' ? 'In Stock' : 'Out of Stock'}
+                              {variant.status === 'in_stock' ? t('inStock') : t('outOfStock')}
                             </Badge>
                           </td>
                           <td className="py-4 px-4">
@@ -438,7 +440,7 @@ export default function AdminInventoryPage() {
                                 variant="secondary"
                                 onClick={() => handleViewVariant(variant)}
                                 className="bg-white text-gray-900 hover:bg-gray-100"
-                                title="View Details"
+                                title={t('view')}
                               >
                                 <Eye className="h-4 w-4" />
                               </Button>
@@ -447,7 +449,7 @@ export default function AdminInventoryPage() {
                                 variant="secondary"
                                 onClick={() => handleEditVariant(variant)}
                                 className="bg-white text-gray-900 hover:bg-gray-100"
-                                title="Edit Inventory"
+                                title={t('edit')}
                               >
                                 <Edit className="h-4 w-4" />
                               </Button>
@@ -456,7 +458,7 @@ export default function AdminInventoryPage() {
                                 variant="destructive"
                                 onClick={() => handleDeleteVariant(variant.variant_id)}
                                 className="bg-red-600 hover:bg-red-700"
-                                title="Deactivate Inventory"
+                                title={t('delete')}
                               >
                                 <Trash2 className="h-4 w-4" />
                               </Button>
@@ -493,10 +495,10 @@ export default function AdminInventoryPage() {
             setDeletingVariantId(null)
           }}
           onConfirm={confirmDeleteVariant}
-          title="Deactivate Inventory"
-          description="Are you sure you want to deactivate this inventory item? This action will set the variant as inactive but preserve the data for historical purposes."
-          confirmText="Deactivate"
-          cancelText="Cancel"
+          title={t('deleteInventory')}
+          description={t('deleteInventoryConfirm')}
+          confirmText={t('delete')}
+          cancelText={t('cancel')}
         />
       </div>
     </div>

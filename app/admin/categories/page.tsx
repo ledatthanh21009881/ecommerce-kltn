@@ -11,8 +11,10 @@ import ConfirmModal from '@/components/ui/confirm-modal'
 import CategoryModal from '@/components/admin/CategoryModal'
 import { Category } from '@/lib/types'
 import { getAuthData } from '@/lib/admin-auth'
+import { useLanguage } from '@/contexts/LanguageContext'
 
 export default function AdminCategoriesPage() {
+  const { t } = useLanguage()
   const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
@@ -32,10 +34,10 @@ export default function AdminCategoriesPage() {
       if (data.success) {
         setCategories(data.data || [])
       } else {
-        toast.error('Failed to fetch categories')
+        toast.error(t('failedToFetch'))
       }
     } catch (error) {
-      toast.error('Error fetching categories')
+      toast.error(t('errorFetching'))
     } finally {
       setLoading(false)
     }
@@ -96,11 +98,11 @@ export default function AdminCategoriesPage() {
         console.log('❌ Delete error response:', errorText)
         
         if (response.status === 401) {
-          toast.error('Authentication failed. Please login again.')
+          toast.error(t('authenticationFailed'))
           return
         }
         
-        toast.error(`Delete failed: ${response.status} ${response.statusText}`)
+        toast.error(t('deleteFailed'))
         return
       }
 
@@ -108,18 +110,18 @@ export default function AdminCategoriesPage() {
       console.log('✅ Delete response data:', data)
       
       if (data.success) {
-        toast.success('Category deleted successfully')
+        toast.success(t('categoryDeletedSuccessfully'))
         fetchCategories()
       } else {
-        toast.error(data.message || 'Failed to delete category')
+        toast.error(data.message || t('failedToDeleteCategory'))
       }
     } catch (error) {
       console.error('❌ Error deleting category:', error)
       
       if (error instanceof SyntaxError) {
-        toast.error('Invalid response from server. Please try again.')
+        toast.error(t('invalidResponse'))
       } else if (error instanceof TypeError) {
-        toast.error('Network error. Please check your connection.')
+        toast.error(t('networkError'))
       } else {
         toast.error(`Error deleting category: ${error instanceof Error ? error.message : 'Unknown error'}`)
       }
@@ -141,8 +143,8 @@ export default function AdminCategoriesPage() {
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-slate-900 mb-2">Category Management</h1>
-          <p className="text-slate-600">Organize your products with categories and sub-categories</p>
+          <h1 className="text-3xl font-bold text-slate-900 mb-2">{t('categoryManagement')}</h1>
+          <p className="text-slate-600">{t('categoryManagementDesc')}</p>
         </div>
 
         {/* Stats Cards */}
@@ -151,7 +153,7 @@ export default function AdminCategoriesPage() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-slate-600">Total Categories</p>
+                  <p className="text-sm font-medium text-slate-600">{t('totalCategories')}</p>
                   <p className="text-2xl font-bold text-slate-900">{totalCategories}</p>
                 </div>
                 <div className="h-12 w-12 bg-blue-100 rounded-lg flex items-center justify-center">
@@ -165,7 +167,7 @@ export default function AdminCategoriesPage() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-slate-600">Active Categories</p>
+                  <p className="text-sm font-medium text-slate-600">{t('activeCategories')}</p>
                   <p className="text-2xl font-bold text-slate-900">{activeCategories}</p>
                 </div>
                 <div className="h-12 w-12 bg-green-100 rounded-lg flex items-center justify-center">
@@ -179,7 +181,7 @@ export default function AdminCategoriesPage() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-slate-600">Main Categories</p>
+                  <p className="text-sm font-medium text-slate-600">{t('mainCategories')}</p>
                   <p className="text-2xl font-bold text-slate-900">{mainCategories}</p>
                 </div>
                 <div className="h-12 w-12 bg-purple-100 rounded-lg flex items-center justify-center">
@@ -193,7 +195,7 @@ export default function AdminCategoriesPage() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-slate-600">Sub Categories</p>
+                  <p className="text-sm font-medium text-slate-600">{t('subCategories')}</p>
                   <p className="text-2xl font-bold text-slate-900">{subCategories}</p>
                 </div>
                 <div className="h-12 w-12 bg-orange-100 rounded-lg flex items-center justify-center">
@@ -213,7 +215,7 @@ export default function AdminCategoriesPage() {
                 <div className="relative flex-1 max-w-md">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 h-4 w-4" />
                   <Input
-                    placeholder="Search categories..."
+                    placeholder={t('searchCategories')}
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="pl-10"
@@ -229,14 +231,14 @@ export default function AdminCategoriesPage() {
                   className="flex items-center gap-2"
                 >
                   <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-                  Refresh
+                  {t('refresh')}
                 </Button>
                 <Button
                   onClick={handleAddCategory}
                   className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700"
                 >
                   <Plus className="h-4 w-4" />
-                  Add Category
+                  {t('addCategory')}
                 </Button>
               </div>
             </div>
@@ -274,11 +276,11 @@ export default function AdminCategoriesPage() {
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-gray-200">
-                      <th className="text-left py-3 px-4 font-medium text-gray-900">Category Name</th>
-                      <th className="text-left py-3 px-4 font-medium text-gray-900">Slug</th>
-                      <th className="text-left py-3 px-4 font-medium text-gray-900">Status</th>
-                      <th className="text-left py-3 px-4 font-medium text-gray-900">Position</th>
-                      <th className="text-left py-3 px-4 font-medium text-gray-900">Actions</th>
+                      <th className="text-left py-3 px-4 font-medium text-gray-900">{t('categoryName')}</th>
+                      <th className="text-left py-3 px-4 font-medium text-gray-900">{t('slug')}</th>
+                      <th className="text-left py-3 px-4 font-medium text-gray-900">{t('status')}</th>
+                      <th className="text-left py-3 px-4 font-medium text-gray-900">{t('position')}</th>
+                      <th className="text-left py-3 px-4 font-medium text-gray-900">{t('actions')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -300,7 +302,7 @@ export default function AdminCategoriesPage() {
                         <td className="py-4 px-4 text-gray-600">{category.slug}</td>
                         <td className="py-4 px-4">
                           <Badge variant={category.is_active ? "default" : "secondary"}>
-                            {category.is_active ? 'Active' : 'Inactive'}
+                            {category.is_active ? t('active') : t('inactive')}
                           </Badge>
                         </td>
                         <td className="py-4 px-4 text-gray-600">{category.position}</td>
@@ -311,7 +313,7 @@ export default function AdminCategoriesPage() {
                               variant="secondary"
                               onClick={() => handleViewCategory(category)}
                               className="bg-white text-gray-900 hover:bg-gray-100"
-                              title="View Details"
+                              title={t('view')}
                             >
                               <Eye className="h-4 w-4" />
                             </Button>
@@ -320,7 +322,7 @@ export default function AdminCategoriesPage() {
                               variant="secondary"
                               onClick={() => handleEditCategory(category)}
                               className="bg-white text-gray-900 hover:bg-gray-100"
-                              title="Edit Category"
+                              title={t('edit')}
                             >
                               <Edit className="h-4 w-4" />
                             </Button>
@@ -329,7 +331,7 @@ export default function AdminCategoriesPage() {
                               variant="destructive"
                               onClick={() => handleDeleteCategory(category.category_id)}
                               className="bg-red-600 hover:bg-red-700"
-                              title="Delete Category"
+                              title={t('delete')}
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
@@ -364,10 +366,10 @@ export default function AdminCategoriesPage() {
             setDeletingCategoryId(null)
           }}
           onConfirm={confirmDeleteCategory}
-          title="Delete Category"
-          description="Are you sure you want to delete this category? This action cannot be undone. Categories with sub-categories or products cannot be deleted."
-          confirmText="Delete"
-          cancelText="Cancel"
+          title={t('deleteCategory')}
+          description={t('deleteCategoryConfirm')}
+          confirmText={t('delete')}
+          cancelText={t('cancel')}
         />
       </div>
     </div>

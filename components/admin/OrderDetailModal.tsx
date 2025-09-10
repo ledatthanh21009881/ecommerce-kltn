@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { toast } from 'sonner'
 import { Order, OrderItem, OrderStatusLog, ShippingTracking, Payment } from '@/lib/types'
 import { ordersApi } from '@/lib/api'
+import { useLanguage } from '@/contexts/LanguageContext'
 
 interface OrderDetailModalProps {
   isOpen: boolean
@@ -17,6 +18,7 @@ interface OrderDetailModalProps {
 }
 
 export default function OrderDetailModal({ isOpen, onClose, order, onStatusUpdate }: OrderDetailModalProps) {
+  const { t } = useLanguage()
   const [loading, setLoading] = useState(false)
   const [orderDetails, setOrderDetails] = useState<Order | null>(null)
 
@@ -135,9 +137,9 @@ export default function OrderDetailModal({ isOpen, onClose, order, onStatusUpdat
             </div>
             <div>
               <h3 className="text-xl font-bold text-slate-900 font-sans tracking-tight">
-                Order #{order?.invoice_number || order?.order_id}
+                {t('orderNumber')}{order?.invoice_number || order?.order_id}
               </h3>
-              <p className="text-sm text-slate-600">Complete order details and information</p>
+              <p className="text-sm text-slate-600">{t('completeOrderDetails')}</p>
             </div>
           </div>
           <button
@@ -163,34 +165,34 @@ export default function OrderDetailModal({ isOpen, onClose, order, onStatusUpdat
                     <div className="h-8 w-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center">
                       <Package className="h-4 w-4 text-white" />
                     </div>
-                    Order Information
+                    {t('orderInformation')}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-3">
                       <div>
-                        <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Invoice Number</p>
+                        <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">{t('invoiceNumber')}</p>
                         <p className="font-bold text-lg text-slate-900 font-sans tracking-tight">{orderDetails.invoice_number}</p>
                       </div>
                       <div>
-                        <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Order ID</p>
+                        <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">{t('orderId')}</p>
                         <p className="font-semibold text-slate-900">#{orderDetails.order_id}</p>
                       </div>
                     </div>
                     <div className="space-y-3">
                       <div>
-                        <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Status</p>
+                        <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">{t('status')}</p>
                         <Badge 
                           variant="outline" 
                           className={`flex items-center gap-2 px-4 py-2 text-sm font-medium w-fit ${getStatusColor(orderDetails.status)}`}
                         >
                           {getStatusIcon(orderDetails.status)}
-                          {orderDetails.status.charAt(0).toUpperCase() + orderDetails.status.slice(1)}
+                          {t(orderDetails.status)}
                         </Badge>
                       </div>
                       <div>
-                        <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Created</p>
+                        <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">{t('created')}</p>
                         <p className="text-sm text-slate-700">{formatDate(orderDetails.created_at)}</p>
                       </div>
                     </div>
@@ -205,28 +207,28 @@ export default function OrderDetailModal({ isOpen, onClose, order, onStatusUpdat
                     <div className="h-8 w-8 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-lg flex items-center justify-center">
                       <User className="h-4 w-4 text-white" />
                     </div>
-                    Customer Information
+                    {t('customerInformation')}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-3">
                       <div>
-                        <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Full Name</p>
+                        <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">{t('fullName')}</p>
                         <p className="font-semibold text-slate-900">{orderDetails.first_name} {orderDetails.last_name}</p>
                       </div>
                       <div>
-                        <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Email</p>
+                        <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">{t('email')}</p>
                         <p className="font-semibold text-slate-900">{orderDetails.email}</p>
                       </div>
                     </div>
                     <div className="space-y-3">
                       <div>
-                        <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Phone</p>
+                        <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">{t('phone')}</p>
                         <p className="font-semibold text-slate-900">{orderDetails.phone}</p>
                       </div>
                       <div>
-                        <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Shipping Address</p>
+                        <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">{t('shippingAddress')}</p>
                         <p className="text-sm text-slate-700">{parseShippingAddress(orderDetails.shipping_address_snapshot)}</p>
                       </div>
                     </div>
@@ -241,7 +243,7 @@ export default function OrderDetailModal({ isOpen, onClose, order, onStatusUpdat
                     <div className="h-8 w-8 bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg flex items-center justify-center">
                       <ShoppingBag className="h-4 w-4 text-white" />
                     </div>
-                    Order Items ({orderDetails.items?.length || 0})
+                    {t('orderItems')} ({orderDetails.items?.length || 0})
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -280,28 +282,28 @@ export default function OrderDetailModal({ isOpen, onClose, order, onStatusUpdat
                     <div className="h-8 w-8 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-lg flex items-center justify-center">
                       <DollarSign className="h-4 w-4 text-white" />
                     </div>
-                    Order Summary
+                    {t('orderSummary')}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
                     <div className="flex justify-between">
-                      <span className="text-slate-600">Subtotal:</span>
+                      <span className="text-slate-600">{t('subtotal')}:</span>
                       <span className="font-semibold">{formatPrice(orderDetails.total_amount)}</span>
                     </div>
                     {(orderDetails.discount_amount_applied && parseFloat(String(orderDetails.discount_amount_applied)) > 0) && (
                       <div className="flex justify-between text-emerald-600">
-                        <span>Discount:</span>
+                        <span>{t('discount')}:</span>
                         <span>-{formatPrice(orderDetails.discount_amount_applied)}</span>
                       </div>
                     )}
                     <div className="flex justify-between">
-                      <span className="text-slate-600">Shipping Fee:</span>
+                      <span className="text-slate-600">{t('shippingCost')}:</span>
                       <span className="font-semibold">{formatPrice(orderDetails.shipping_fee)}</span>
                     </div>
                     <div className="border-t border-slate-200 pt-3">
                       <div className="flex justify-between font-bold text-xl">
-                        <span className="text-slate-900">Total:</span>
+                        <span className="text-slate-900">{t('totalAmount')}:</span>
                         <span className="text-emerald-600">{formatPrice(orderDetails.total_amount)}</span>
                       </div>
                     </div>
@@ -317,23 +319,23 @@ export default function OrderDetailModal({ isOpen, onClose, order, onStatusUpdat
                       <div className="h-8 w-8 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-lg flex items-center justify-center">
                         <Truck className="h-4 w-4 text-white" />
                       </div>
-                      Shipping Information
+                      {t('shippingInformation')}
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div className="space-y-3">
                         <div>
-                          <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Shipper</p>
+                          <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">{t('shipper')}</p>
                           <p className="font-semibold text-slate-900">{orderDetails.tracking.first_name} {orderDetails.tracking.last_name}</p>
                           <p className="text-sm text-slate-600">{orderDetails.tracking.phone}</p>
                         </div>
                       </div>
                       <div className="space-y-3">
                         <div>
-                          <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Rating</p>
+                          <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">{t('rating')}</p>
                           <p className="font-semibold text-slate-900">{orderDetails.tracking.rating || 'N/A'}/5</p>
-                          <p className="text-sm text-slate-600">Phone: {orderDetails.tracking.phone || 'N/A'}</p>
+                          <p className="text-sm text-slate-600">{t('phone')}: {orderDetails.tracking.phone || 'N/A'}</p>
                         </div>
                       </div>
                     </div>
@@ -349,35 +351,35 @@ export default function OrderDetailModal({ isOpen, onClose, order, onStatusUpdat
                       <div className="h-8 w-8 bg-gradient-to-br from-green-500 to-emerald-600 rounded-lg flex items-center justify-center">
                         <DollarSign className="h-4 w-4 text-white" />
                       </div>
-                      Payment Information
+                      {t('paymentInformation')}
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div className="space-y-3">
                         <div>
-                          <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Method</p>
-                          <p className="font-semibold text-slate-900 capitalize">{orderDetails.payment.method}</p>
+                          <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">{t('method')}</p>
+                          <p className="font-semibold text-slate-900 capitalize">{t(orderDetails.payment.method as any) || orderDetails.payment.method}</p>
                         </div>
                         <div>
-                          <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Status</p>
+                          <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">{t('status')}</p>
                           <Badge 
                             variant="outline" 
                             className={orderDetails.payment.status === 'confirmed' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-700 border-amber-200'}
                           >
-                            {orderDetails.payment.status}
+                            {t(orderDetails.payment.status as any) || orderDetails.payment.status}
                           </Badge>
                         </div>
                       </div>
                       <div className="space-y-3">
                         {orderDetails.payment.transaction_id && (
                           <div>
-                            <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Transaction ID</p>
+                            <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">{t('transactionId')}</p>
                             <p className="font-semibold text-slate-900">{orderDetails.payment.transaction_id}</p>
                           </div>
                         )}
                         <div>
-                          <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Amount Paid</p>
+                          <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">{t('amountPaid')}</p>
                           <p className="font-bold text-lg text-emerald-600">{formatPrice(orderDetails.payment.paid_amount)}</p>
                         </div>
                       </div>
@@ -394,7 +396,7 @@ export default function OrderDetailModal({ isOpen, onClose, order, onStatusUpdat
                       <div className="h-8 w-8 bg-gradient-to-br from-slate-500 to-slate-600 rounded-lg flex items-center justify-center">
                         <Clock className="h-4 w-4 text-white" />
                       </div>
-                      Status History
+                      {t('statusHistory')}
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
@@ -405,12 +407,12 @@ export default function OrderDetailModal({ isOpen, onClose, order, onStatusUpdat
                             {getStatusIcon(log.status)}
                           </div>
                           <div className="flex-1">
-                            <p className="font-semibold text-slate-900">{log.status.charAt(0).toUpperCase() + log.status.slice(1)}</p>
+                            <p className="font-semibold text-slate-900">{t(log.status as any) || log.status}</p>
                             {log.reason && <p className="text-sm text-slate-600">{log.reason}</p>}
                           </div>
                           <div className="text-right">
                             <p className="text-sm text-slate-600">{formatDate(log.changed_at)}</p>
-                            <p className="text-xs text-slate-500">by {log.first_name} {log.last_name}</p>
+                            <p className="text-xs text-slate-500">{t('by')} {log.first_name} {log.last_name}</p>
                           </div>
                         </div>
                       ))}
@@ -427,20 +429,20 @@ export default function OrderDetailModal({ isOpen, onClose, order, onStatusUpdat
                       <div className="h-8 w-8 bg-gradient-to-br from-amber-500 to-orange-600 rounded-lg flex items-center justify-center">
                         <FileText className="h-4 w-4 text-white" />
                       </div>
-                      Notes
+                      {t('notes')}
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
                       {orderDetails.note && (
                         <div>
-                          <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-2">Customer Note</p>
+                          <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-2">{t('customerNote')}</p>
                           <p className="text-sm bg-slate-50 p-4 rounded-lg border border-slate-200">{orderDetails.note}</p>
                         </div>
                       )}
                       {orderDetails.internal_note && (
                         <div>
-                          <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-2">Internal Note</p>
+                          <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-2">{t('internalNote')}</p>
                           <p className="text-sm bg-blue-50 p-4 rounded-lg border border-blue-200">{orderDetails.internal_note}</p>
                         </div>
                       )}
@@ -454,7 +456,7 @@ export default function OrderDetailModal({ isOpen, onClose, order, onStatusUpdat
               <div className="h-24 w-24 bg-gradient-to-br from-slate-100 to-slate-200 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Package className="h-12 w-12 text-slate-400" />
               </div>
-              <p className="text-slate-500">No order details available</p>
+              <p className="text-slate-500">{t('noOrderDetailsAvailable')}</p>
             </div>
           )}
         </div>

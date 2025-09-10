@@ -9,6 +9,7 @@ import { Switch } from '@/components/ui/switch'
 import { toast } from 'sonner'
 import { Category } from '@/lib/types'
 import { getAuthData } from '@/lib/admin-auth'
+import { useLanguage } from '@/contexts/LanguageContext'
 
 interface CategoryModalProps {
   isOpen: boolean
@@ -19,6 +20,7 @@ interface CategoryModalProps {
 }
 
 export default function CategoryModal({ isOpen, onClose, category, categories, onSaved }: CategoryModalProps) {
+  const { t } = useLanguage()
   const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState({
     category_name: '',
@@ -78,7 +80,7 @@ export default function CategoryModal({ isOpen, onClose, category, categories, o
     e.preventDefault()
     
     if (!formData.category_name.trim()) {
-      toast.error('Category name is required')
+      toast.error(t('categoryNameRequired'))
       return
     }
 
@@ -117,11 +119,11 @@ export default function CategoryModal({ isOpen, onClose, category, categories, o
         console.log('❌ Error response:', errorText)
         
         if (response.status === 401) {
-          toast.error('Authentication failed. Please login again.')
+          toast.error(t('authenticationFailed'))
           return
         }
         
-        toast.error(`Request failed: ${response.status} ${response.statusText}`)
+        toast.error(t('requestFailed'))
         return
       }
 
@@ -129,19 +131,19 @@ export default function CategoryModal({ isOpen, onClose, category, categories, o
       console.log('✅ Response data:', data)
       
       if (data.success) {
-        toast.success(category ? 'Category updated successfully' : 'Category created successfully')
+        toast.success(category ? t('categoryUpdatedSuccessfully') : t('categoryCreatedSuccessfully'))
         onSaved()
         onClose()
       } else {
-        toast.error(data.message || 'Failed to save category')
+        toast.error(data.message || t('failedToSaveCategory'))
       }
     } catch (error) {
       console.error('❌ Error saving category:', error)
       
       if (error instanceof SyntaxError) {
-        toast.error('Invalid response from server. Please try again.')
+        toast.error(t('invalidResponse'))
       } else if (error instanceof TypeError) {
-        toast.error('Network error. Please check your connection.')
+        toast.error(t('networkError'))
       } else {
         toast.error(`Error saving category: ${error instanceof Error ? error.message : 'Unknown error'}`)
       }
@@ -169,7 +171,7 @@ export default function CategoryModal({ isOpen, onClose, category, categories, o
               <Folder className="h-4 w-4 text-blue-600" />
             </div>
             <h2 className="text-lg font-semibold text-gray-900">
-              {category ? 'Edit Category' : 'Add New Category'}
+              {category ? t('editCategory') : t('addNewCategory')}
             </h2>
           </div>
           <button
@@ -185,13 +187,13 @@ export default function CategoryModal({ isOpen, onClose, category, categories, o
           {/* Category Name */}
           <div className="space-y-2">
             <Label htmlFor="category_name" className="text-sm font-medium text-gray-700">
-              Category Name *
+              {t('categoryName')} *
             </Label>
             <Input
               id="category_name"
               value={formData.category_name}
               onChange={(e) => handleInputChange('category_name', e.target.value)}
-              placeholder="Enter category name"
+              placeholder={t('enterCategoryName')}
               required
               className="w-full"
             />
@@ -200,24 +202,24 @@ export default function CategoryModal({ isOpen, onClose, category, categories, o
           {/* Slug */}
           <div className="space-y-2">
             <Label htmlFor="slug" className="text-sm font-medium text-gray-700">
-              Slug
+              {t('slug')}
             </Label>
             <Input
               id="slug"
               value={formData.slug}
               onChange={(e) => handleInputChange('slug', e.target.value)}
-              placeholder="category-slug"
+              placeholder={t('categorySlug')}
               className="w-full"
             />
             <p className="text-xs text-gray-500">
-              URL-friendly version of the category name
+              {t('urlFriendlyVersion')}
             </p>
           </div>
 
           {/* Parent Category */}
           <div className="space-y-2">
             <Label htmlFor="parent_id" className="text-sm font-medium text-gray-700">
-              Parent Category
+              {t('parentCategory')}
             </Label>
             <select
               id="parent_id"
@@ -225,7 +227,7 @@ export default function CategoryModal({ isOpen, onClose, category, categories, o
               onChange={(e) => handleInputChange('parent_id', e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
-              <option value="">No Parent (Main Category)</option>
+              <option value="">{t('noParentMainCategory')}</option>
               {categories
                 .filter(cat => !cat.parent_id && cat.category_id !== category?.category_id) // Only show main categories as parents, exclude current category
                 .map(cat => (
@@ -240,7 +242,7 @@ export default function CategoryModal({ isOpen, onClose, category, categories, o
           {/* Position */}
           <div className="space-y-2">
             <Label htmlFor="position" className="text-sm font-medium text-gray-700">
-              Position
+              {t('position')}
             </Label>
             <Input
               id="position"
@@ -252,7 +254,7 @@ export default function CategoryModal({ isOpen, onClose, category, categories, o
               className="w-full"
             />
             <p className="text-xs text-gray-500">
-              Order in which this category appears
+              {t('orderInWhichCategoryAppears')}
             </p>
           </div>
 
@@ -260,10 +262,10 @@ export default function CategoryModal({ isOpen, onClose, category, categories, o
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
               <Label className="text-sm font-medium text-gray-700">
-                Active Status
+                {t('activeStatus')}
               </Label>
               <p className="text-xs text-gray-500">
-                Enable or disable this category
+                {t('enableOrDisableCategory')}
               </p>
             </div>
             <Switch
@@ -275,18 +277,18 @@ export default function CategoryModal({ isOpen, onClose, category, categories, o
           {/* Actions */}
           <div className="flex justify-end gap-3 pt-6 border-t">
             <Button type="button" variant="outline" onClick={onClose}>
-              Cancel
+              {t('cancel')}
             </Button>
             <Button type="submit" disabled={loading}>
               {loading ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Saving...
+                  {t('saving')}
                 </>
               ) : (
                 <>
                   <Save className="h-4 w-4 mr-2" />
-                  {category ? 'Update Category' : 'Create Category'}
+                  {category ? t('updateCategory') : t('createCategory')}
                 </>
               )}
             </Button>

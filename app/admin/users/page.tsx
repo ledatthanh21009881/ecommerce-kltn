@@ -14,6 +14,7 @@ import { toast } from 'sonner'
 import { apiClient } from '@/lib/api-client'
 import { getAuthData, isAuthenticated } from '@/lib/admin-auth'
 import ConfirmModal from '@/components/ui/confirm-modal'
+import { useLanguage } from '@/contexts/LanguageContext'
 
 interface User {
   user_id: number
@@ -38,6 +39,8 @@ interface UserStats {
 }
 
 export default function AdminUsersPage() {
+  const { t } = useLanguage()
+  
   // CSS để bỏ backdrop mờ
   useEffect(() => {
     const style = document.createElement('style')
@@ -211,7 +214,7 @@ export default function AdminUsersPage() {
 
   // Filter users
   const filteredUsers = users.filter(user => {
-    const matchesSearch = 
+    const matchesSearch =
       user.account_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
       `${user.first_name} ${user.last_name}`.toLowerCase().includes(searchTerm.toLowerCase())
@@ -378,8 +381,8 @@ export default function AdminUsersPage() {
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-slate-900 mb-2">User Management</h1>
-          <p className="text-slate-600">Manage system users and their permissions</p>
+          <h1 className="text-3xl font-bold text-slate-900 mb-2">{t('userManagement')}</h1>
+          <p className="text-slate-600">{t('manageSystemUsersAndPermissions')}</p>
         </div>
 
         {/* Stats Cards */}
@@ -388,7 +391,7 @@ export default function AdminUsersPage() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-slate-600">Total Users</p>
+                  <p className="text-sm font-medium text-slate-600">{t('totalUsers')}</p>
                   <p className="text-2xl font-bold text-slate-900">{stats.total_users}</p>
                 </div>
                 <div className="h-12 w-12 bg-blue-100 rounded-lg flex items-center justify-center">
@@ -402,7 +405,7 @@ export default function AdminUsersPage() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-slate-600">Active Users</p>
+                  <p className="text-sm font-medium text-slate-600">{t('activeUsers')}</p>
                   <p className="text-2xl font-bold text-slate-900">{stats.active_users}</p>
                 </div>
                 <div className="h-12 w-12 bg-green-100 rounded-lg flex items-center justify-center">
@@ -414,9 +417,9 @@ export default function AdminUsersPage() {
 
           <Card className="bg-white shadow-sm">
             <CardContent className="p-6">
-              <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-slate-600">Admins</p>
+                  <p className="text-sm font-medium text-slate-600">{t('admins')}</p>
                   <p className="text-2xl font-bold text-slate-900">{stats.admins}</p>
                 </div>
                 <div className="h-12 w-12 bg-red-100 rounded-lg flex items-center justify-center">
@@ -430,7 +433,7 @@ export default function AdminUsersPage() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-slate-600">Managers</p>
+                  <p className="text-sm font-medium text-slate-600">{t('managers')}</p>
                   <p className="text-2xl font-bold text-slate-900">{stats.managers}</p>
                 </div>
                 <div className="h-12 w-12 bg-purple-100 rounded-lg flex items-center justify-center">
@@ -444,7 +447,7 @@ export default function AdminUsersPage() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-slate-600">Staff</p>
+                  <p className="text-sm font-medium text-slate-600">{t('staff')}</p>
                   <p className="text-2xl font-bold text-slate-900">{stats.staff}</p>
                 </div>
                 <div className="h-12 w-12 bg-blue-100 rounded-lg flex items-center justify-center">
@@ -458,16 +461,16 @@ export default function AdminUsersPage() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-slate-600">Customers</p>
+                  <p className="text-sm font-medium text-slate-600">{t('customers')}</p>
                   <p className="text-2xl font-bold text-slate-900">{stats.customers}</p>
-                </div>
+              </div>
                 <div className="h-12 w-12 bg-green-100 rounded-lg flex items-center justify-center">
                   <Users className="h-6 w-6 text-green-600" />
-                </div>
               </div>
+            </div>
             </CardContent>
           </Card>
-        </div>
+      </div>
 
         {/* Controls */}
         <Card className="bg-white shadow-sm mb-6">
@@ -477,13 +480,13 @@ export default function AdminUsersPage() {
                 {/* Search */}
                 <div className="relative flex-1 max-w-md">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 h-4 w-4" />
-                  <Input
-                    placeholder="Search users by name, email or username..."
+          <Input
+                    placeholder={t('searchUsersByNameEmailOrUsername')}
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10"
-                  />
-                </div>
+            className="pl-10"
+          />
+        </div>
 
                 {/* Role Filter */}
                 <select
@@ -491,13 +494,13 @@ export default function AdminUsersPage() {
                   onChange={(e) => setRoleFilter(e.target.value)}
                   className="px-3 py-2 border border-slate-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
-                  <option value="">All Roles</option>
-                  <option value="admin">Admin</option>
-                  <option value="manager">Manager</option>
-                  <option value="staff">Staff</option>
-                  <option value="customer">Customer</option>
+                  <option value="">{t('allRoles')}</option>
+                  <option value="admin">{t('admin')}</option>
+                  <option value="manager">{t('manager')}</option>
+                  <option value="staff">{t('staff')}</option>
+                  <option value="customer">{t('customer')}</option>
                 </select>
-              </div>
+      </div>
 
               <div className="flex gap-2">
                 <Button
@@ -507,14 +510,14 @@ export default function AdminUsersPage() {
                   className="flex items-center gap-2"
                 >
                   <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-                  Refresh
+                  {t('refresh')}
                 </Button>
                 <Button
                   className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700"
                   onClick={() => setShowAddModal(true)}
                 >
                   <UserPlus className="h-4 w-4" />
-                  Add User
+                  {t('addUser')}
                 </Button>
               </div>
             </div>
@@ -574,14 +577,14 @@ export default function AdminUsersPage() {
                             className={`flex items-center gap-1 ${getRoleColor(user.roles)}`}
                           >
                             {getRoleIcon(user.roles)}
-                            {user.roles.charAt(0).toUpperCase() + user.roles.slice(1)}
+                            {t(user.roles as any) || user.roles.charAt(0).toUpperCase() + user.roles.slice(1)}
                           </Badge>
                         )}
                         <Badge variant={user.is_active ? 'default' : 'secondary'}>
-                          {user.is_active ? 'Active' : 'Inactive'}
+                          {user.is_active ? t('active') : t('inactive')}
                         </Badge>
-                      </div>
                     </div>
+                  </div>
 
                     {/* Contact Info */}
                     <div className="space-y-2 text-sm">
@@ -601,14 +604,14 @@ export default function AdminUsersPage() {
                     <div className="flex items-center justify-between text-sm">
                       <div className="flex items-center gap-2 text-gray-600">
                         <Calendar className="h-4 w-4" />
-                        <span>Joined: {formatDate(user.created_at)}</span>
+                        <span>{t('joined')}: {formatDate(user.created_at)}</span>
                       </div>
-                    </div>
+      </div>
 
                     {/* Last Login */}
                     {user.last_login_at && (
                       <div className="text-xs text-gray-400">
-                        Last login: {formatDate(user.last_login_at)}
+                        {t('lastLogin')}: {formatDate(user.last_login_at)}
                       </div>
                     )}
 
@@ -620,7 +623,7 @@ export default function AdminUsersPage() {
                         className="flex-1"
                         onClick={() => handleEditUser(user)}
                       >
-                        Edit
+                        {t('edit')}
                       </Button>
                       <Button
                         variant="outline"
@@ -628,7 +631,7 @@ export default function AdminUsersPage() {
                         className="flex-1"
                         onClick={() => handleDeleteUser(user.user_id)}
                       >
-                        Delete
+                        {t('delete')}
                       </Button>
                     </div>
                   </div>
@@ -649,7 +652,7 @@ export default function AdminUsersPage() {
             }}
           >
             <DialogHeader>
-              <DialogTitle>Thêm User Mới</DialogTitle>
+              <DialogTitle>{t('addNewUser')}</DialogTitle>
             </DialogHeader>
             <AddUserForm 
               roles={roles}
@@ -663,7 +666,7 @@ export default function AdminUsersPage() {
           </DialogContent>
         </Dialog>
 
-        {/* Edit User Modal */}
+      {/* Edit User Modal */}
         <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
           <DialogContent 
             className="sm:max-w-[425px] bg-white" 
@@ -673,9 +676,9 @@ export default function AdminUsersPage() {
               boxShadow: '0 10px 25px rgba(0, 0, 0, 0.2)'
             }}
           >
-            <DialogHeader>
-              <DialogTitle>Chỉnh Sửa User</DialogTitle>
-            </DialogHeader>
+          <DialogHeader>
+              <DialogTitle>{t('editUser')}</DialogTitle>
+          </DialogHeader>
             {selectedUser && (
               <EditUserForm 
                 user={selectedUser}
@@ -706,7 +709,7 @@ export default function AdminUsersPage() {
           title="Xóa User"
           description="Bạn có chắc chắn muốn xóa user này? Hành động này không thể hoàn tác."
           confirmText="Xóa"
-          cancelText="Hủy"
+          cancelText="Cancel"
         />
       </div>
     </div>
@@ -719,6 +722,7 @@ function AddUserForm({ roles, onSuccess, onCancel }: {
   onSuccess: () => void, 
   onCancel: () => void 
 }) {
+  const { t } = useLanguage()
   const [formData, setFormData] = useState({
     account_name: '',
     password: '',
@@ -756,14 +760,14 @@ function AddUserForm({ roles, onSuccess, onCancel }: {
 
       const data = await response.json()
       if (data.success) {
-        toast.success('User đã được tạo thành công')
+        toast.success(t('userCreatedSuccessfully'))
         onSuccess()
       } else {
-        toast.error(data.message || 'Tạo user thất bại')
+        toast.error(data.message || t('failedToCreateUser'))
       }
     } catch (error) {
       console.error('Error creating user:', error)
-      toast.error('Tạo user thất bại')
+      toast.error(t('failedToCreateUser'))
     } finally {
       setLoading(false)
     }
@@ -771,29 +775,29 @@ function AddUserForm({ roles, onSuccess, onCancel }: {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-4">
         <div>
-          <Label htmlFor="first_name">Tên</Label>
+          <Label htmlFor="first_name">{t('firstName')}</Label>
           <Input
             id="first_name"
             value={formData.first_name}
             onChange={(e) => setFormData(prev => ({ ...prev, first_name: e.target.value }))}
             required
           />
-        </div>
+              </div>
         <div>
-          <Label htmlFor="last_name">Họ</Label>
+          <Label htmlFor="last_name">{t('lastName')}</Label>
           <Input
             id="last_name"
             value={formData.last_name}
             onChange={(e) => setFormData(prev => ({ ...prev, last_name: e.target.value }))}
             required
           />
-        </div>
-      </div>
+              </div>
+            </div>
 
       <div>
-        <Label htmlFor="account_name">Tên tài khoản</Label>
+        <Label htmlFor="account_name">{t('username')}</Label>
         <Input
           id="account_name"
           value={formData.account_name}
@@ -803,7 +807,7 @@ function AddUserForm({ roles, onSuccess, onCancel }: {
       </div>
 
       <div>
-        <Label htmlFor="password">Mật khẩu</Label>
+        <Label htmlFor="password">{t('password')}</Label>
         <Input
           id="password"
           type="password"
@@ -814,7 +818,7 @@ function AddUserForm({ roles, onSuccess, onCancel }: {
       </div>
 
       <div>
-        <Label htmlFor="email">Email</Label>
+        <Label htmlFor="email">{t('email')}</Label>
         <Input
           id="email"
           type="email"
@@ -825,7 +829,7 @@ function AddUserForm({ roles, onSuccess, onCancel }: {
       </div>
 
       <div>
-        <Label htmlFor="phone">Số điện thoại</Label>
+        <Label htmlFor="phone">{t('phoneNumber')}</Label>
         <Input
           id="phone"
           value={formData.phone}
@@ -834,27 +838,27 @@ function AddUserForm({ roles, onSuccess, onCancel }: {
       </div>
 
       <div>
-        <Label htmlFor="role">Vai trò</Label>
+        <Label htmlFor="role">{t('role')}</Label>
         <Select onValueChange={(value) => setFormData(prev => ({ ...prev, role_ids: [parseInt(value)] }))}>
-          <SelectTrigger>
-            <SelectValue placeholder="Chọn vai trò" />
-          </SelectTrigger>
-          <SelectContent>
+                  <SelectTrigger>
+            <SelectValue placeholder={t('selectRole')} />
+                  </SelectTrigger>
+                  <SelectContent>
             {roles.map((role) => (
               <SelectItem key={role.role_id} value={role.role_id.toString()}>
                 {role.role_name}
               </SelectItem>
             ))}
-          </SelectContent>
-        </Select>
-      </div>
+                  </SelectContent>
+                </Select>
+              </div>
 
       <div className="flex justify-end gap-2">
         <Button type="button" variant="outline" onClick={onCancel}>
-          Hủy
+          {t('cancel')}
         </Button>
         <Button type="submit" disabled={loading}>
-          {loading ? 'Đang tạo...' : 'Tạo User'}
+          {loading ? t('creating') : t('createUser')}
         </Button>
       </div>
     </form>
@@ -868,6 +872,7 @@ function EditUserForm({ user, roles, onSuccess, onCancel }: {
   onSuccess: () => void, 
   onCancel: () => void 
 }) {
+  const { t } = useLanguage()
   const [formData, setFormData] = useState({
     first_name: user.first_name,
     last_name: user.last_name,
@@ -906,14 +911,14 @@ function EditUserForm({ user, roles, onSuccess, onCancel }: {
 
       const data = await response.json()
       if (data.success) {
-        toast.success('User đã được cập nhật thành công')
+        toast.success(t('userUpdatedSuccessfully'))
         onSuccess()
       } else {
-        toast.error(data.message || 'Cập nhật user thất bại')
+        toast.error(data.message || t('failedToUpdateUser'))
       }
     } catch (error) {
       console.error('Error updating user:', error)
-      toast.error('Cập nhật user thất bại')
+      toast.error(t('failedToUpdateUser'))
     } finally {
       setLoading(false)
     }
@@ -923,7 +928,7 @@ function EditUserForm({ user, roles, onSuccess, onCancel }: {
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <Label htmlFor="first_name">Tên</Label>
+          <Label htmlFor="first_name">{t('firstName')}</Label>
           <Input
             id="first_name"
             value={formData.first_name}
@@ -932,7 +937,7 @@ function EditUserForm({ user, roles, onSuccess, onCancel }: {
           />
         </div>
         <div>
-          <Label htmlFor="last_name">Họ</Label>
+          <Label htmlFor="last_name">{t('lastName')}</Label>
           <Input
             id="last_name"
             value={formData.last_name}
@@ -943,7 +948,7 @@ function EditUserForm({ user, roles, onSuccess, onCancel }: {
       </div>
 
       <div>
-        <Label htmlFor="email">Email</Label>
+        <Label htmlFor="email">{t('email')}</Label>
         <Input
           id="email"
           type="email"
@@ -954,7 +959,7 @@ function EditUserForm({ user, roles, onSuccess, onCancel }: {
       </div>
 
       <div>
-        <Label htmlFor="phone">Số điện thoại</Label>
+        <Label htmlFor="phone">{t('phoneNumber')}</Label>
         <Input
           id="phone"
           value={formData.phone}
@@ -963,32 +968,32 @@ function EditUserForm({ user, roles, onSuccess, onCancel }: {
       </div>
 
       <div>
-        <Label htmlFor="role">Vai trò</Label>
+        <Label htmlFor="role">{t('role')}</Label>
         <Select 
           value={formData.role_ids[0]?.toString() || ''} 
           onValueChange={(value) => setFormData(prev => ({ ...prev, role_ids: [parseInt(value)] }))}
         >
-          <SelectTrigger>
-            <SelectValue placeholder="Chọn vai trò" />
-          </SelectTrigger>
-          <SelectContent>
+                  <SelectTrigger>
+            <SelectValue placeholder={t('selectRole')} />
+                  </SelectTrigger>
+                  <SelectContent>
             {roles.map((role) => (
               <SelectItem key={role.role_id} value={role.role_id.toString()}>
                 {role.role_name}
               </SelectItem>
             ))}
-          </SelectContent>
-        </Select>
-      </div>
+                  </SelectContent>
+                </Select>
+              </div>
 
       <div className="flex justify-end gap-2">
         <Button type="button" variant="outline" onClick={onCancel}>
-          Hủy
-        </Button>
+          {t('cancel')}
+              </Button>
         <Button type="submit" disabled={loading}>
-          {loading ? 'Đang cập nhật...' : 'Cập nhật'}
-        </Button>
-      </div>
+          {loading ? t('updating') : t('update')}
+              </Button>
+            </div>
     </form>
   )
 }

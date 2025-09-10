@@ -9,6 +9,7 @@ import { toast } from 'sonner'
 import { Order, Shipper } from '@/lib/types'
 import { getAuthData } from '@/lib/admin-auth'
 import { shippersApi } from '@/lib/api'
+import { useLanguage } from '@/contexts/LanguageContext'
 
 interface AssignShipperModalProps {
   isOpen: boolean
@@ -18,6 +19,7 @@ interface AssignShipperModalProps {
 }
 
 export default function AssignShipperModal({ isOpen, onClose, order, onShipperAssigned }: AssignShipperModalProps) {
+  const { t } = useLanguage()
   const [shippers, setShippers] = useState<Shipper[]>([])
   const [selectedShipper, setSelectedShipper] = useState<Shipper | null>(null)
   const [loading, setLoading] = useState(false)
@@ -121,9 +123,9 @@ export default function AssignShipperModal({ isOpen, onClose, order, onShipperAs
             </div>
             <div>
               <h3 className="text-xl font-bold text-slate-900 font-sans tracking-tight">
-                Assign Shipper
+                {t('assignShipper')}
               </h3>
-              <p className="text-sm text-slate-600">Select a shipper for order #{order?.invoice_number}</p>
+              <p className="text-sm text-slate-600">{t('selectShipperForOrder')} #{order?.invoice_number}</p>
             </div>
           </div>
           <button
@@ -144,25 +146,25 @@ export default function AssignShipperModal({ isOpen, onClose, order, onShipperAs
                   <div className="h-8 w-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center">
                     <Package className="h-4 w-4 text-white" />
                   </div>
-                  Order Information
+                  {t('orderInformation')}
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-3">
                     <div>
-                      <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Order Details</p>
+                      <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">{t('orderDetails')}</p>
                       <p className="font-semibold text-slate-900">{order?.invoice_number}</p>
-                      <p className="text-sm text-slate-600">Customer: {order?.first_name} {order?.last_name}</p>
+                      <p className="text-sm text-slate-600">{t('customer')}: {order?.first_name} {order?.last_name}</p>
                     </div>
                     <div>
-                      <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Shipping Address</p>
+                      <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">{t('shippingAddress')}</p>
                       <p className="text-sm text-slate-700">{order?.shipping_address_snapshot}</p>
                     </div>
                   </div>
                   <div className="space-y-3">
                     <div>
-                      <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Order Value</p>
+                      <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">{t('orderValue')}</p>
                       <p className="font-bold text-lg text-emerald-600">
                         {new Intl.NumberFormat('vi-VN', {
                           style: 'currency',
@@ -171,8 +173,8 @@ export default function AssignShipperModal({ isOpen, onClose, order, onShipperAs
                       </p>
                     </div>
                     <div>
-                      <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Items</p>
-                      <p className="font-semibold text-slate-900">{order?.item_count || 0} items</p>
+                      <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">{t('items')}</p>
+                      <p className="font-semibold text-slate-900">{order?.item_count || 0} {t('items')}</p>
                     </div>
                   </div>
                 </div>
@@ -186,7 +188,7 @@ export default function AssignShipperModal({ isOpen, onClose, order, onShipperAs
                   <div className="h-8 w-8 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-lg flex items-center justify-center">
                     <Truck className="h-4 w-4 text-white" />
                   </div>
-                  Available Shippers ({shippers.length})
+                  {t('availableShippers')} ({shippers.length})
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -199,7 +201,7 @@ export default function AssignShipperModal({ isOpen, onClose, order, onShipperAs
                     <div className="h-24 w-24 bg-gradient-to-br from-slate-100 to-slate-200 rounded-full flex items-center justify-center mx-auto mb-4">
                       <Truck className="h-12 w-12 text-slate-400" />
                     </div>
-                    <p className="text-slate-500">No available shippers at the moment</p>
+                    <p className="text-slate-500">{t('noAvailableShippers')}</p>
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -241,13 +243,13 @@ export default function AssignShipperModal({ isOpen, onClose, order, onShipperAs
                                 variant="outline" 
                                 className="bg-emerald-50 text-emerald-700 border-emerald-200"
                               >
-                                {shipper.on_time_delivery_pct}% on-time
+                                {shipper.on_time_delivery_pct}% {t('onTime')}
                               </Badge>
                               <Badge 
                                 variant="outline" 
                                 className="bg-blue-50 text-blue-700 border-blue-200"
                               >
-                                {shipper.total_delivered || 0} deliveries
+                                {shipper.total_delivered || 0} {t('deliveries')}
                               </Badge>
                             </div>
                             
@@ -274,7 +276,7 @@ export default function AssignShipperModal({ isOpen, onClose, order, onShipperAs
                     <div className="h-8 w-8 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-lg flex items-center justify-center">
                       <User className="h-4 w-4 text-white" />
                     </div>
-                    Selected Shipper
+                    {t('selectedShipper')}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -300,7 +302,7 @@ export default function AssignShipperModal({ isOpen, onClose, order, onShipperAs
                         variant="outline" 
                         className="bg-emerald-50 text-emerald-700 border-emerald-200"
                       >
-                        {selectedShipper.on_time_delivery_pct}% on-time
+                        {selectedShipper.on_time_delivery_pct}% {t('onTime')}
                       </Badge>
                     </div>
                   </div>
@@ -317,14 +319,14 @@ export default function AssignShipperModal({ isOpen, onClose, order, onShipperAs
             onClick={onClose}
             className="bg-white/80 backdrop-blur-sm border-slate-200 hover:bg-white"
           >
-            Cancel
+            {t('cancel')}
           </Button>
           <Button
             onClick={handleAssignShipper}
             disabled={!selectedShipper || loading}
             className="bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 text-white shadow-lg"
           >
-            {loading ? 'Assigning...' : 'Assign Shipper'}
+            {loading ? t('assigning') : t('assignShipper')}
           </Button>
         </div>
       </div>
