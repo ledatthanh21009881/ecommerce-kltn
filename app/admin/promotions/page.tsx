@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
 import ConfirmModal from '@/components/ui/confirm-modal'
-import { Plus, Edit, Trash2, Search, Filter } from 'lucide-react'
+import { Plus, Edit, Trash2, Search, Filter, RefreshCw, Tag, Percent, DollarSign, Calendar } from 'lucide-react'
 import { getAuthData } from '@/lib/admin-auth'
 import { useLanguage } from '@/contexts/LanguageContext'
 
@@ -196,6 +196,12 @@ export default function PromotionsPage() {
     return matchesSearch && matchesStatus && matchesType
   }) : []
 
+  // Calculate stats
+  const totalVouchers = vouchers.length
+  const activeVouchers = vouchers.filter(v => v.status === 'active').length
+  const inactiveVouchers = vouchers.filter(v => v.status === 'inactive').length
+  const percentageVouchers = vouchers.filter(v => v.discount_type === 'percent').length
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -208,57 +214,137 @@ export default function PromotionsPage() {
   }
 
   return (
-    <div className="container mx-auto p-6">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold text-gray-900">{t('promotionsManagement')}</h1>
-        <Button onClick={() => setShowForm(true)}>
-          <Plus className="w-4 h-4 mr-2" />
-          {t('addVoucher')}
-        </Button>
-      </div>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-6">
+      <div className="max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-slate-900 mb-2">{t('promotionsManagement')}</h1>
+          <p className="text-slate-600">{t('promotionsManagementDesc')}</p>
+        </div>
 
-      <div className="mb-6 space-y-4">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-          <Input
-            placeholder={t('searchVouchers')}
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
-          />
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+          <Card className="bg-white shadow-sm">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-slate-600">{t('totalVouchers')}</p>
+                  <p className="text-2xl font-bold text-slate-900">{totalVouchers}</p>
+                </div>
+                <div className="h-12 w-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                  <Tag className="h-6 w-6 text-blue-600" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-white shadow-sm">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-slate-600">{t('active')}</p>
+                  <p className="text-2xl font-bold text-green-600">{activeVouchers}</p>
+                </div>
+                <div className="h-12 w-12 bg-green-100 rounded-lg flex items-center justify-center">
+                  <span className="text-green-600 text-xl">✅</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-white shadow-sm">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-slate-600">{t('inactive')}</p>
+                  <p className="text-2xl font-bold text-red-600">{inactiveVouchers}</p>
+                </div>
+                <div className="h-12 w-12 bg-red-100 rounded-lg flex items-center justify-center">
+                  <span className="text-red-600 text-xl">❌</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-white shadow-sm">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-slate-600">{t('percentage')}</p>
+                  <p className="text-2xl font-bold text-orange-600">{percentageVouchers}</p>
+                </div>
+                <div className="h-12 w-12 bg-orange-100 rounded-lg flex items-center justify-center">
+                  <Percent className="h-6 w-6 text-orange-600" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
-        
-        <div className="flex flex-wrap gap-4">
-          <div className="flex items-center space-x-2">
-            <Filter className="w-4 h-4 text-gray-500" />
-            <Label htmlFor="status-filter" className="text-sm font-medium">{t('status')}:</Label>
-            <select
-              id="status-filter"
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-3 py-1 border rounded-md text-sm"
-            >
-              <option value="all">{t('all')}</option>
-              <option value="active">{t('active')}</option>
-              <option value="inactive">{t('inactive')}</option>
-            </select>
-          </div>
-          
-          <div className="flex items-center space-x-2">
-            <Label htmlFor="type-filter" className="text-sm font-medium">{t('type')}:</Label>
-            <select
-              id="type-filter"
-              value={typeFilter}
-              onChange={(e) => setTypeFilter(e.target.value)}
-              className="px-3 py-1 border rounded-md text-sm"
-            >
-              <option value="all">{t('all')}</option>
-              <option value="percent">{t('percentage')}</option>
-              <option value="amount">{t('fixedAmount')}</option>
-            </select>
-          </div>
-        </div>
-      </div>
+
+        {/* Controls */}
+        <Card className="bg-white shadow-sm mb-6">
+          <CardContent className="p-6">
+            <div className="flex flex-col lg:flex-row gap-4 items-center justify-between">
+              <div className="flex flex-col lg:flex-row gap-4 flex-1 w-full">
+                {/* Search */}
+                <div className="relative flex-1 max-w-md">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 h-4 w-4" />
+                  <Input
+                    placeholder={t('searchVouchers')}
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+
+                {/* Status Filter */}
+                <div className="flex-1 max-w-xs">
+                  <select
+                    value={statusFilter}
+                    onChange={(e) => setStatusFilter(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="all">{t('all')}</option>
+                    <option value="active">{t('active')}</option>
+                    <option value="inactive">{t('inactive')}</option>
+                  </select>
+                </div>
+
+                {/* Type Filter */}
+                <div className="flex-1 max-w-xs">
+                  <select
+                    value={typeFilter}
+                    onChange={(e) => setTypeFilter(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="all">{t('all')}</option>
+                    <option value="percent">{t('percentage')}</option>
+                    <option value="amount">{t('fixedAmount')}</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={fetchVouchers}
+                  disabled={loading}
+                  className="flex items-center gap-2"
+                >
+                  <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                  {t('refresh')}
+                </Button>
+                <Button
+                  onClick={() => setShowForm(true)}
+                  className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700"
+                >
+                  <Plus className="h-4 w-4" />
+                  {t('addVoucher')}
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
       {showForm && (
         <Card className="mb-6">
@@ -368,51 +454,129 @@ export default function PromotionsPage() {
         </Card>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredVouchers.map((voucher) => (
-          <Card key={voucher.voucher_id}>
-            <CardHeader>
-              <div className="flex justify-between items-start">
-                <CardTitle className="text-lg">{voucher.code}</CardTitle>
-                <Badge variant={voucher.status === 'active' ? "default" : "secondary"}>
-                  {voucher.status === 'active' ? t('active') : t('inactive')}
-                </Badge>
+        {/* Vouchers Table */}
+        <Card className="bg-white shadow-sm">
+          <CardContent className="p-6">
+            {loading ? (
+              <div className="space-y-4">
+                {[...Array(5)].map((_, i) => (
+                  <div key={i} className="flex items-center gap-4 p-4 border border-gray-200 rounded-lg animate-pulse">
+                    <div className="h-10 w-10 bg-gray-200 rounded"></div>
+                    <div className="flex-1">
+                      <div className="h-4 bg-gray-200 rounded mb-2"></div>
+                      <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                    </div>
+                    <div className="flex gap-2">
+                      <div className="h-8 w-8 bg-gray-200 rounded"></div>
+                      <div className="h-8 w-8 bg-gray-200 rounded"></div>
+                    </div>
+                  </div>
+                ))}
               </div>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                <p className="text-sm text-gray-600">
-                  Discount: {voucher.discount_amount}
-                  {voucher.discount_type === 'percent' ? '%' : 'đ'}
-                </p>
-                <p className="text-sm text-gray-600">
-                  Min Order: {voucher.min_order_total.toLocaleString()}đ
-                </p>
-                <p className="text-sm text-gray-600">
-                  Max Uses: {voucher.max_usage}
-                </p>
-                <p className="text-sm text-gray-600">
-                  Valid: {new Date(voucher.start_date).toLocaleDateString()} - {new Date(voucher.end_date).toLocaleDateString()}
-                </p>
-                <div className="flex space-x-2 pt-2">
-                  <Button size="sm" variant="outline" onClick={() => handleEdit(voucher)}>
-                    <Edit className="w-4 h-4" />
-                  </Button>
-                  <Button size="sm" variant="outline" onClick={() => handleDelete(voucher.voucher_id)}>
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                </div>
+            ) : filteredVouchers.length === 0 ? (
+              <div className="text-center py-12">
+                <Tag className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">{t('noVouchersFound')}</h3>
+                <p className="text-gray-600">{t('getStartedByCreatingVoucher')}</p>
               </div>
-            </CardContent>
-          </Card>
-        ))}
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-gray-200">
+                      <th className="text-left py-3 px-4 font-medium text-gray-900">{t('code')}</th>
+                      <th className="text-left py-3 px-4 font-medium text-gray-900">{t('discountType')}</th>
+                      <th className="text-left py-3 px-4 font-medium text-gray-900">{t('discountAmount')}</th>
+                      <th className="text-left py-3 px-4 font-medium text-gray-900">{t('minimumOrderTotal')}</th>
+                      <th className="text-left py-3 px-4 font-medium text-gray-900">{t('maximumUses')}</th>
+                      <th className="text-left py-3 px-4 font-medium text-gray-900">{t('validPeriod')}</th>
+                      <th className="text-left py-3 px-4 font-medium text-gray-900">{t('status')}</th>
+                      <th className="text-left py-3 px-4 font-medium text-gray-900">{t('actions')}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredVouchers.map((voucher) => (
+                      <tr key={voucher.voucher_id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                        <td className="py-4 px-4">
+                          <div className="flex items-center gap-3">
+                            <div className="h-8 w-8 bg-blue-100 rounded flex items-center justify-center">
+                              <Tag className="h-4 w-4 text-blue-600" />
+                            </div>
+                            <div>
+                              <div className="font-medium text-gray-900">{voucher.code}</div>
+                              <div className="text-sm text-gray-500">ID: {voucher.voucher_id}</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="py-4 px-4">
+                          <Badge variant="outline">
+                            {voucher.discount_type === 'percent' ? t('percentage') : t('fixedAmount')}
+                          </Badge>
+                        </td>
+                        <td className="py-4 px-4">
+                          <div className="flex items-center gap-2">
+                            {voucher.discount_type === 'percent' ? (
+                              <Percent className="h-4 w-4 text-blue-500" />
+                            ) : (
+                              <DollarSign className="h-4 w-4 text-green-500" />
+                            )}
+                            <span className="font-medium text-gray-900">
+                              {voucher.discount_amount}
+                              {voucher.discount_type === 'percent' ? '%' : 'đ'}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="py-4 px-4 text-gray-600">
+                          {voucher.min_order_total.toLocaleString()}đ
+                        </td>
+                        <td className="py-4 px-4 text-gray-600">
+                          {voucher.max_usage}
+                        </td>
+                        <td className="py-4 px-4">
+                          <div className="flex items-center gap-2">
+                            <Calendar className="h-4 w-4 text-gray-400" />
+                            <div className="text-sm">
+                              <div>{new Date(voucher.start_date).toLocaleDateString()}</div>
+                              <div className="text-gray-500">to {new Date(voucher.end_date).toLocaleDateString()}</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="py-4 px-4">
+                          <Badge variant={voucher.status === 'active' ? 'default' : 'secondary'}>
+                            {voucher.status === 'active' ? t('active') : t('inactive')}
+                          </Badge>
+                        </td>
+                        <td className="py-4 px-4">
+                          <div className="flex items-center gap-2">
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              onClick={() => handleEdit(voucher)}
+                              className="bg-white text-gray-900 hover:bg-gray-100"
+                              title={t('edit')}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => handleDelete(voucher.voucher_id)}
+                              className="bg-red-600 hover:bg-red-700"
+                              title={t('delete')}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
-
-      {filteredVouchers.length === 0 && (
-        <div className="text-center py-8">
-          <p className="text-gray-500">{t('noVouchersFound')}</p>
-        </div>
-      )}
 
       {/* Delete Confirmation Modal */}
       <ConfirmModal
