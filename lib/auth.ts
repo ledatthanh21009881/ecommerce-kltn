@@ -105,8 +105,14 @@ export const authUtils = {
   },
 
   // Get user token from localStorage
+  // FIXED: Ưu tiên adminToken trước để admin pages hoạt động đúng
   getToken: (): string | null => {
     if (typeof window !== 'undefined') {
+      // Ưu tiên adminToken trước (cho admin pages)
+      const adminToken = localStorage.getItem('adminToken')
+      if (adminToken) return adminToken
+      
+      // Fallback to auth_token (cho user pages)
       return localStorage.getItem('auth_token')
     }
     return null

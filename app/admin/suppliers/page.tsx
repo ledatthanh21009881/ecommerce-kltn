@@ -11,15 +11,14 @@ import { getAuthData } from '@/lib/admin-auth'
 
 interface Supplier {
   supplier_id: number
-  name: string
-  contact_person?: string
+  supplier_name: string
+  contact_name?: string
   email?: string
   phone?: string
   address?: string
   status: string
   created_at: string
-  product_count?: number
-  total_orders?: number
+  updated_at?: string
 }
 
 export default function AdminSuppliersPage() {
@@ -32,13 +31,29 @@ export default function AdminSuppliersPage() {
   const fetchSuppliers = async () => {
     try {
       setLoading(true)
-      const response = await fetch('/api/backend/v1/suppliers')
+      const { token } = getAuthData()
+      
+      const params = new URLSearchParams()
+      if (searchTerm) params.append('search', searchTerm)
+      if (statusFilter) params.append('status', statusFilter)
+      
+      const url = `/api/backend/v1/suppliers${params.toString() ? '?' + params.toString() : ''}`
+      
+      const response = await fetch(url, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      })
+      
       const data = await response.json()
       
       if (data.success) {
-        setSuppliers(data.data || [])
+        // Handle paginated response
+        const suppliersList = data.data?.items || data.data || []
+        setSuppliers(suppliersList)
       } else {
-        toast.error('Failed to fetch suppliers')
+        toast.error(data.message || 'Failed to fetch suppliers')
       }
     } catch (error) {
       console.error('Error fetching suppliers:', error)
@@ -50,17 +65,10 @@ export default function AdminSuppliersPage() {
 
   useEffect(() => {
     fetchSuppliers()
-  }, [])
+  }, [searchTerm, statusFilter])
 
-  // Filter suppliers
-  const filteredSuppliers = suppliers.filter(supplier => {
-    const matchesSearch = 
-      supplier.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      supplier.contact_person?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      supplier.email?.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesStatus = !statusFilter || supplier.status === statusFilter
-    return matchesSearch && matchesStatus
-  })
+  // Filter suppliers (now handled by backend API, but keep for client-side if needed)
+  const filteredSuppliers = suppliers
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -246,10 +254,10 @@ export default function AdminSuppliersPage() {
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
                         <h3 className="font-semibold text-gray-900">
-                          {supplier.name}
+                          {supplier.supplier_name}
                         </h3>
-                        {supplier.contact_person && (
-                          <p className="text-sm text-gray-600">Contact: {supplier.contact_person}</p>
+                        {supplier.contact_name && (
+                          <p className="text-sm text-gray-600">Contact: {supplier.contact_name}</p>
                         )}
                       </div>
                       <Badge 
@@ -282,15 +290,12 @@ export default function AdminSuppliersPage() {
                       )}
                     </div>
 
-                    {/* Stats */}
+                    {/* Stats - Removed product_count and total_orders as they're not in current schema */}
                     <div className="flex items-center justify-between text-sm">
                       <div className="flex items-center gap-2 text-gray-600">
                         <Building2 className="h-4 w-4" />
-                        <span>Products: {supplier.product_count || 0}</span>
+                        <span>ID: {supplier.supplier_id}</span>
                       </div>
-                      {supplier.total_orders !== undefined && (
-                        <span className="text-gray-500">Orders: {supplier.total_orders}</span>
-                      )}
                     </div>
 
                     {/* Timestamps */}
