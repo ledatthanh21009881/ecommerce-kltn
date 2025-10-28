@@ -8,6 +8,9 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
 import { getAuthData } from '@/lib/admin-auth'
+import PurchaseReceiptModal from '@/components/admin/PurchaseReceiptModal'
+import PurchaseReceiptDetailModal from '@/components/admin/PurchaseReceiptDetailModal'
+import ConfirmModal from '@/components/ui/confirm-modal'
 
 interface PurchaseReceipt {
   receipt_id: number
@@ -27,6 +30,13 @@ export default function AdminPurchaseReceiptsPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
   const [supplierFilter, setSupplierFilter] = useState('')
+  
+  // Modal states
+  const [isAddEditModalOpen, setIsAddEditModalOpen] = useState(false)
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false)
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
+  const [selectedReceipt, setSelectedReceipt] = useState<PurchaseReceipt | null>(null)
+  const [deletingReceipt, setDeletingReceipt] = useState<PurchaseReceipt | null>(null)
 
   // Fetch purchase receipts
   const fetchReceipts = async () => {
@@ -157,13 +167,45 @@ export default function AdminPurchaseReceiptsPage() {
     }
   }
 
-  const handleDelete = async (receiptId: number) => {
-    if (!confirm('Are you sure you want to delete this receipt?')) return
+  // Add Receipt
+  const handleAddClick = () => {
+    setSelectedReceipt(null)
+    setIsAddEditModalOpen(true)
+  }
+
+  // Edit Receipt (chỉ pending)
+  const handleEditClick = (receipt: PurchaseReceipt) => {
+    if (receipt.status !== 'pending') {
+      toast.error('Can only edit pending receipts')
+      return
+    }
+    setSelectedReceipt(receipt)
+    setIsAddEditModalOpen(true)
+  }
+
+  // View Details
+  const handleViewDetails = (receipt: PurchaseReceipt) => {
+    setSelectedReceipt(receipt)
+    setIsDetailModalOpen(true)
+  }
+
+  // Delete Receipt
+  const handleDeleteClick = (receipt: PurchaseReceipt) => {
+    if (receipt.status === 'confirmed') {
+      toast.error('Cannot delete confirmed receipts')
+      return
+    }
+    setDeletingReceipt(receipt)
+    setIsDeleteModalOpen(true)
+  }
+
+  const handleDeleteConfirm = async () => {
+    if (!deletingReceipt) return
     
     try {
       const { token } = getAuthData()
       
-      const response = await fetch(`/api/backend/v1/purchase-receipts?id=${receiptId}`, {
+      const response = await fetch(`/api/backend/v1/purchase-receipts?id=${deletingReceipt.receipt_id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -176,6 +218,8 @@ export default function AdminPurchaseReceiptsPage() {
       if (data.success) {
         toast.success('Purchase receipt deleted')
         fetchReceipts()
+        setIsDeleteModalOpen(false)
+        setDeletingReceipt(null)
       } else {
         toast.error(data.message || 'Failed to delete receipt')
       }
@@ -307,6 +351,7 @@ export default function AdminPurchaseReceiptsPage() {
                   Refresh
                 </Button>
                 <Button
+                  onClick={handleAddClick}
                   className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700"
                 >
                   <Plus className="h-4 w-4" />
@@ -384,7 +429,7 @@ export default function AdminPurchaseReceiptsPage() {
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => window.open(`/admin/purchase-receipts/${receipt.receipt_id}`, '_blank')}
+                              onClick={() => handleViewDetails(receipt)}
                             >
                               <Eye className="h-4 w-4" />
                             </Button>
@@ -393,16 +438,23 @@ export default function AdminPurchaseReceiptsPage() {
                                 <Button
                                   variant="ghost"
                                   size="sm"
+                                  onClick={() => handleEditClick(receipt)}
+                                >
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
                                   onClick={() => handleConfirm(receipt.receipt_id)}
-                                  className="text-green-600 hover:text-green-700"
+                                  className="text-green-600"
                                 >
                                   <CheckCircle className="h-4 w-4" />
                                 </Button>
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  onClick={() => handleDelete(receipt.receipt_id)}
-                                  className="text-red-600 hover:text-red-700"
+                                  onClick={() => handleDeleteClick(receipt)}
+                                  className="text-red-600"
                                 >
                                   <Trash2 className="h-4 w-4" />
                                 </Button>
@@ -418,6 +470,35 @@ export default function AdminPurchaseReceiptsPage() {
             </CardContent>
           </Card>
         )}
+        {/* Modals */}
+        <PurchaseReceiptModal
+          isOpen={isAddEditModalOpen}
+          onClose={() => setIsAddEditModalOpen(false)}
+          receipt={selectedReceipt}
+          onSaved={() => {
+            setIsAddEditModalOpen(false)
+            fetchReceipts()
+          }}
+        />
+
+        <PurchaseReceiptDetailModal
+          isOpen={isDetailModalOpen}
+          onClose={() => setIsDetailModalOpen(false)}
+          receipt={selectedReceipt}
+          onConfirmed={() => {
+            setIsDetailModalOpen(false)
+            fetchReceipts()
+          }}
+        />
+
+        <ConfirmModal
+          isOpen={isDeleteModalOpen}
+          onClose={() => setIsDeleteModalOpen(false)}
+          onConfirm={handleDeleteConfirm}
+          title="Delete Purchase Receipt"
+          description={`Are you sure you want to delete receipt #${deletingReceipt?.receipt_id}? This action cannot be undone.`}
+          confirmText="Delete"
+        />
       </div>
     </div>
   )

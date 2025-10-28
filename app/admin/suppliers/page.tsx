@@ -1,13 +1,16 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Search, RefreshCw, Building2, Phone, Mail, MapPin, Plus } from 'lucide-react'
+import { Search, RefreshCw, Building2, Phone, Mail, MapPin, Plus, Edit, Eye, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
 import { getAuthData } from '@/lib/admin-auth'
+import SupplierModal from '@/components/admin/SupplierModal'
+import SupplierDetailModal from '@/components/admin/SupplierDetailModal'
+import ConfirmModal from '@/components/ui/confirm-modal'
 
 interface Supplier {
   supplier_id: number
@@ -26,6 +29,11 @@ export default function AdminSuppliersPage() {
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
+  const [isAddEditModalOpen, setIsAddEditModalOpen] = useState(false)
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false)
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
+  const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null)
+  const [deletingSupplier, setDeletingSupplier] = useState<Supplier | null>(null)
 
   // Fetch suppliers
   const fetchSuppliers = async () => {
@@ -101,6 +109,61 @@ export default function AdminSuppliersPage() {
       month: 'short',
       day: 'numeric'
     })
+  }
+
+  // Add Supplier
+  const handleAddClick = () => {
+    setSelectedSupplier(null)
+    setIsAddEditModalOpen(true)
+  }
+
+  // Edit Supplier
+  const handleEditClick = (supplier: Supplier) => {
+    setSelectedSupplier(supplier)
+    setIsAddEditModalOpen(true)
+  }
+
+  // View Details
+  const handleViewDetails = (supplier: Supplier) => {
+    setSelectedSupplier(supplier)
+    setIsDetailModalOpen(true)
+  }
+
+  // Delete Supplier
+  const handleDeleteClick = (supplier: Supplier) => {
+    setDeletingSupplier(supplier)
+    setIsDeleteModalOpen(true)
+  }
+
+  const handleDeleteConfirm = async () => {
+    if (!deletingSupplier) return
+    
+    try {
+      const { token } = getAuthData()
+      const response = await fetch(`/api/backend/v1/suppliers?id=${deletingSupplier.supplier_id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      })
+      
+      const data = await response.json()
+      
+      if (data.success) {
+        toast.success('Supplier deleted successfully')
+        fetchSuppliers()
+      } else {
+        // Backend trả về lỗi nếu supplier có receipts
+        toast.error(data.message || 'Failed to delete supplier')
+      }
+    } catch (error) {
+      console.error('Error deleting supplier:', error)
+      toast.error('Error deleting supplier')
+    } finally {
+      setIsDeleteModalOpen(false)
+      setDeletingSupplier(null)
+    }
   }
 
   return (
@@ -211,6 +274,7 @@ export default function AdminSuppliersPage() {
                   Refresh
                 </Button>
                 <Button
+                  onClick={handleAddClick}
                   className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700"
                 >
                   <Plus className="h-4 w-4" />
@@ -308,16 +372,28 @@ export default function AdminSuppliersPage() {
                       <Button
                         variant="outline"
                         size="sm"
+                        onClick={() => handleEditClick(supplier)}
                         className="flex-1"
                       >
+                        <Edit className="h-4 w-4 mr-1" />
                         Edit
                       </Button>
                       <Button
                         variant="outline"
                         size="sm"
+                        onClick={() => handleViewDetails(supplier)}
                         className="flex-1"
                       >
-                        View Details
+                        <Eye className="h-4 w-4 mr-1" />
+                        View
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleDeleteClick(supplier)}
+                        className="text-red-600 hover:text-red-700 hover:border-red-300"
+                      >
+                        <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
                   </div>
@@ -326,6 +402,32 @@ export default function AdminSuppliersPage() {
             ))}
           </div>
         )}
+
+        {/* Modals */}
+        <SupplierModal
+          isOpen={isAddEditModalOpen}
+          onClose={() => setIsAddEditModalOpen(false)}
+          supplier={selectedSupplier}
+          onSaved={() => {
+            setIsAddEditModalOpen(false)
+            fetchSuppliers()
+          }}
+        />
+
+        <SupplierDetailModal
+          isOpen={isDetailModalOpen}
+          onClose={() => setIsDetailModalOpen(false)}
+          supplier={selectedSupplier}
+        />
+
+        <ConfirmModal
+          isOpen={isDeleteModalOpen}
+          onClose={() => setIsDeleteModalOpen(false)}
+          onConfirm={handleDeleteConfirm}
+          title="Delete Supplier"
+          description={`Are you sure you want to delete "${deletingSupplier?.supplier_name}"? This action cannot be undone.`}
+          confirmText="Delete"
+        />
       </div>
     </div>
   )
