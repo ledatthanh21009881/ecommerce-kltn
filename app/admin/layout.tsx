@@ -144,11 +144,6 @@ function AdminLayoutContent({
       href: '/admin/messenger'
     },
     {
-      name: t('analytics'),
-      icon: BarChart3,
-      href: '/admin/analytics'
-    },
-    {
       name: t('payments'),
       icon: CreditCard,
       href: '/admin/payments'
@@ -157,11 +152,6 @@ function AdminLayoutContent({
       name: t('tracking'),
       icon: Truck,
       href: '/admin/tracking'
-    },
-    {
-      name: t('reviews'),
-      icon: Star,
-      href: '/admin/reviews'
     },
     {
       name: t('settings'),
@@ -210,16 +200,7 @@ function AdminLayoutContent({
                 </Link>
               ))}
             </nav>
-            <div className="border-t p-4">
-              <Button
-                variant="ghost"
-                className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50"
-                onClick={handleLogout}
-              >
-                <LogOut className="mr-3 h-5 w-5" />
-                {t('logout')}
-              </Button>
-            </div>
+            {/* Logout removed */}
           </div>
         </div>
       )}
@@ -246,16 +227,7 @@ function AdminLayoutContent({
               </Link>
             ))}
           </nav>
-          <div className="border-t p-4">
-            <Button
-              variant="ghost"
-              className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50"
-              onClick={handleLogout}
-            >
-              <LogOut className="mr-3 h-5 w-5" />
-              {t('logout')}
-            </Button>
-          </div>
+          {/* Logout removed */}
         </div>
       </div>
 

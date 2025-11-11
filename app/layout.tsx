@@ -1,5 +1,6 @@
 import type React from "react"
 import "./globals.css"
+import "react-quill/dist/quill.snow.css"
 import { Inter, Playfair_Display } from "next/font/google"
 import Header from "@/components/header"
 import Footer from "@/components/footer"

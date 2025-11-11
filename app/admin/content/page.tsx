@@ -1,55 +1,351 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Search, RefreshCw, FileText, Plus, Calendar, Eye, Edit } from 'lucide-react'
+import { Search, RefreshCw, FileText, Plus, Calendar, Eye, Edit, Trash2, Send } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
 import { getAuthData } from '@/lib/admin-auth'
-
-interface Content {
-  content_id: number
-  title: string
-  content_type: string
-  content: string
-  status: string
-  author?: string
-  created_at: string
-  updated_at?: string
-  view_count?: number
-}
+import { Content, ContentCategory } from '@/lib/content-types'
+import ContentModal from '@/components/admin/ContentModal'
+import ContentCategoryModal from '@/components/admin/ContentCategoryModal'
 
 export default function AdminContentPage() {
   const [contents, setContents] = useState<Content[]>([])
+  const [categories, setCategories] = useState<ContentCategory[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [typeFilter, setTypeFilter] = useState('')
+  const [contentModalOpen, setContentModalOpen] = useState(false)
+  const [selectedContent, setSelectedContent] = useState<Content | null>(null)
+  const [categoryModalOpen, setCategoryModalOpen] = useState(false)
+  const [selectedCategory, setSelectedCategory] = useState<ContentCategory | null>(null)
+  const [stats, setStats] = useState({
+    total: 0,
+    pages: 0,
+    blogs: 0,
+    faqs: 0,
+    published: 0
+  })
+
+  // Fetch stats
+  const fetchStats = async () => {
+    try {
+      const { token } = getAuthData()
+      if (!token) return
+      
+      const response = await fetch('/api/backend/v1/content/stats', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      })
+      
+      const data = await response.json()
+      
+      if (data.success && data.data) {
+        setStats({
+          total: data.data.total || 0,
+          pages: data.data.pages || 0,
+          blogs: data.data.blogs || 0,
+          faqs: data.data.faqs || 0,
+          published: data.data.published || 0
+        })
+      }
+    } catch (error) {
+      console.error('Error fetching stats:', error)
+    }
+  }
 
   // Fetch contents
   const fetchContents = async () => {
     try {
       setLoading(true)
-      const response = await fetch('/api/backend/v1/content')
+      const { token } = getAuthData()
+      
+      if (!token) {
+        toast.error('Authentication required')
+        return
+      }
+      
+      const response = await fetch('/api/backend/v1/content', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      })
+      
       const data = await response.json()
       
       if (data.success) {
-        setContents(data.data || [])
+        // Handle paginated response (items) or direct array
+        const contentsList = data.data?.items || data.data || []
+        setContents(Array.isArray(contentsList) ? contentsList : [])
       } else {
-        toast.error('Failed to fetch content')
+        // Still set empty array to avoid errors
+        setContents([])
+        if (data.message && !data.message.includes('empty')) {
+          toast.error(data.message || 'Failed to fetch content')
+        }
       }
     } catch (error) {
       console.error('Error fetching content:', error)
+      setContents([])
       toast.error('Error fetching content')
     } finally {
       setLoading(false)
     }
   }
 
+  // Fetch categories
+  const fetchCategories = async () => {
+    try {
+      const { token } = getAuthData()
+      if (!token) return
+
+      const response = await fetch('/api/backend/v1/content/categories', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      })
+
+      const data = await response.json()
+
+      if (data.success && Array.isArray(data.data)) {
+        setCategories(data.data)
+      }
+    } catch (error) {
+      console.error('Error fetching categories:', error)
+    }
+  }
+
   useEffect(() => {
     fetchContents()
+    fetchStats()
+    fetchCategories()
   }, [])
+
+  // Handlers
+  const handleCreateContent = () => {
+    setSelectedContent(null)
+    setContentModalOpen(true)
+  }
+
+  const handleEditContent = (content: Content) => {
+    setSelectedContent(content)
+    setContentModalOpen(true)
+  }
+
+  const handleDeleteContent = async (id: number) => {
+    if (!confirm('Are you sure you want to delete this content? This action cannot be undone.')) {
+      return
+    }
+
+    try {
+      const { token } = getAuthData()
+      if (!token) {
+        toast.error('Authentication required')
+        return
+      }
+
+      console.log('[DELETE] Frontend request:', { id, url: `/api/backend/v1/content/${id}` })
+
+      const response = await fetch(`/api/backend/v1/content/${id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      })
+
+      console.log('[DELETE] Response status:', {
+        ok: response.ok,
+        status: response.status,
+        statusText: response.statusText,
+        headers: Object.fromEntries(response.headers.entries())
+      })
+
+      // Handle response - support both 204 No Content and JSON response
+      let data: any = { success: false, message: 'Unknown error', status_code: response.status }
+      
+      // If status is 204 No Content, assume success (REST standard)
+      if (response.status === 204) {
+        console.log('[DELETE] Response is 204 No Content - assuming success')
+        data = { success: true, message: 'Content deleted successfully', status_code: 204 }
+      } else {
+        // Try to parse JSON response
+        try {
+          const responseText = await response.text()
+          console.log('[DELETE] Response body:', {
+            length: responseText.length,
+            preview: responseText.substring(0, 200),
+            isEmpty: !responseText.trim()
+          })
+          
+          // If response body is empty but status is OK, assume success
+          if (!responseText.trim()) {
+            if (response.ok || response.status === 200) {
+              console.log('[DELETE] Empty body but status OK - assuming success')
+              data = { success: true, message: 'Content deleted successfully', status_code: response.status }
+            } else {
+              console.warn('[DELETE] Empty response body with non-OK status')
+              data = { success: false, message: `Server returned ${response.status} ${response.statusText || ''}`, status_code: response.status }
+            }
+          } else {
+            // Parse JSON if body is not empty
+            data = JSON.parse(responseText)
+            console.log('[DELETE] Parsed response:', data)
+            
+            // Validate parsed data
+            if (typeof data !== 'object' || data === null) {
+              console.warn('[DELETE] Parsed data is not an object:', data)
+              data = { success: response.ok || response.status === 200, message: 'Invalid response format', status_code: response.status }
+            } else if (Object.keys(data).length === 0) {
+              console.warn('[DELETE] Parsed data is empty object - using status to determine success')
+              data = { 
+                success: response.ok || response.status === 200, 
+                message: response.ok || response.status === 200 ? 'Content deleted successfully' : 'Empty response from server', 
+                status_code: response.status 
+              }
+            }
+          }
+        } catch (parseError) {
+          console.error('[DELETE] Failed to parse JSON:', parseError)
+          // If parsing fails but status is OK, assume success
+          if (response.ok || response.status === 200 || response.status === 204) {
+            data = { success: true, message: 'Content deleted successfully', status_code: response.status }
+          } else {
+            data = {
+              success: false,
+              message: `Invalid response format (HTTP ${response.status})`,
+              status_code: response.status
+            }
+          }
+        }
+      }
+
+      // Ensure we always have success (boolean) and message (string)
+      const success = typeof data?.success === 'boolean' ? data.success : (response.ok || response.status === 200 || response.status === 204)
+      const message = typeof data?.message === 'string' && data.message.trim() 
+        ? data.message.trim() 
+        : (data?.errors || (success ? 'Content deleted successfully' : 'Unknown error occurred'))
+
+      if (success) {
+        toast.success(message)
+        fetchContents()
+        fetchStats()
+      } else {
+        toast.error(message)
+        console.error('[DELETE] Error response:', {
+          status: response.status,
+          statusText: response.statusText,
+          responseData: data,
+          successType: typeof data?.success,
+          messageType: typeof data?.message,
+          hasMessage: !!data?.message
+        })
+      }
+    } catch (error: any) {
+      console.error('[DELETE] Network or other error:', error)
+      toast.error(error?.message || 'Error deleting content. Please check your connection.')
+    }
+  }
+
+  const handlePublishContent = async (id: number) => {
+    try {
+      const { token } = getAuthData()
+      if (!token) {
+        toast.error('Authentication required')
+        return
+      }
+
+      const response = await fetch(`/api/backend/v1/content/${id}/publish`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        toast.success('Content published successfully')
+        fetchContents()
+        fetchStats()
+      } else {
+        toast.error(data.message || 'Failed to publish content')
+      }
+    } catch (error) {
+      console.error('Error publishing content:', error)
+      toast.error('Error publishing content')
+    }
+  }
+
+  const handleViewContent = (content: Content) => {
+    // Open in new tab or navigate to preview
+    if (content.slug && content.status === 'published') {
+      window.open(`/${content.slug}`, '_blank')
+    } else {
+      toast.info('Content is not yet published')
+    }
+  }
+
+  const handleCreateCategory = () => {
+    setSelectedCategory(null)
+    setCategoryModalOpen(true)
+  }
+
+  const handleEditCategory = (category: ContentCategory) => {
+    setSelectedCategory(category)
+    setCategoryModalOpen(true)
+  }
+
+  const handleDeleteCategory = async (id: number) => {
+    if (!confirm('Are you sure you want to delete this category?')) {
+      return
+    }
+
+    try {
+      const { token } = getAuthData()
+      if (!token) {
+        toast.error('Authentication required')
+        return
+      }
+
+      const response = await fetch(`/api/backend/v1/content/categories/${id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        toast.success('Category deleted successfully')
+        fetchCategories()
+      } else {
+        toast.error(data.message || 'Failed to delete category')
+      }
+    } catch (error) {
+      console.error('Error deleting category:', error)
+      toast.error('Error deleting category')
+    }
+  }
+
+  const handleContentSaved = () => {
+    fetchContents()
+    fetchStats()
+  }
+
+  const handleCategorySaved = () => {
+    fetchCategories()
+  }
 
   // Filter contents
   const filteredContents = contents.filter(content => {
@@ -88,18 +384,6 @@ export default function AdminContentPage() {
     }
   }
 
-  const getContentStats = () => {
-    const stats = {
-      total: contents.length,
-      pages: contents.filter(c => c.content_type === 'page').length,
-      blogs: contents.filter(c => c.content_type === 'blog').length,
-      faqs: contents.filter(c => c.content_type === 'faq').length,
-      published: contents.filter(c => c.status === 'published').length
-    }
-    return stats
-  }
-
-  const stats = getContentStats()
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('vi-VN', {
@@ -238,9 +522,18 @@ export default function AdminContentPage() {
                 </Button>
                 <Button
                   className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700"
+                  onClick={handleCreateContent}
                 >
                   <Plus className="h-4 w-4" />
                   Create Content
+                </Button>
+                <Button
+                  variant="outline"
+                  className="flex items-center gap-2"
+                  onClick={handleCreateCategory}
+                >
+                  <Plus className="h-4 w-4" />
+                  Manage Categories
                 </Button>
               </div>
             </div>
@@ -301,15 +594,15 @@ export default function AdminContentPage() {
 
                     {/* Content Preview */}
                     <div className="text-sm text-gray-600 line-clamp-3">
-                      {truncateContent(content.content)}
+                      {truncateContent(content.excerpt || content.content)}
                     </div>
 
                     {/* Meta Info */}
                     <div className="space-y-2 text-sm">
-                      {content.author && (
+                      {(content.author || content.author_name) && (
                         <div className="flex justify-between">
                           <span className="text-gray-600">Author:</span>
-                          <span className="font-medium">{content.author}</span>
+                          <span className="font-medium">{content.author_name || content.author}</span>
                         </div>
                       )}
                       {content.view_count !== undefined && (
@@ -340,6 +633,7 @@ export default function AdminContentPage() {
                         variant="outline"
                         size="sm"
                         className="flex-1"
+                        onClick={() => handleEditContent(content)}
                       >
                         <Edit className="h-4 w-4 mr-2" />
                         Edit
@@ -347,10 +641,26 @@ export default function AdminContentPage() {
                       <Button
                         variant="outline"
                         size="sm"
-                        className="flex-1"
+                        onClick={() => handleViewContent(content)}
                       >
-                        <Eye className="h-4 w-4 mr-2" />
-                        View
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                      {content.status === 'draft' || content.status === 'scheduled' ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handlePublishContent(content.content_id)}
+                        >
+                          <Send className="h-4 w-4" />
+                        </Button>
+                      ) : null}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleDeleteContent(content.content_id)}
+                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                      >
+                        <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
                   </div>
@@ -359,6 +669,28 @@ export default function AdminContentPage() {
             ))}
           </div>
         )}
+
+        {/* Modals */}
+        <ContentModal
+          isOpen={contentModalOpen}
+          onClose={() => {
+            setContentModalOpen(false)
+            setSelectedContent(null)
+          }}
+          content={selectedContent}
+          categories={categories}
+          onSaved={handleContentSaved}
+        />
+
+        <ContentCategoryModal
+          isOpen={categoryModalOpen}
+          onClose={() => {
+            setCategoryModalOpen(false)
+            setSelectedCategory(null)
+          }}
+          category={selectedCategory}
+          onSaved={handleCategorySaved}
+        />
       </div>
     </div>
   )

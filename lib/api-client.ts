@@ -18,15 +18,24 @@ class ApiClient {
     const url = `${API_BASE_URL}${endpoint}`
     
     // Get access token - check for admin token first, then regular token
+    // Use getValidToken() to ensure token is valid and refresh if needed
     let token = localStorage.getItem('adminToken')
     if (!token) {
-      token = tokenManager.getAccessToken()
+      try {
+        token = await tokenManager.getValidToken()
+      } catch (error) {
+        // If getValidToken fails (no refresh token), try to get current token
+        token = tokenManager.getAccessToken()
+        if (!token) {
+          throw new Error('No authentication token found. Please login again.')
+        }
+      }
     }
     
     // Prepare headers
-    const headers: HeadersInit = {
+    const headers: Record<string, string> = {
       'Content-Type': 'application/json',
-      ...options.headers,
+      ...(options.headers as Record<string, string>),
     }
     
     if (token) {
@@ -88,10 +97,30 @@ class ApiClient {
     const data = await response.json()
     
     if (data.success && data.data) {
+      // Parse token to get expiration time if available
+      let expiresAt = Date.now() + (60 * 60 * 1000) // Default: 1 hour
+      const newToken = data.data.access_token || data.data.token
+      
+      if (newToken) {
+        try {
+          // Parse JWT to get exp claim
+          const parts = newToken.split('.')
+          if (parts.length === 3) {
+            const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')))
+            if (payload.exp) {
+              expiresAt = payload.exp * 1000 // Convert to milliseconds
+            }
+          }
+        } catch (error) {
+          console.error('Error parsing token expiration:', error)
+          // Use default expiration
+        }
+      }
+
       tokenManager.saveTokens({
-        token: data.data.access_token,
+        token: newToken,
         refresh_token: data.data.refresh_token,
-        expires_at: Date.now() + (60 * 60 * 1000) // 1 hour
+        expires_at: expiresAt
       })
     } else {
       throw new Error('Invalid refresh response')

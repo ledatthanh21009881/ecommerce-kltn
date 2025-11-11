@@ -31,6 +31,38 @@ export const apiFetch = async (endpoint: string, options: RequestInit = {}) => {
   return response.json();
 };
 
+// Safe fetch (không throw), luôn trả { ok, status, data }
+export const fetchJsonSafe = async (
+  endpoint: string,
+  options: RequestInit = {}
+): Promise<{ ok: boolean; status: number; data: any }> => {
+  try {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('adminToken') : null;
+    const defaultHeaders = {
+      'Content-Type': 'application/json',
+      ...(token && { 'Authorization': `Bearer ${token}` }),
+    } as Record<string, string>;
+
+    const response = await fetch(apiUrl(endpoint), {
+      ...options,
+      headers: {
+        ...defaultHeaders,
+        ...(options.headers as any),
+      },
+    });
+    const status = response.status;
+    let data: any = null;
+    try {
+      data = await response.json();
+    } catch (e) {
+      data = null;
+    }
+    return { ok: response.ok, status, data };
+  } catch (e) {
+    return { ok: false, status: 0, data: null };
+  }
+};
+
 // Specific API functions
 export const ordersApi = {
   getAll: (params?: URLSearchParams) => 

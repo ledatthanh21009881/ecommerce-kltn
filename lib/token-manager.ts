@@ -39,12 +39,42 @@ class TokenManager {
 
   // Kiểm tra token có hết hạn không
   isTokenExpired(): boolean {
-    const expiresAt = localStorage.getItem('token_expires_at')
-    if (!expiresAt) return true
-    
-    // Thêm buffer 5 phút trước khi hết hạn
-    const bufferTime = 5 * 60 * 1000 // 5 phút
-    return Date.now() + bufferTime >= parseInt(expiresAt)
+    const token = this.getAccessToken()
+    if (!token) return true
+
+    try {
+      // Parse JWT token to get exp claim
+      const parts = token.split('.')
+      if (parts.length !== 3) {
+        return true
+      }
+
+      // Decode payload (second part)
+      const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')))
+      
+      // Check if exp claim exists
+      if (!payload.exp) {
+        // Fallback to expires_at from localStorage if exp not in token
+        const expiresAt = localStorage.getItem('token_expires_at')
+        if (!expiresAt) return true
+        
+        const bufferTime = 5 * 60 * 1000 // 5 phút
+        return Date.now() + bufferTime >= parseInt(expiresAt)
+      }
+
+      // Check expiration with 5 minute buffer
+      const bufferTime = 5 * 60 * 1000 // 5 phút
+      const expirationTime = payload.exp * 1000 // Convert to milliseconds
+      return Date.now() + bufferTime >= expirationTime
+    } catch (error) {
+      console.error('Error parsing token:', error)
+      // Fallback to expires_at from localStorage
+      const expiresAt = localStorage.getItem('token_expires_at')
+      if (!expiresAt) return true
+      
+      const bufferTime = 5 * 60 * 1000 // 5 phút
+      return Date.now() + bufferTime >= parseInt(expiresAt)
+    }
   }
 
   // Xóa tất cả token
@@ -98,10 +128,30 @@ class TokenManager {
         throw new Error(data.message || 'Refresh token failed')
       }
 
+      // Parse token to get expiration time if available
+      let expiresAt = Date.now() + (60 * 60 * 1000) // Default: 1 giờ
+      const newToken = data.data.access_token || data.data.token
+      
+      if (newToken) {
+        try {
+          // Parse JWT to get exp claim
+          const parts = newToken.split('.')
+          if (parts.length === 3) {
+            const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')))
+            if (payload.exp) {
+              expiresAt = payload.exp * 1000 // Convert to milliseconds
+            }
+          }
+        } catch (error) {
+          console.error('Error parsing token expiration:', error)
+          // Use default expiration
+        }
+      }
+
       const tokenData: TokenData = {
-        token: data.data.access_token || data.data.token, // Support both field names
+        token: newToken, // Support both field names
         refresh_token: data.data.refresh_token,
-        expires_at: Date.now() + (60 * 60 * 1000) // 1 giờ
+        expires_at: expiresAt
       }
 
       // Lưu token mới
