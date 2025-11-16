@@ -6,7 +6,7 @@ import { Language, TranslationKey, getTranslation } from '@/lib/ui-translations'
 interface LanguageContextType {
   language: Language
   setLanguage: (language: Language) => void
-  t: (key: TranslationKey) => string
+  t: (key: TranslationKey, params?: Record<string, string>) => string
 }
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined)
@@ -39,8 +39,14 @@ export const LanguageProvider: React.FC<LanguageProviderProps> = ({ children }) 
     localStorage.setItem('adminLanguage', language)
   }, [language])
 
-  const t = (key: TranslationKey): string => {
-    return getTranslation(key, language)
+  const t = (key: TranslationKey, params?: Record<string, string>): string => {
+    let translation = getTranslation(key, language)
+    if (params) {
+      Object.keys(params).forEach(paramKey => {
+        translation = translation.replace(`{${paramKey}}`, params[paramKey])
+      })
+    }
+    return translation
   }
 
   const value: LanguageContextType = {

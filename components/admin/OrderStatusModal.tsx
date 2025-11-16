@@ -99,9 +99,9 @@ export default function OrderStatusModal({ isOpen, onClose, order, onStatusUpdat
     } catch (error) {
       console.error('Error updating order status:', error)
       console.error('Network error details:', {
-        message: error.message,
-        stack: error.stack,
-        type: error.constructor.name
+        message: (error as Error).message,
+        stack: (error as Error).stack,
+        type: (error as Error).constructor.name
       })
       
       // Hiển thị thông báo lỗi thân thiện hơn

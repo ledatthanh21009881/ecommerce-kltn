@@ -84,16 +84,24 @@ export default function AssignShipperModal({ isOpen, onClose, order, onShipperAs
       console.log('Response data:', data)
       
       if (data.success) {
-        toast.success('Shipper assigned successfully')
+        // Check if it's a reassignment or already assigned
+        const message = data.message || 'Shipper assigned successfully'
+        if (message.includes('reassigned')) {
+          toast.success(t('shipperReassignedSuccessfully'))
+        } else if (message.includes('already assigned')) {
+          toast.success(t('shipperAlreadyAssigned'))
+        } else {
+          toast.success(t('shipperAssignedSuccessfully'))
+        }
         onShipperAssigned?.()
         onClose()
         setSelectedShipper(null)
       } else {
-        toast.error(data.message || 'Failed to assign shipper')
+        toast.error(data.message || t('failedToAssignShipper'))
       }
     } catch (error) {
       console.error('Error assigning shipper:', error)
-      toast.error('Error assigning shipper')
+      toast.error(t('errorAssigningShipper'))
     } finally {
       setLoading(false)
     }

@@ -187,8 +187,8 @@ export default function AdminOrdersPage() {
     const handleGenerateInvoice = async (order: Order, format: 'pdf' | 'email') => {
     // Kiểm tra trạng thái đơn hàng
     if (order.status !== 'completed') {
-      const action = format === 'pdf' ? 'In hóa đơn' : 'Gửi hóa đơn qua email'
-      toast.error(`${action} chỉ có thể thực hiện khi đơn hàng đã hoàn thành (Completed)`)
+      const action = format === 'pdf' ? t('printInvoice') : t('sendInvoice')
+      toast.error(t('actionRequiresCompletedStatus', { action }))
       return
     }
 
@@ -209,24 +209,24 @@ export default function AdminOrdersPage() {
           a.download = `invoice-${order.order_id}.pdf`
           a.click()
           window.URL.revokeObjectURL(url)
-          toast.success('Tải hóa đơn PDF thành công!')
+          toast.success(t('invoicePdfDownloadedSuccessfully'))
         } else {
           const data = await response.json()
-          toast.error(data.message || 'Lỗi khi tạo hóa đơn PDF')
+          toast.error(data.message || t('errorGeneratingInvoicePdf'))
         }
       } else if (format === 'email') {
         // Sử dụng ordersApi.sendInvoice cho email
         const data = await ordersApi.sendInvoice(order.order_id.toString(), { format: 'email' })
         
         if (data.success) {
-          toast.success('Hóa đơn đã được gửi qua email!')
+          toast.success(t('invoiceSentByEmailSuccessfully'))
         } else {
-          toast.error(data.message || 'Lỗi khi gửi hóa đơn qua email')
+          toast.error(data.message || t('errorSendingInvoiceByEmail'))
         }
       }
     } catch (error) {
       console.error('Error generating invoice:', error)
-      toast.error('Lỗi khi tạo hóa đơn')
+      toast.error(t('errorGeneratingInvoice'))
     }
   }
 
@@ -239,15 +239,15 @@ export default function AdminOrdersPage() {
       const data = await ordersApi.delete(deletingOrderId.toString())
       
       if (data.success) {
-        toast.success('Order cancelled successfully')
+        toast.success(t('orderCancelledSuccessfully'))
         fetchOrders()
         fetchStatistics()
       } else {
-        toast.error(data.message || 'Failed to cancel order')
+        toast.error(data.message || t('failedToCancelOrder'))
       }
     } catch (error) {
       console.error('Error cancelling order:', error)
-      toast.error('Error cancelling order')
+      toast.error(t('errorCancellingOrder'))
     } finally {
       setIsDeleteModalOpen(false)
       setDeletingOrderId(null)
@@ -278,13 +278,13 @@ export default function AdminOrdersPage() {
         a.click()
         window.URL.revokeObjectURL(url)
         
-        toast.success('Orders exported successfully')
+        toast.success(t('ordersExportedSuccessfully'))
       } else {
-        toast.error('Failed to export orders')
+        toast.error(t('failedToExportOrders'))
       }
     } catch (error) {
       console.error('Error exporting orders:', error)
-      toast.error('Error exporting orders')
+      toast.error(t('errorExportingOrders'))
     }
 
   }
@@ -586,9 +586,9 @@ export default function AdminOrdersPage() {
                             className={order.status !== 'completed' ? 'opacity-50 cursor-not-allowed' : ''}
                           >
                             <FileText className="mr-2 h-4 w-4" />
-                            In hóa đơn
+                            {t('printInvoice')}
                             {order.status !== 'completed' && (
-                              <span className="ml-2 text-xs text-slate-500">(Cần Completed)</span>
+                              <span className="ml-2 text-xs text-slate-500">({t('requiresCompleted')})</span>
                             )}
                           </DropdownMenuItem>
                           <DropdownMenuItem 
@@ -596,9 +596,9 @@ export default function AdminOrdersPage() {
                             className={order.status !== 'completed' ? 'opacity-50 cursor-not-allowed' : ''}
                           >
                             <Mail className="mr-2 h-4 w-4" />
-                            Gửi mail
+                            {t('sendMail')}
                             {order.status !== 'completed' && (
-                              <span className="ml-2 text-xs text-slate-500">(Cần Completed)</span>
+                              <span className="ml-2 text-xs text-slate-500">({t('requiresCompleted')})</span>
                             )}
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
@@ -608,7 +608,7 @@ export default function AdminOrdersPage() {
                               className="text-red-600 focus:text-red-600"
                             >
                               <XCircle className="mr-2 h-4 w-4" />
-                              Cancel Order
+                              {t('cancelOrder')}
                             </DropdownMenuItem>
                           )}
                         </DropdownMenuContent>
@@ -648,10 +648,10 @@ export default function AdminOrdersPage() {
         isOpen={isDeleteModalOpen}
         onClose={() => setIsDeleteModalOpen(false)}
         onConfirm={confirmCancelOrder}
-        title="Cancel Order"
-        description="Are you sure you want to cancel this order? This action cannot be undone."
-        confirmText="Cancel Order"
-        cancelText="Keep Order"
+        title={t('cancelOrder')}
+        description={t('cancelOrderConfirm')}
+        confirmText={t('cancelOrder')}
+        cancelText={t('keepOrder')}
       />
     </div>
   )
