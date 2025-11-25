@@ -8,6 +8,7 @@ import { Minus, Plus, X, ArrowLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
 import { tokenStore } from '@/lib/tokenStore'
+import { getProductById } from '@/lib/products'
 
 interface CartItem {
   item_id: number
@@ -37,6 +38,8 @@ export default function CartPage() {
   })
   const [loading, setLoading] = useState(true)
   const [updating, setUpdating] = useState<number | null>(null)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [itemStockStatus, setItemStockStatus] = useState<Record<number, { stock: number; isOutOfStock: boolean }>>({})
 
   useEffect(() => {
     loadCart()
@@ -51,6 +54,53 @@ export default function CartPage() {
       window.removeEventListener('cartUpdated', handleCartUpdate)
     }
   }, [])
+
+  // Fetch stock status for each item
+  useEffect(() => {
+    const checkItemStock = async () => {
+      if (cartData.items.length === 0) {
+        setItemStockStatus({})
+        return
+      }
+      
+      const stockStatus: Record<number, { stock: number; isOutOfStock: boolean }> = {}
+      
+      for (const item of cartData.items) {
+        try {
+          // Fetch product to get variant stock
+          const product = await getProductById(item.product_id)
+          const variant = product.variants?.find(v => v.variant_id === item.variant_id)
+          
+          if (variant) {
+            stockStatus[item.item_id] = {
+              stock: variant.stock_quantity || 0,
+              isOutOfStock: (variant.stock_quantity || 0) < item.quantity
+            }
+          } else {
+            stockStatus[item.item_id] = {
+              stock: 0,
+              isOutOfStock: true
+            }
+          }
+        } catch (error) {
+          console.error(`Error checking stock for item ${item.item_id}:`, error)
+          stockStatus[item.item_id] = {
+            stock: 0,
+            isOutOfStock: true
+          }
+        }
+      }
+      
+      setItemStockStatus(stockStatus)
+    }
+    
+    checkItemStock()
+  }, [cartData.items])
+
+  // Check if any item is out of stock
+  const hasOutOfStockItems = () => {
+    return Object.values(itemStockStatus).some(status => status.isOutOfStock)
+  }
 
   const loadCart = async () => {
     try {
@@ -129,9 +179,18 @@ export default function CartPage() {
         
         if (data.success) {
           setCartData(data.data)
+          setErrorMessage(null) // Clear error on success
           toast.success('Đã cập nhật giỏ hàng')
         } else {
-          toast.error(data.message || 'Không thể cập nhật')
+          // Check if it's an insufficient stock error
+          if (data.message?.includes('Insufficient stock') || data.message?.includes('Available:')) {
+            const vietnameseMessage = formatErrorMessage(data.message)
+            setErrorMessage(vietnameseMessage)
+            // Auto-hide after 8 seconds
+            setTimeout(() => setErrorMessage(null), 8000)
+          } else {
+            toast.error(data.message || 'Không thể cập nhật')
+          }
           // Reload cart to revert changes
           loadCart()
         }
@@ -204,6 +263,21 @@ export default function CartPage() {
     }).format(price) + ' ₫'
   }
 
+  // Format error message to Vietnamese
+  const formatErrorMessage = (message: string): string => {
+    if (message.includes('Insufficient stock')) {
+      // Extract available quantity if present
+      const availableMatch = message.match(/Available:\s*(\d+)/i)
+      if (availableMatch) {
+        const available = availableMatch[1]
+        return `Không đủ hàng trong kho. Số lượng còn lại: ${available}`
+      }
+      return 'Không đủ hàng trong kho'
+    }
+    // Return original message if not a stock error
+    return message
+  }
+
   if (loading) {
     return (
       <main className="pt-24">
@@ -216,6 +290,32 @@ export default function CartPage() {
 
   return (
     <main className="pt-24">
+      {/* Error Banner - Top Right */}
+      {errorMessage && (
+        <div className="fixed top-4 right-4 z-50 max-w-md animate-in slide-in-from-top-5">
+          <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-lg shadow-lg">
+            <div className="flex items-start">
+              <div className="flex-shrink-0">
+                <svg className="h-6 w-6 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <div className="ml-3 flex-1">
+                <p className="text-base font-semibold text-red-800">{errorMessage}</p>
+              </div>
+              <button
+                onClick={() => setErrorMessage(null)}
+                className="ml-4 flex-shrink-0 text-red-500 hover:text-red-700 transition-colors"
+              >
+                <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      
       <div className="p-8 max-w-[85%] ml-[224px] mr-8">
         {/* Header */}
         <div className="mb-8">
@@ -238,69 +338,82 @@ export default function CartPage() {
             <div className="lg:col-span-2 space-y-8">
               {/* Cart Items */}
               <div className="space-y-6">
-                {cartData.items.map((item) => (
-                  <div key={item.item_id} className="flex gap-6 pb-6 border-b border-gray-200">
-                    {/* Product Image */}
-                    <div className="relative w-24 h-32 flex-shrink-0 overflow-hidden bg-gray-100">
-                      {item.image_url ? (
-                        <Image
-                          src={item.image_url}
-                          alt={item.product_name}
-                          fill
-                          className="object-cover"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">
-                          No Image
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Product Info */}
-                    <div className="flex-1">
-                      <div className="flex justify-between items-start mb-2">
-                        <div>
-                          <h3 className="font-serif text-lg font-light mb-1">{item.product_name}</h3>
-                          <p className="text-sm text-gray-500 mb-2">
-                            Default Title / {item.size_name}
-                          </p>
-                        </div>
-                        <button
-                          onClick={() => removeItem(item.item_id)}
-                          className="text-gray-400 hover:text-black transition-colors"
-                        >
-                          <X className="h-5 w-5" />
-                        </button>
+                {cartData.items.map((item) => {
+                  const stockStatus = itemStockStatus[item.item_id]
+                  const isOutOfStock = stockStatus?.isOutOfStock || false
+                  
+                  return (
+                    <div 
+                      key={item.item_id} 
+                      className={`flex gap-6 pb-6 border-b border-gray-200 ${isOutOfStock ? 'opacity-50' : ''}`}
+                    >
+                      {/* Product Image */}
+                      <div className="relative w-24 h-32 flex-shrink-0 overflow-hidden bg-gray-100">
+                        {item.image_url ? (
+                          <Image
+                            src={item.image_url}
+                            alt={item.product_name}
+                            fill
+                            className="object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">
+                            No Image
+                          </div>
+                        )}
                       </div>
 
-                      {/* Quantity Selector and Price */}
-                      <div className="flex items-center justify-between">
-                        <div className="flex h-8 w-24 items-center border border-gray-300">
-                          <button
-                            className="flex h-full w-8 items-center justify-center border-r border-gray-300 hover:bg-gray-100"
-                            onClick={() => updateQuantity(item.item_id, item.quantity - 1)}
-                            disabled={updating === item.item_id || item.quantity <= 1}
-                          >
-                            <Minus className="h-3 w-3" />
-                          </button>
-                          <div className="flex h-full flex-1 items-center justify-center text-sm">
-                            {updating === item.item_id ? '...' : item.quantity}
+                      {/* Product Info */}
+                      <div className="flex-1">
+                        <div className="flex justify-between items-start mb-2">
+                          <div>
+                            <h3 className="font-serif text-lg font-light mb-1">{item.product_name}</h3>
+                            <p className="text-sm text-gray-500 mb-2">
+                              Default Title / {item.size_name}
+                            </p>
+                            {isOutOfStock && (
+                              <p className="text-xs text-red-600 mb-2">
+                                Sản phẩm đã hết hàng (Còn lại: {stockStatus?.stock || 0})
+                              </p>
+                            )}
                           </div>
                           <button
-                            className="flex h-full w-8 items-center justify-center border-l border-gray-300 hover:bg-gray-100"
-                            onClick={() => updateQuantity(item.item_id, item.quantity + 1)}
-                            disabled={updating === item.item_id}
+                            onClick={() => removeItem(item.item_id)}
+                            className="text-gray-400 hover:text-black transition-colors"
                           >
-                            <Plus className="h-3 w-3" />
+                            <X className="h-5 w-5" />
                           </button>
                         </div>
-                        <p className="text-sm font-medium">
-                          {formatPrice(item.quantity * item.unit_price_snapshot)}
-                        </p>
+
+                        {/* Quantity Selector and Price */}
+                        <div className="flex items-center justify-between">
+                          <div className={`flex h-8 w-24 items-center border border-gray-300 ${isOutOfStock ? 'opacity-50' : ''}`}>
+                            <button
+                              className="flex h-full w-8 items-center justify-center border-r border-gray-300 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
+                              onClick={() => updateQuantity(item.item_id, item.quantity - 1)}
+                              disabled={updating === item.item_id || item.quantity <= 1 || isOutOfStock}
+                            >
+                              <Minus className="h-3 w-3" />
+                            </button>
+                            <div className="flex h-full flex-1 items-center justify-center text-sm">
+                              {updating === item.item_id ? '...' : item.quantity}
+                            </div>
+                            <button
+                              className="flex h-full w-8 items-center justify-center border-l border-gray-300 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
+                              onClick={() => updateQuantity(item.item_id, item.quantity + 1)}
+                              disabled={updating === item.item_id || isOutOfStock || (stockStatus && item.quantity >= stockStatus.stock)}
+                            >
+                              <Plus className="h-3 w-3" />
+                            </button>
+                          </div>
+                          <p className="text-sm font-medium">
+                            {formatPrice(item.quantity * item.unit_price_snapshot)}
+                          </p>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
 
             </div>
@@ -326,8 +439,13 @@ export default function CartPage() {
                 </div>
 
                 <Button
-                  className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-white mb-4"
+                  className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-white mb-4 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                  disabled={hasOutOfStockItems()}
                   onClick={() => {
+                    if (hasOutOfStockItems()) {
+                      toast.error('Vui lòng xóa sản phẩm hết hàng trước khi thanh toán')
+                      return
+                    }
                     const token = tokenStore.getAccessToken()
                     if (!token) {
                       toast.error('Vui lòng đăng nhập để thanh toán')

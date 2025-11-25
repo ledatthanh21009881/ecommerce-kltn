@@ -74,6 +74,7 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
   const [loading, setLoading] = useState(true)
   const [selectedSize, setSelectedSize] = useState<string>("")
   const [quantity, setQuantity] = useState(1)
+  const [cartItems, setCartItems] = useState<any[]>([])
 
   // Unwrap params
   const resolvedParams = use(params)
@@ -113,6 +114,71 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
     }
   }, [resolvedParams.id])
 
+  // Fetch cart data to check current quantity in cart
+  useEffect(() => {
+    const fetchCart = async () => {
+      try {
+        const { tokenStore } = await import('@/lib/tokenStore')
+        const token = tokenStore.getAccessToken()
+        
+        if (token) {
+          const response = await fetch('/api/backend/v1/cart', {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          })
+          const data = await response.json()
+          if (data.success && data.data?.items) {
+            setCartItems(data.data.items)
+          }
+        } else {
+          // Check guest cart
+          const guestCart = localStorage.getItem('guestCart')
+          if (guestCart) {
+            setCartItems(JSON.parse(guestCart))
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching cart:', error)
+      }
+    }
+    
+    fetchCart()
+    
+    // Listen for cart updates
+    const handleCartUpdate = () => {
+      fetchCart()
+    }
+    window.addEventListener('cartUpdated', handleCartUpdate)
+    
+    return () => {
+      window.removeEventListener('cartUpdated', handleCartUpdate)
+    }
+  }, [])
+
+  // Reset quantity when size changes if quantity exceeds new size's stock
+  useEffect(() => {
+    if (selectedSize && product) {
+      const variant = product.variants?.find(
+        v => v.size_name === selectedSize && v.is_active === 1
+      )
+      if (variant && variant.stock_quantity > 0) {
+        // Calculate current cart quantity for this variant
+        const cartItem = cartItems.find(item => item.variant_id === variant.variant_id)
+        const currentCartQuantity = cartItem ? cartItem.quantity : 0
+        const maxAllowed = variant.stock_quantity - currentCartQuantity
+        setQuantity(prevQuantity => {
+          if (prevQuantity > maxAllowed) {
+            return Math.max(1, maxAllowed)
+          }
+          return prevQuantity
+        })
+      } else {
+        setQuantity(1)
+      }
+    }
+  }, [selectedSize, product, cartItems])
+
   // Loading state
   if (loading) {
     return (
@@ -150,6 +216,41 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
   const productImages = getProductImages(product)
   const productPrice = getProductPrice(product)
   const availableSizes = getAvailableSizes(product)
+
+  // Helper function to get selected variant
+  const getSelectedVariant = () => {
+    if (!selectedSize || !product.variants) return null
+    return product.variants.find(
+      v => v.size_name === selectedSize && v.is_active === 1
+    )
+  }
+
+  // Check if selected variant is out of stock
+  const isVariantOutOfStock = () => {
+    const variant = getSelectedVariant()
+    return !variant || variant.stock_quantity <= 0
+  }
+
+  // Helper function to get current quantity in cart for selected variant
+  const getCurrentCartQuantity = () => {
+    if (!selectedSize || !product) return 0
+    const variant = product.variants?.find(
+      v => v.size_name === selectedSize && v.is_active === 1
+    )
+    if (!variant) return 0
+    
+    const cartItem = cartItems.find(item => item.variant_id === variant.variant_id)
+    return cartItem ? cartItem.quantity : 0
+  }
+
+  // Check if can add to cart (quantity + cart quantity <= stock)
+  const canAddToCart = () => {
+    const variant = getSelectedVariant()
+    if (!variant || variant.stock_quantity <= 0) return false
+    
+    const currentCartQuantity = getCurrentCartQuantity()
+    return (quantity + currentCartQuantity) <= variant.stock_quantity
+  }
 
   return (
     <main className="pt-8">
@@ -250,20 +351,63 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
                 </div>
                 
                 <button 
-                  className="group relative flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 bg-white transition-all duration-300 hover:border-gray-400 hover:shadow-sm"
-                  onClick={() => setQuantity(quantity + 1)}
+                  className="group relative flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 bg-white transition-all duration-300 hover:border-gray-400 hover:shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                  onClick={() => {
+                    const variant = getSelectedVariant()
+                    const currentCartQuantity = getCurrentCartQuantity()
+                    
+                    if (variant && variant.stock_quantity) {
+                      const maxAllowed = variant.stock_quantity - currentCartQuantity
+                      if (quantity < maxAllowed) {
+                        setQuantity(quantity + 1)
+                      } else {
+                        toast.error(`Không đủ hàng trong kho. Số lượng còn lại có thể thêm: ${maxAllowed}`)
+                      }
+                    } else {
+                      setQuantity(quantity + 1)
+                    }
+                  }}
+                  disabled={(() => {
+                    const variant = getSelectedVariant()
+                    const currentCartQuantity = getCurrentCartQuantity()
+                    if (!variant) return false
+                    const maxAllowed = variant.stock_quantity - currentCartQuantity
+                    return quantity >= maxAllowed
+                  })()}
                 >
                   <Plus className="h-2 w-2 text-gray-500 transition-colors group-hover:text-gray-700" />
                   <div className="absolute inset-0 rounded-full bg-gray-50 opacity-0 transition-opacity group-hover:opacity-100"></div>
                 </button>
               </div>
+              {(() => {
+                const variant = getSelectedVariant()
+                const currentCartQuantity = getCurrentCartQuantity()
+                if (variant && variant.stock_quantity && variant.stock_quantity > 0) {
+                  const availableToAdd = variant.stock_quantity - currentCartQuantity
+                  return (
+                    <p className="mt-2 text-xs text-gray-500">
+                      Còn lại: {variant.stock_quantity} sản phẩm
+                      {currentCartQuantity > 0 && (
+                        <span className="ml-2 text-gray-400">
+                          (Đã có {currentCartQuantity} trong giỏ, có thể thêm: {availableToAdd})
+                        </span>
+                      )}
+                    </p>
+                  )
+                }
+                return null
+              })()}
             </div>
 
             {/* Add to Cart Button */}
             <div className="relative overflow-hidden border border-black">
               <button 
-                className="relative h-10 w-full bg-black text-white text-sm font-normal uppercase tracking-wider transition-all duration-300 ease-in-out hover:bg-white hover:text-black group"
-                disabled={availableSizes.length === 0 || !selectedSize}
+                className={`relative h-10 w-full text-sm font-normal uppercase tracking-wider transition-all duration-300 ease-in-out group ${
+                  isVariantOutOfStock() || availableSizes.length === 0 || !selectedSize || !canAddToCart()
+                    ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
+                    : 'bg-black text-white hover:bg-white hover:text-black'
+                }`}
+                disabled={availableSizes.length === 0 || !selectedSize || isVariantOutOfStock() || !canAddToCart()}
                 onClick={async () => {
                   if (!selectedSize) {
                     toast.error("Vui lòng chọn kích thước")
@@ -277,6 +421,24 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
 
                   if (!selectedVariant) {
                     toast.error("Kích thước đã chọn không còn hàng")
+                    return
+                  }
+
+                  // Check if quantity exceeds stock
+                  if (quantity > selectedVariant.stock_quantity) {
+                    toast.error(`Không đủ hàng trong kho. Số lượng còn lại: ${selectedVariant.stock_quantity}`)
+                    setQuantity(selectedVariant.stock_quantity)
+                    return
+                  }
+
+                  // Check if quantity + cart quantity exceeds stock
+                  const currentCartQuantity = getCurrentCartQuantity()
+                  if (quantity + currentCartQuantity > selectedVariant.stock_quantity) {
+                    const availableToAdd = selectedVariant.stock_quantity - currentCartQuantity
+                    toast.error(`Không đủ hàng trong kho. Số lượng còn lại có thể thêm: ${availableToAdd}`)
+                    if (availableToAdd > 0) {
+                      setQuantity(availableToAdd)
+                    }
                     return
                   }
 
@@ -348,7 +510,7 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
                 }}
               >
                 <span className="relative z-10 font-sans font-bold uppercase tracking-wider">
-                  {availableSizes.length === 0 ? "Out of Stock" : "THÊM VÀO GIỎ"}
+                  {isVariantOutOfStock() ? "Hết Hàng" : (availableSizes.length === 0 ? "Out of Stock" : "THÊM VÀO GIỎ")}
                 </span>
                 <div className="absolute inset-0 bg-white transform translate-x-full transition-transform duration-300 ease-in-out group-hover:translate-x-0"></div>
               </button>
