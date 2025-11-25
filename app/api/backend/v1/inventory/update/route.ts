@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-
-const BACKEND_URL = 'http://localhost:8000'
+import { backendUrl } from '@/app/api/backend/config'
 
 export async function GET(request: NextRequest) {
   try {
@@ -16,7 +15,7 @@ export async function GET(request: NextRequest) {
 
     console.log('Inventory GET proxy for ID:', id)
 
-    const response = await fetch(`${BACKEND_URL}/api/v1/inventory/${id}`, {
+    const response = await fetch(backendUrl(`/api/v1/inventory/${id}`), {
       method: 'GET',
       headers: {
         'Accept': 'application/json',
@@ -74,7 +73,7 @@ export async function PUT(request: NextRequest) {
     console.log('Inventory PUT proxy for ID:', id)
     console.log('Update data:', body)
 
-    const response = await fetch(`${BACKEND_URL}/api/v1/inventory/${id}`, {
+    const response = await fetch(backendUrl(`/api/v1/inventory/${id}`), {
       method: 'PUT',
       headers: {
         'Accept': 'application/json',

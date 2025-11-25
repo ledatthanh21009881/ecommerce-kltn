@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-
-const BACKEND_URL = 'http://localhost:8000'
+import { backendUrl } from '@/app/api/backend/config'
 
 export async function GET(request: NextRequest) {
   try {
@@ -9,7 +8,7 @@ export async function GET(request: NextRequest) {
     const authHeader = request.headers.get('Authorization')
     console.log('Authorization header:', authHeader)
     
-    const response = await fetch(`${BACKEND_URL}/api/v1/inventory`, {
+    const response = await fetch(backendUrl('/api/v1/inventory'), {
       method: 'GET',
       headers: {
         'Accept': 'application/json',
@@ -66,7 +65,7 @@ export async function POST(request: NextRequest) {
       headers['Authorization'] = authHeader;
     }
     
-    const response = await fetch('http://localhost:8000/api/v1/inventory', {
+    const response = await fetch(backendUrl('/api/v1/inventory'), {
       method: 'POST',
       headers,
       body: JSON.stringify(body),

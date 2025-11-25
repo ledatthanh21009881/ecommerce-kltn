@@ -1,143 +1,350 @@
-"use client"
+'use client'
 
-import { useState } from "react"
-import Image from "next/image"
-import Link from "next/link"
-import { Minus, Plus, X } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { motion } from "framer-motion"
+import { useState, useEffect } from 'react'
+import Image from 'next/image'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { Minus, Plus, X, ArrowLeft } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { toast } from 'sonner'
+import { tokenStore } from '@/lib/tokenStore'
 
-// Sample cart data
-const initialCartItems = [
-  {
-    id: 1,
-    name: "VIVIENNE Silk Blouse",
-    price: 120,
-    color: "White",
-    size: "M",
-    quantity: 1,
-    image: "/placeholder.svg?height=120&width=90",
-  },
-  {
-    id: 2,
-    name: "Tailored Wool Trousers",
-    price: 180,
-    color: "Black",
-    size: "S",
-    quantity: 1,
-    image: "/placeholder.svg?height=120&width=90",
-  },
-]
+interface CartItem {
+  item_id: number
+  variant_id: number
+  quantity: number
+  unit_price_snapshot: number
+  product_id: number
+  product_name: string
+  size_name: string
+  image_url?: string
+}
+
+interface CartData {
+  items: CartItem[]
+  item_count: number
+  subtotal: number
+  total: number
+}
 
 export default function CartPage() {
-  const [cartItems, setCartItems] = useState(initialCartItems)
+  const router = useRouter()
+  const [cartData, setCartData] = useState<CartData>({
+    items: [],
+    item_count: 0,
+    subtotal: 0,
+    total: 0
+  })
+  const [loading, setLoading] = useState(true)
+  const [updating, setUpdating] = useState<number | null>(null)
 
-  const updateQuantity = (id, newQuantity) => {
+  useEffect(() => {
+    loadCart()
+    
+    // Listen for cart updates
+    const handleCartUpdate = () => {
+      loadCart()
+    }
+    window.addEventListener('cartUpdated', handleCartUpdate)
+    
+    return () => {
+      window.removeEventListener('cartUpdated', handleCartUpdate)
+    }
+  }, [])
+
+  const loadCart = async () => {
+    try {
+      setLoading(true)
+      const token = tokenStore.getAccessToken()
+      
+      if (token) {
+        // Load user cart
+        const response = await fetch('/api/backend/v1/cart', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        })
+        
+        const data = await response.json()
+        if (data.success) {
+          setCartData(data.data)
+        } else {
+          // Fallback to guest cart
+          loadGuestCart()
+        }
+      } else {
+        // Load guest cart
+        loadGuestCart()
+      }
+    } catch (error) {
+      console.error('Error loading cart:', error)
+      loadGuestCart()
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const loadGuestCart = () => {
+    try {
+      const guestCart = localStorage.getItem('guestCart')
+      if (guestCart) {
+        const items = JSON.parse(guestCart)
+        const subtotal = items.reduce((sum: number, item: any) => 
+          sum + (item.quantity * (item.unit_price_snapshot || item.list_price || 0)), 0
+        )
+        setCartData({
+          items: items,
+          item_count: items.length,
+          subtotal: subtotal,
+          total: subtotal
+        })
+      }
+    } catch (error) {
+      console.error('Error loading guest cart:', error)
+    }
+  }
+
+  const updateQuantity = async (itemId: number, newQuantity: number) => {
     if (newQuantity < 1) return
-    setCartItems(cartItems.map((item) => (item.id === id ? { ...item, quantity: newQuantity } : item)))
+
+    setUpdating(itemId)
+    
+    try {
+      const token = tokenStore.getAccessToken()
+      
+      if (token) {
+        console.log('🛒 Frontend: Updating quantity for item', itemId, 'to', newQuantity)
+        const response = await fetch(`/api/backend/v1/cart/update?item_id=${itemId}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ quantity: newQuantity })
+        })
+
+        console.log('🛒 Frontend: Response status', response.status)
+        const data = await response.json()
+        console.log('🛒 Frontend: Response data', data)
+        
+        if (data.success) {
+          setCartData(data.data)
+          toast.success('Đã cập nhật giỏ hàng')
+        } else {
+          toast.error(data.message || 'Không thể cập nhật')
+          // Reload cart to revert changes
+          loadCart()
+        }
+      } else {
+        // Update guest cart
+        const guestCart = JSON.parse(localStorage.getItem('guestCart') || '[]')
+        const updatedCart = guestCart.map((item: any) => 
+          item.item_id === itemId ? { ...item, quantity: newQuantity } : item
+        ).filter((item: any) => item.quantity > 0)
+        
+        localStorage.setItem('guestCart', JSON.stringify(updatedCart))
+        loadGuestCart()
+        toast.success('Đã cập nhật giỏ hàng')
+      }
+    } catch (error) {
+      console.error('Error updating quantity:', error)
+      toast.error('Không thể cập nhật')
+      // Reload cart on error
+      loadCart()
+    } finally {
+      setUpdating(null)
+    }
   }
 
-  const removeItem = (id) => {
-    setCartItems(cartItems.filter((item) => item.id !== id))
+  const removeItem = async (itemId: number) => {
+    try {
+      const token = tokenStore.getAccessToken()
+      
+      if (token) {
+        console.log('🛒 Frontend: Removing item', itemId)
+        const response = await fetch(`/api/backend/v1/cart/remove?item_id=${itemId}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        })
+
+        console.log('🛒 Frontend: Response status', response.status)
+        const data = await response.json()
+        console.log('🛒 Frontend: Response data', data)
+        
+        if (data.success) {
+          setCartData(data.data)
+          toast.success('Đã xóa sản phẩm')
+        } else {
+          toast.error(data.message || 'Không thể xóa')
+          // Reload cart on error
+          loadCart()
+        }
+      } else {
+        // Remove from guest cart
+        const guestCart = JSON.parse(localStorage.getItem('guestCart') || '[]')
+        const updatedCart = guestCart.filter((item: any) => item.item_id !== itemId)
+        localStorage.setItem('guestCart', JSON.stringify(updatedCart))
+        loadGuestCart()
+        toast.success('Đã xóa sản phẩm')
+      }
+    } catch (error) {
+      console.error('Error removing item:', error)
+      toast.error('Không thể xóa')
+      // Reload cart on error
+      loadCart()
+    }
   }
 
-  const subtotal = cartItems.reduce((total, item) => total + item.price * item.quantity, 0)
-  const shipping = subtotal > 100 ? 0 : 10
-  const total = subtotal + shipping
+  const formatPrice = (price: number) => {
+    return new Intl.NumberFormat('vi-VN', {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(price) + ' ₫'
+  }
+
+  if (loading) {
+    return (
+      <main className="pt-24">
+        <div className="container mx-auto px-4 py-12">
+          <div className="text-center">Đang tải...</div>
+        </div>
+      </main>
+    )
+  }
 
   return (
     <main className="pt-24">
-      <div className="container mx-auto px-4 py-12">
-        <h1 className="mb-8 font-serif text-3xl font-light md:text-4xl">Shopping Cart</h1>
+      <div className="p-8 max-w-[85%] ml-[224px] mr-8">
+        {/* Header */}
+        <div className="mb-8">
+          <h1 className="font-serif text-3xl font-light md:text-4xl mb-2">Shopping Cart</h1>
+        </div>
 
-        {cartItems.length > 0 ? (
+        {cartData.items.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12 text-center">
+            <p className="mb-6 text-lg text-gray-600">Giỏ hàng của bạn trống</p>
+            <Link
+              href="/all-products"
+              className="inline-block border border-black px-8 py-3 text-sm font-medium transition-colors hover:bg-black hover:text-white"
+            >
+              Tiếp tục mua sắm
+            </Link>
+          </div>
+        ) : (
           <div className="grid gap-12 lg:grid-cols-3">
-            <div className="lg:col-span-2">
+            {/* Left Column - Cart Items */}
+            <div className="lg:col-span-2 space-y-8">
               {/* Cart Items */}
-              <div className="divide-y divide-gray-200">
-                {cartItems.map((item) => (
-                  <motion.div
-                    key={item.id}
-                    className="flex gap-4 py-6"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.3 }}
-                  >
-                    <div className="relative h-[120px] w-[90px] flex-shrink-0 overflow-hidden">
-                      <Image src={item.image || "/placeholder.svg"} alt={item.name} fill className="object-cover" />
+              <div className="space-y-6">
+                {cartData.items.map((item) => (
+                  <div key={item.item_id} className="flex gap-6 pb-6 border-b border-gray-200">
+                    {/* Product Image */}
+                    <div className="relative w-24 h-32 flex-shrink-0 overflow-hidden bg-gray-100">
+                      {item.image_url ? (
+                        <Image
+                          src={item.image_url}
+                          alt={item.product_name}
+                          fill
+                          className="object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">
+                          No Image
+                        </div>
+                      )}
                     </div>
 
-                    <div className="flex flex-1 flex-col">
-                      <div className="flex justify-between">
+                    {/* Product Info */}
+                    <div className="flex-1">
+                      <div className="flex justify-between items-start mb-2">
                         <div>
-                          <h3 className="font-serif text-lg font-light">{item.name}</h3>
-                          <p className="mt-1 text-sm text-gray-500">
-                            {item.color} / {item.size}
+                          <h3 className="font-serif text-lg font-light mb-1">{item.product_name}</h3>
+                          <p className="text-sm text-gray-500 mb-2">
+                            Default Title / {item.size_name}
                           </p>
                         </div>
-                        <button onClick={() => removeItem(item.id)} className="text-gray-400 hover:text-black">
+                        <button
+                          onClick={() => removeItem(item.item_id)}
+                          className="text-gray-400 hover:text-black transition-colors"
+                        >
                           <X className="h-5 w-5" />
-                          <span className="sr-only">Remove</span>
                         </button>
                       </div>
 
-                      <div className="mt-auto flex items-center justify-between pt-4">
+                      {/* Quantity Selector and Price */}
+                      <div className="flex items-center justify-between">
                         <div className="flex h-8 w-24 items-center border border-gray-300">
                           <button
-                            className="flex h-full w-8 items-center justify-center border-r border-gray-300"
-                            onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                            className="flex h-full w-8 items-center justify-center border-r border-gray-300 hover:bg-gray-100"
+                            onClick={() => updateQuantity(item.item_id, item.quantity - 1)}
+                            disabled={updating === item.item_id || item.quantity <= 1}
                           >
                             <Minus className="h-3 w-3" />
                           </button>
-                          <div className="flex h-full flex-1 items-center justify-center text-sm">{item.quantity}</div>
+                          <div className="flex h-full flex-1 items-center justify-center text-sm">
+                            {updating === item.item_id ? '...' : item.quantity}
+                          </div>
                           <button
-                            className="flex h-full w-8 items-center justify-center border-l border-gray-300"
-                            onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                            className="flex h-full w-8 items-center justify-center border-l border-gray-300 hover:bg-gray-100"
+                            onClick={() => updateQuantity(item.item_id, item.quantity + 1)}
+                            disabled={updating === item.item_id}
                           >
                             <Plus className="h-3 w-3" />
                           </button>
                         </div>
-                        <p className="font-medium">${item.price}</p>
+                        <p className="text-sm font-medium">
+                          {formatPrice(item.quantity * item.unit_price_snapshot)}
+                        </p>
                       </div>
                     </div>
-                  </motion.div>
+                  </div>
                 ))}
               </div>
+
             </div>
 
-            {/* Order Summary */}
+            {/* Right Column - Order Summary */}
             <div className="lg:col-span-1">
-              <div className="rounded-md border border-gray-200 p-6">
-                <h2 className="mb-4 font-serif text-xl font-light">Order Summary</h2>
-                <div className="space-y-3 border-b border-gray-200 pb-4">
+              <div className="sticky top-24 border border-gray-200 rounded-lg p-6 bg-white">
+                <h2 className="text-lg font-semibold mb-6">Order Summary</h2>
+                
+                <div className="space-y-4 mb-6 pb-6 border-b">
                   <div className="flex justify-between">
-                    <p className="text-gray-600">Subtotal</p>
-                    <p>${subtotal.toFixed(2)}</p>
+                    <span className="text-gray-600">Subtotal:</span>
+                    <span className="font-medium">{formatPrice(cartData.subtotal)}</span>
                   </div>
                   <div className="flex justify-between">
-                    <p className="text-gray-600">Shipping</p>
-                    <p>{shipping === 0 ? "Free" : `$${shipping.toFixed(2)}`}</p>
+                    <span className="text-gray-600">Shipping:</span>
+                    <span className="font-medium">Free</span>
+                  </div>
+                  <div className="flex justify-between pt-4 border-t">
+                    <span className="text-lg font-semibold">Total:</span>
+                    <span className="text-lg font-semibold">{formatPrice(cartData.subtotal)}</span>
                   </div>
                 </div>
-                <div className="flex justify-between py-4">
-                  <p className="font-medium">Total</p>
-                  <p className="font-medium">${total.toFixed(2)}</p>
-                </div>
-                <Button className="mt-4 h-12 w-full bg-black text-white hover:bg-gray-800">Proceed to Checkout</Button>
-                <p className="mt-4 text-center text-sm text-gray-500">Free shipping on orders over $100</p>
+
+                <Button
+                  className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-white mb-4"
+                  onClick={() => {
+                    const token = tokenStore.getAccessToken()
+                    if (!token) {
+                      toast.error('Vui lòng đăng nhập để thanh toán')
+                      router.push('/login')
+                      return
+                    }
+                    router.push('/checkout')
+                  }}
+                >
+                  Proceed to Checkout
+                </Button>
+
+                <p className="text-xs text-gray-500 text-center">
+                  Free shipping on orders over $100
+                </p>
               </div>
             </div>
-          </div>
-        ) : (
-          <div className="flex flex-col items-center justify-center py-12 text-center">
-            <p className="mb-6 text-lg text-gray-600">Your cart is empty</p>
-            <Link
-              href="/collections"
-              className="inline-block border border-black px-8 py-3 text-sm font-medium transition-colors hover:bg-black hover:text-white"
-            >
-              Continue Shopping
-            </Link>
           </div>
         )}
       </div>

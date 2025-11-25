@@ -1,46 +1,170 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { backendUrl } from '@/app/api/backend/config'
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
-    const status = searchParams.get('status')
-    const search = searchParams.get('search')
-    const dateFrom = searchParams.get('date_from')
-    const dateTo = searchParams.get('date_to')
-    const page = searchParams.get('page') || '1'
-    const limit = searchParams.get('limit') || '20'
-
-    const params = new URLSearchParams()
-    if (status) params.append('status', status)
-    if (search) params.append('search', search)
-    if (dateFrom) params.append('date_from', dateFrom)
-    if (dateTo) params.append('date_to', dateTo)
-    params.append('page', page)
-    params.append('limit', limit)
-
-    // Get token from request headers
-    const token = request.headers.get('authorization')
+    const queryString = searchParams.toString()
+    const url = `${backendUrl('/api/v1/orders')}${queryString ? `?${queryString}` : ''}`
     
-    // Call backend API
-    const backendUrl = `${process.env.BACKEND_URL || 'http://localhost:8000'}/api/v1/orders-test?${params.toString()}`
-    
-    const response = await fetch(backendUrl, {
+    const response = await fetch(url, {
+      method: 'GET',
       headers: {
         'Content-Type': 'application/json',
-        ...(token && { 'Authorization': token }),
+        'Authorization': request.headers.get('Authorization') || '',
       },
     })
+
+    // Always read as text first to handle both JSON and HTML responses
+    const responseText = await response.text()
+    const contentType = response.headers.get('content-type') || ''
     
-    if (!response.ok) {
-      throw new Error(`Backend responded with status: ${response.status}`)
+    // Extract JSON from response (remove HTML warnings if any)
+    let jsonText = responseText
+    if (responseText.includes('<br />') || responseText.includes('<b>') || responseText.includes('Warning')) {
+      const jsonMatch = responseText.match(/\{[\s\S]*\}|\[[\s\S]*\]/)
+      if (jsonMatch) {
+        jsonText = jsonMatch[0]
+        console.warn('⚠️ Extracted JSON from response with HTML warnings')
+      }
     }
     
-    const data = await response.json()
-    return NextResponse.json(data)
+    // Try to parse as JSON
+    let data
+    try {
+      if (contentType.includes('application/json') || jsonText.trim().startsWith('{') || jsonText.trim().startsWith('[')) {
+        data = JSON.parse(jsonText)
+        console.log('📥 Backend response:', data)
+      } else {
+        // Backend returned HTML (likely PHP error)
+        console.error('❌ Backend returned non-JSON response:')
+        console.error('Content-Type:', contentType)
+        console.error('Response status:', response.status)
+        console.error('Response text (first 1000 chars):', responseText.substring(0, 1000))
+        
+        return NextResponse.json(
+          { 
+            success: false, 
+            message: 'Backend error: Server returned invalid response. Check backend logs.',
+            error: 'Invalid content-type from backend',
+            status_code: response.status
+          },
+          { status: 500 }
+        )
+      }
+    } catch (parseError) {
+      // Failed to parse JSON - likely HTML error page
+      console.error('❌ Failed to parse backend response as JSON:')
+      console.error('Content-Type:', contentType)
+      console.error('Response status:', response.status)
+      console.error('Response text (first 1000 chars):', responseText.substring(0, 1000))
+      console.error('Parse error:', parseError)
+      
+      return NextResponse.json(
+        { 
+          success: false, 
+          message: 'Backend error: Server returned invalid response. Check backend logs.',
+          error: 'Failed to parse response as JSON',
+          status_code: response.status
+        },
+        { status: 500 }
+      )
+    }
+
+    return NextResponse.json(data, { status: response.status })
   } catch (error) {
-    console.error('Error fetching orders:', error)
+    console.error('❌ Proxy error:', error)
     return NextResponse.json(
-      { success: false, message: 'Failed to fetch orders' }, 
+      { success: false, message: 'Internal server error' },
+      { status: 500 }
+    )
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json()
+    const url = backendUrl('/api/v1/orders')
+    
+    console.log('🌐 Proxying POST request to:', url)
+    console.log('📤 Request body:', body)
+    
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': request.headers.get('Authorization') || '',
+      },
+      body: JSON.stringify(body),
+    })
+
+    // Always read as text first to handle both JSON and HTML responses
+    const responseText = await response.text()
+    const contentType = response.headers.get('content-type') || ''
+    
+    // Extract JSON from response (remove HTML warnings if any)
+    let jsonText = responseText
+    // If response contains HTML warnings, try to extract JSON part
+    if (responseText.includes('<br />') || responseText.includes('<b>') || responseText.includes('Warning')) {
+      // Find JSON object/array in the response
+      const jsonMatch = responseText.match(/\{[\s\S]*\}|\[[\s\S]*\]/)
+      if (jsonMatch) {
+        jsonText = jsonMatch[0]
+        console.warn('⚠️ Extracted JSON from response with HTML warnings')
+      }
+    }
+    
+    // Try to parse as JSON
+    let data
+    try {
+      if (contentType.includes('application/json') || jsonText.trim().startsWith('{') || jsonText.trim().startsWith('[')) {
+        data = JSON.parse(jsonText)
+        console.log('📥 Backend response:', data)
+      } else {
+        // Backend returned HTML (likely PHP error)
+        console.error('❌ Backend returned non-JSON response:')
+        console.error('Content-Type:', contentType)
+        console.error('Response status:', response.status)
+        console.error('Response text (first 1000 chars):', responseText.substring(0, 1000))
+        
+        return NextResponse.json(
+          { 
+            success: false, 
+            message: 'Backend error: Server returned invalid response. Check backend logs.',
+            error: 'Invalid content-type from backend',
+            status_code: response.status
+          },
+          { status: 500 }
+        )
+      }
+    } catch (parseError) {
+      // Failed to parse JSON - likely HTML error page
+      console.error('❌ Failed to parse backend response as JSON:')
+      console.error('Content-Type:', contentType)
+      console.error('Response status:', response.status)
+      console.error('Response text (first 1000 chars):', responseText.substring(0, 1000))
+      console.error('Parse error:', parseError)
+      
+      return NextResponse.json(
+        { 
+          success: false, 
+          message: 'Backend error: Server returned invalid response. Check backend logs.',
+          error: 'Failed to parse response as JSON',
+          status_code: response.status
+        },
+        { status: 500 }
+      )
+    }
+
+    return NextResponse.json(data, { status: response.status })
+  } catch (error) {
+    console.error('❌ Proxy error:', error)
+    return NextResponse.json(
+      { 
+        success: false, 
+        message: error instanceof Error ? error.message : 'Internal server error',
+        error: 'Proxy error'
+      },
       { status: 500 }
     )
   }

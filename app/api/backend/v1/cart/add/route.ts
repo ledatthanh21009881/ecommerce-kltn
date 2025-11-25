@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
-
-const BACKEND_URL = 'http://localhost:8000'
+import { backendUrl } from '@/app/api/backend/config'
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const url = `${BACKEND_URL}/api/backend/v1/cart/add`
+    const url = backendUrl('/api/backend/v1/cart/add')
     
     console.log('🛒 Proxying POST add to cart request to:', url)
     console.log('📤 Request body:', body)

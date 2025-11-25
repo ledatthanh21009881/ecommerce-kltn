@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-
-const BACKEND_URL = 'http://localhost:8000'
+import { backendUrl } from '@/app/api/backend/config'
 
 export async function DELETE(request: NextRequest) {
   try {
@@ -16,7 +15,7 @@ export async function DELETE(request: NextRequest) {
 
     console.log('DELETE proxy for category ID:', id)
 
-    const response = await fetch(`${BACKEND_URL}/api/v1/categories/${id}`, {
+    const response = await fetch(backendUrl(`/api/v1/categories/${id}`), {
       method: 'DELETE',
       headers: {
         'Accept': 'application/json',

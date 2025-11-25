@@ -27,7 +27,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
 import UserHeader from '@/components/ui/user-header'
-import { getAuthData, clearAuthData, AdminUser } from '@/lib/admin-auth'
+import { getAuthData, clearAuthData, AdminUser, checkAndRefreshAuth } from '@/lib/admin-auth'
 import { LanguageProvider, useLanguage } from '@/contexts/LanguageContext'
 import {
   Select,
@@ -51,29 +51,34 @@ function AdminLayoutContent({
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    console.log('AdminLayout useEffect - checking authentication...')
-    // Check authentication using utility function
-    const { token, user: authUser } = getAuthData()
-    
-    console.log('Auth check:', { hasToken: !!token, hasUser: !!authUser })
-    
-    if (!token || !authUser) {
-      console.log('Redirecting to login - no valid auth data')
-      clearAuthData()
-      router.push('/admin-login')
+    const checkAuth = async () => {
+      console.log('AdminLayout useEffect - checking authentication...')
+      
+      // Check and refresh auth if needed
+      const isValid = await checkAndRefreshAuth()
+      
+      if (!isValid) {
+        console.log('Redirecting to login - no valid auth or refresh failed')
+        clearAuthData()
+        router.push('/admin-login')
+        setIsLoading(false)
+        return
+      }
+
+      const { user: authUser } = getAuthData()
+
+      // If we're on the root admin page, redirect to dashboard
+      if (pathname === '/admin') {
+        router.replace('/admin/dashboard')
+        return
+      }
+
+      console.log('User authenticated successfully:', authUser)
+      setUser(authUser)
       setIsLoading(false)
-      return
     }
-
-    // If we're on the root admin page, redirect to dashboard
-    if (pathname === '/admin') {
-      router.replace('/admin/dashboard')
-      return
-    }
-
-    console.log('User authenticated successfully:', authUser)
-    setUser(authUser)
-    setIsLoading(false)
+    
+    checkAuth()
   }, [router, pathname])
 
   const handleLogout = () => {

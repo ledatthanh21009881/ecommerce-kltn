@@ -86,6 +86,20 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
         const productId = parseInt(resolvedParams.id)
         const productData = await getProductById(productId)
         setProduct(productData)
+        
+        // Set default size to "S" if available
+        if (productData.variants && productData.variants.length > 0) {
+          const availableSizes = productData.variants
+            .filter(v => v.is_active === 1 && v.stock_quantity > 0)
+            .map(v => v.size_name || '')
+            .filter(size => size)
+          
+          // Try to find "S" first, otherwise use first available size
+          const defaultSize = availableSizes.find(size => size.toUpperCase() === 'S') || availableSizes[0] || ''
+          if (defaultSize) {
+            setSelectedSize(defaultSize)
+          }
+        }
       } catch (error) {
         console.error("Error fetching product:", error)
         toast.error("Failed to load product")
@@ -250,12 +264,87 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
               <button 
                 className="relative h-10 w-full bg-black text-white text-sm font-normal uppercase tracking-wider transition-all duration-300 ease-in-out hover:bg-white hover:text-black group"
                 disabled={availableSizes.length === 0 || !selectedSize}
-                onClick={() => {
+                onClick={async () => {
                   if (!selectedSize) {
-                    toast.error("Please select a size")
+                    toast.error("Vui lòng chọn kích thước")
                     return
                   }
-                  toast.success(`Added ${quantity} ${product.product_name} (${selectedSize}) to cart`)
+
+                  // Find variant_id for selected size
+                  const selectedVariant = product.variants?.find(
+                    v => v.size_name === selectedSize && v.is_active === 1 && v.stock_quantity > 0
+                  )
+
+                  if (!selectedVariant) {
+                    toast.error("Kích thước đã chọn không còn hàng")
+                    return
+                  }
+
+                  try {
+                    // Get customer token from tokenStore (not admin token)
+                    const { tokenStore } = await import('@/lib/tokenStore')
+                    let token = tokenStore.getAccessToken()
+                    
+                    // If token is expired, try to refresh
+                    if (token && tokenStore.isTokenExpired()) {
+                      try {
+                        const newTokenData = await tokenStore.refreshToken()
+                        token = newTokenData.token
+                      } catch (refreshError) {
+                        console.error('Token refresh failed:', refreshError)
+                        token = null
+                      }
+                    }
+                    
+                    // If no token, redirect to login
+                    if (!token) {
+                      toast.error('Vui lòng đăng nhập để thêm sản phẩm vào giỏ hàng')
+                      setTimeout(() => {
+                        window.location.href = '/login'
+                      }, 1500)
+                      return
+                    }
+
+                    const headers: HeadersInit = {
+                      'Content-Type': 'application/json',
+                      'Authorization': `Bearer ${token}`
+                    }
+
+                    const response = await fetch('/api/backend/v1/cart/add', {
+                      method: 'POST',
+                      headers,
+                      body: JSON.stringify({
+                        variant_id: selectedVariant.variant_id,
+                        quantity: quantity,
+                      }),
+                    })
+
+                    const result = await response.json()
+
+                    if (result.success) {
+                      // Show toast notification (like image 2)
+                      toast.success(`Đã thêm ${quantity} ${product.product_name} (${selectedSize}) vào giỏ hàng`, {
+                        icon: '✓',
+                        duration: 3000,
+                      })
+                      
+                      // Trigger cart update event
+                      window.dispatchEvent(new Event('cartUpdated'))
+                    } else {
+                      // If token error, redirect to login
+                      if (result.message?.includes('token') || result.message?.includes('unauthorized') || response.status === 401) {
+                        toast.error('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại')
+                        setTimeout(() => {
+                          window.location.href = '/login'
+                        }, 1500)
+                      } else {
+                        toast.error(result.message || 'Không thể thêm vào giỏ hàng')
+                      }
+                    }
+                  } catch (error) {
+                    console.error('Error adding to cart:', error)
+                    toast.error('Không thể thêm vào giỏ hàng. Vui lòng thử lại.')
+                  }
                 }}
               >
                 <span className="relative z-10 font-sans font-bold uppercase tracking-wider">

@@ -1,34 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { backendUrl } from '@/app/api/backend/config'
 
-const BACKEND_URL = 'http://localhost:8000'
-
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: { item_id: string } }
-) {
+export async function POST(request: NextRequest) {
   try {
-    const { item_id } = params
-    const url = `${BACKEND_URL}/api/backend/v1/cart/remove/${item_id}`
-    
-    console.log('🛒 Proxying DELETE remove cart item request to:', url)
+    const body = await request.json()
+    const url = backendUrl('/api/backend/v1/addresses')
     
     const response = await fetch(url, {
-      method: 'DELETE',
+      method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': request.headers.get('Authorization') || '',
       },
+      body: JSON.stringify(body),
     })
 
     const data = await response.json()
-    console.log('📥 Remove cart item response:', data)
-
     return NextResponse.json(data, { status: response.status })
   } catch (error) {
-    console.error('❌ Remove cart item proxy error:', error)
+    console.error('❌ Proxy error:', error)
     return NextResponse.json(
       { success: false, message: 'Internal server error' },
       { status: 500 }
     )
   }
 }
+

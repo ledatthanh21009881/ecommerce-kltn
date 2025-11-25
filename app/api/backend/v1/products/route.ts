@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { backendUrl } from '@/app/api/backend/config'
 
 export async function GET(request: NextRequest) {
   try {
@@ -11,10 +12,10 @@ export async function GET(request: NextRequest) {
     console.log('🔑 Token present:', !!token)
     
     // Call backend API
-    const backendUrl = `${process.env.BACKEND_URL || 'http://localhost:8000'}/api/v1/products?limit=${limit}`
-    console.log('🌐 Backend URL:', backendUrl)
+    const url = `${backendUrl('/api/v1/products')}?limit=${limit}`
+    console.log('🌐 Backend URL:', url)
     
-    const response = await fetch(backendUrl, {
+    const response = await fetch(url, {
       headers: {
         'Content-Type': 'application/json',
         ...(token && { 'Authorization': token }),
@@ -49,9 +50,9 @@ export async function POST(request: NextRequest) {
     const token = request.headers.get('authorization')
     
     // Call backend API
-    const backendUrl = `${process.env.BACKEND_URL || 'http://localhost:8000'}/api/v1/products`
+    const url = backendUrl('/api/v1/products')
     
-    const response = await fetch(backendUrl, {
+    const response = await fetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

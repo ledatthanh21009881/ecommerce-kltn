@@ -1,4 +1,5 @@
 import { tokenManager } from './token-manager'
+import { tokenStore } from './tokenStore'
 import { apiClient } from './api-client'
 
 // API base URL
@@ -212,7 +213,7 @@ export const authUtils = {
   logout: async () => {
     try {
       // Gọi API logout để revoke refresh token
-      const refreshToken = tokenManager.getRefreshToken()
+      const refreshToken = tokenStore.getRefreshToken()
       if (refreshToken) {
         await apiClient.post('/auth/logout-advanced', { refresh_token: refreshToken })
       }
@@ -220,6 +221,7 @@ export const authUtils = {
       console.error('Logout API call failed:', error)
     } finally {
       // Xóa tất cả token và user data
+      tokenStore.clearTokens()
       authUtils.removeToken()
       authUtils.removeAdminToken()
       authUtils.removeRefreshToken()
@@ -281,11 +283,41 @@ export async function loginUser(data: LoginData): Promise<ApiResponse<LoginRespo
     const result = await response.json()
     console.log('Login response:', result)
     
-    // Lưu token và refresh token nếu có
+    // Lưu token và refresh token vào tokenStore (quan trọng!)
     if (result.success && result.data) {
-      authUtils.saveToken(result.data.token)
-      if (result.data.refresh_token) {
-        authUtils.saveRefreshToken(result.data.refresh_token)
+      const token = result.data.token
+      const refreshToken = result.data.refresh_token
+      
+      // Tính expires_at từ JWT payload
+      let expiresAt = Date.now() + 60 * 60 * 1000 // default 1h
+      try {
+        const parts = token.split('.')
+        if (parts.length === 3) {
+          const payload = JSON.parse(
+            atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')),
+          ) as { exp?: number }
+          if (payload.exp) {
+            expiresAt = payload.exp * 1000
+          }
+        }
+      } catch (error) {
+        console.error('[loginUser] Error parsing token expiration:', error)
+      }
+
+      // Lưu vào tokenStore (key: access_token) - QUAN TRỌNG!
+      if (token && refreshToken) {
+        tokenStore.saveTokens({
+          token,
+          refresh_token: refreshToken,
+          expires_at: expiresAt,
+        })
+        console.log('[loginUser] Tokens saved to tokenStore')
+      }
+      
+      // Cũng lưu vào auth_token để backward compatibility
+      authUtils.saveToken(token)
+      if (refreshToken) {
+        authUtils.saveRefreshToken(refreshToken)
       }
     }
     
@@ -324,7 +356,34 @@ export async function loginAdmin(data: AdminLoginData): Promise<ApiResponse<Admi
     
     // Lưu admin token nếu đăng nhập thành công
     if (result.success && result.data) {
-      authUtils.saveAdminToken(result.data.token)
+      const token = result.data.token
+      const refreshToken = result.data.refresh_token
+      
+      authUtils.saveAdminToken(token)
+
+      if (token && refreshToken) {
+        // Ưu tiên tính expires_at từ payload JWT nếu có
+        let expiresAt = Date.now() + 60 * 60 * 1000
+        try {
+          const parts = token.split('.')
+          if (parts.length === 3) {
+            const payload = JSON.parse(
+              atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')),
+            ) as { exp?: number }
+            if (payload.exp) {
+              expiresAt = payload.exp * 1000
+            }
+          }
+        } catch (error) {
+          console.error('[loginAdmin] Error parsing admin token exp:', error)
+        }
+
+        tokenStore.saveTokens({
+          token,
+          refresh_token: refreshToken,
+          expires_at: expiresAt,
+        })
+      }
     }
     
     return result

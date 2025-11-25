@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-
-const BACKEND_URL = 'http://localhost:8000'
+import { backendUrl } from '@/app/api/backend/config'
 
 export async function PUT(
   request: NextRequest,
@@ -11,7 +10,7 @@ export async function PUT(
     console.log('Product image PUT proxy for ID:', params.id)
     console.log('Update image data:', body)
 
-    const response = await fetch(`${BACKEND_URL}/api/v1/product-images/${params.id}`, {
+    const response = await fetch(backendUrl(`/api/v1/product-images/${params.id}`), {
       method: 'PUT',
       headers: {
         'Accept': 'application/json',

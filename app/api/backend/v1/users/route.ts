@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-
-const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8000'
+import { backendUrl } from '@/app/api/backend/config'
 
 export async function GET(request: NextRequest) {
   try {
@@ -13,7 +12,7 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    const response = await fetch(`${BACKEND_URL}/api/backend/v1/users`, {
+    const response = await fetch(backendUrl('/api/backend/v1/users'), {
       method: 'GET',
       headers: {
         'Authorization': token,
@@ -52,7 +51,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const response = await fetch(`${BACKEND_URL}/api/backend/v1/users`, {
+    const response = await fetch(backendUrl('/api/backend/v1/users'), {
       method: 'POST',
       headers: {
         'Authorization': token,

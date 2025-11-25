@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-
-const BACKEND_URL = 'http://localhost:8000'
+import { backendUrl } from '@/app/api/backend/config'
 
 export async function PUT(request: NextRequest) {
   try {
@@ -18,7 +17,7 @@ export async function PUT(request: NextRequest) {
     console.log('Category PUT proxy for ID:', id)
     console.log('Update data:', body)
 
-    const response = await fetch(`${BACKEND_URL}/api/v1/categories/${id}`, {
+    const response = await fetch(backendUrl(`/api/v1/categories/${id}`), {
       method: 'PUT',
       headers: {
         'Accept': 'application/json',

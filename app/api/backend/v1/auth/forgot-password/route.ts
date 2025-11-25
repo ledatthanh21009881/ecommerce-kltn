@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { backendUrl } from '@/app/api/backend/config';
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     
-    const response = await fetch('http://127.0.0.1:8000/test-forgot-password.php', {
+    const response = await fetch(backendUrl('/test-forgot-password.php'), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

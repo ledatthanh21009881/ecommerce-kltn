@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-
-const BACKEND_BASE_URL = 'http://localhost:8000/api/backend/v1'
+import { backendUrl } from '@/app/api/backend/config'
 
 export async function GET(request: NextRequest) {
   try {
@@ -20,9 +19,9 @@ export async function GET(request: NextRequest) {
     let url = ''
     switch (action) {
       case 'get_conversations':
-        url = customerId 
-          ? `${BACKEND_BASE_URL}/conversations?customer_id=${customerId}`
-          : `${BACKEND_BASE_URL}/conversations`
+        url = customerId
+          ? backendUrl(`/api/backend/v1/conversations?customer_id=${customerId}`)
+          : backendUrl('/api/backend/v1/conversations')
         break
       case 'get_messages':
         if (!conversationId) {
@@ -31,7 +30,7 @@ export async function GET(request: NextRequest) {
             message: 'Conversation ID required' 
           }, { status: 400 })
         }
-        url = `${BACKEND_BASE_URL}/conversations/${conversationId}/messages`
+        url = backendUrl(`/api/backend/v1/conversations/${conversationId}/messages`)
         break
       default:
         return NextResponse.json({ 
@@ -96,10 +95,11 @@ export async function POST(request: NextRequest) {
       // Create new FormData for backend
       const backendFormData = new FormData()
       backendFormData.append('media', media)
-      
-      console.log('🔍 Debug - Backend upload URL:', `${BACKEND_BASE_URL}/messages/upload-media`)
-      
-      const uploadResponse = await fetch(`${BACKEND_BASE_URL}/messages/upload-media`, {
+
+      const uploadUrl = backendUrl('/api/backend/v1/messages/upload-media')
+      console.log('🔍 Debug - Backend upload URL:', uploadUrl)
+
+      const uploadResponse = await fetch(uploadUrl, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -130,10 +130,10 @@ export async function POST(request: NextRequest) {
 
       switch (action) {
         case 'create_conversation':
-          url = `${BACKEND_BASE_URL}/conversations`
+          url = backendUrl('/api/backend/v1/conversations')
           break
         case 'send_message':
-          url = `${BACKEND_BASE_URL}/messages`
+          url = backendUrl('/api/backend/v1/messages')
           break
         default:
           console.log('🔍 Debug - Invalid action:', action)

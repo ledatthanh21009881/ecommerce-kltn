@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-
-const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8000'
+import { backendUrl } from '@/app/api/backend/config'
 
 export async function GET(
   request: NextRequest,
@@ -11,7 +10,7 @@ export async function GET(
     
     console.log('Proxy: Fetching order', params.id, 'with token:', token ? 'present' : 'missing')
     
-    const response = await fetch(`${BACKEND_URL}/api/v1/orders/${params.id}`, {
+    const response = await fetch(backendUrl(`/api/v1/orders/${params.id}`), {
       headers: {
         'Authorization': token || '',
         'Content-Type': 'application/json',

@@ -1,15 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
-
-const BACKEND_URL = 'http://localhost:8000'
+import { backendUrl } from '@/app/api/backend/config'
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     
-    console.log('Proxying login request to backend:', `${BACKEND_URL}/api/v1/auth/login`)
+    console.log('Proxying login request to backend:', backendUrl('/api/v1/auth/login'))
     console.log('Request body:', body)
 
-    const response = await fetch(`${BACKEND_URL}/api/v1/auth/login`, {
+    const response = await fetch(backendUrl('/api/v1/auth/login'), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

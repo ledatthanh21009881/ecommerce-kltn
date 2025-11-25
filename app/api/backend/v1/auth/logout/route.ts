@@ -1,12 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
-
-const BACKEND_URL = 'http://localhost:8000'
+import { backendUrl } from '@/app/api/backend/config'
 
 export async function POST(request: NextRequest) {
   try {
     const authHeader = request.headers.get('authorization')
     
-    console.log('Proxying logout request to backend:', `${BACKEND_URL}/api/v1/auth/logout`)
+    console.log('Proxying logout request to backend:', backendUrl('/api/v1/auth/logout'))
 
     const headers: HeadersInit = {
       'Content-Type': 'application/json',
@@ -16,7 +15,7 @@ export async function POST(request: NextRequest) {
       headers['Authorization'] = authHeader
     }
 
-    const response = await fetch(`${BACKEND_URL}/api/v1/auth/logout`, {
+    const response = await fetch(backendUrl('/api/v1/auth/logout'), {
       method: 'POST',
       headers,
     })

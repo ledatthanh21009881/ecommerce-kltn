@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { backendUrl } from '@/app/api/backend/config'
 
 export async function POST(
   request: NextRequest,
@@ -12,9 +13,9 @@ export async function POST(
     const token = request.headers.get('authorization')
     
     // Call backend API
-    const backendUrl = `${process.env.BACKEND_URL || 'http://localhost:8000'}/api/v1/products/${id}/images`
+    const url = backendUrl(`/api/v1/products/${id}/images`)
     
-    const response = await fetch(backendUrl, {
+    const response = await fetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

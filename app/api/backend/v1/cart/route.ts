@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-
-const BACKEND_URL = 'http://localhost:8000'
+import { backendUrl } from '@/app/api/backend/config'
 
 export async function GET(request: NextRequest) {
   try {
-    const url = `${BACKEND_URL}/api/backend/v1/cart`
+    const url = backendUrl('/api/backend/v1/cart')
     
     console.log('🛒 Proxying GET cart request to:', url)
     

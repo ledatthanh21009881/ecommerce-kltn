@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { backendUrl } from '@/app/api/backend/config';
 
 export async function PATCH(
   request: NextRequest,
@@ -16,7 +17,7 @@ export async function PATCH(
       headers['Authorization'] = authHeader;
     }
     
-    const response = await fetch(`http://localhost:8000/api/v1/categories/${params.id}/toggle-status`, {
+    const response = await fetch(backendUrl(`/api/v1/categories/${params.id}/toggle-status`), {
       method: 'PATCH',
       headers,
     });

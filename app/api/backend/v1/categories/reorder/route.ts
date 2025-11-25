@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { backendUrl } from '@/app/api/backend/config';
 
 export async function POST(request: NextRequest) {
   try {
@@ -15,7 +16,7 @@ export async function POST(request: NextRequest) {
       headers['Authorization'] = authHeader;
     }
     
-    const response = await fetch('http://localhost:8000/api/v1/categories/reorder', {
+    const response = await fetch(backendUrl('/api/v1/categories/reorder'), {
       method: 'POST',
       headers,
       body: JSON.stringify(body),

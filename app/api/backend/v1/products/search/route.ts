@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
-
-const BACKEND_URL = 'http://localhost:8000'
+import { backendUrl } from '@/app/api/backend/config'
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
-    const url = new URL(`${BACKEND_URL}/api/v1/products/search`)
+    const url = new URL(backendUrl('/api/v1/products/search'))
     
     // Copy all search params
     searchParams.forEach((value, key) => {

@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-
-const BACKEND_URL = 'http://localhost:8000'
+import { backendUrl } from '@/app/api/backend/config'
 
 export async function PATCH(
   request: NextRequest,
@@ -8,7 +7,7 @@ export async function PATCH(
 ) {
   try {
     const { id } = params
-    const url = `${BACKEND_URL}/api/backend/v1/shipping/${id}/toggle`
+    const url = backendUrl(`/api/backend/v1/shipping/${id}/toggle`)
     
     console.log('🌐 Proxying PATCH request to:', url)
     

@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-
-const BACKEND_URL = 'http://localhost:8000'
+import { backendUrl } from '@/app/api/backend/config'
 
 export async function GET(
   request: NextRequest,
@@ -8,7 +7,7 @@ export async function GET(
 ) {
   try {
     const { id } = params
-    const url = `${BACKEND_URL}/api/backend/v1/shipping/${id}`
+    const url = backendUrl(`/api/backend/v1/shipping/${id}`)
     
     console.log('🌐 Proxying GET request to:', url)
     
@@ -40,7 +39,7 @@ export async function PUT(
   try {
     const { id } = params
     const body = await request.json()
-    const url = `${BACKEND_URL}/api/backend/v1/shipping/${id}`
+    const url = backendUrl(`/api/backend/v1/shipping/${id}`)
     
     console.log('🌐 Proxying PUT request to:', url)
     console.log('📤 Request body:', body)
@@ -73,7 +72,7 @@ export async function DELETE(
 ) {
   try {
     const { id } = params
-    const url = `${BACKEND_URL}/api/backend/v1/shipping/${id}`
+    const url = backendUrl(`/api/backend/v1/shipping/${id}`)
     
     console.log('🌐 Proxying DELETE request to:', url)
     

@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { toast } from 'sonner'
 import { Lock, User } from 'lucide-react'
-import { getAuthData, setAuthData, isAuthenticated } from '@/lib/admin-auth'
+import { getAuthData, setAuthData, checkAndRefreshAuth } from '@/lib/admin-auth'
 
 export default function AdminLoginPage() {
   const router = useRouter()
@@ -18,17 +18,22 @@ export default function AdminLoginPage() {
     password: ''
   })
 
-  // Check if user is already logged in
+  // Check if user is already logged in with valid token
   useEffect(() => {
-    console.log('AdminLoginPage useEffect - checking authentication...')
-    const authStatus = isAuthenticated()
-    console.log('Authentication status:', authStatus)
-    
-    if (authStatus) {
-      const { user } = getAuthData()
-      console.log('User already logged in, redirecting to admin...', user)
-      router.replace('/admin/dashboard')
+    const checkAuth = async () => {
+      console.log('AdminLoginPage useEffect - checking authentication...')
+      
+      // Check and refresh auth if needed
+      const isValid = await checkAndRefreshAuth()
+      
+      if (isValid) {
+        const { user } = getAuthData()
+        console.log('User already logged in with valid token, redirecting to admin...', user)
+        router.replace('/admin/dashboard')
+      }
     }
+    
+    checkAuth()
   }, [router])
 
   const handleSubmit = async (e: React.FormEvent) => {

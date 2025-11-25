@@ -39,3 +39,90 @@ export function isAuthenticated(): boolean {
   const { token, user } = getAuthData()
   return !!(token && user)
 }
+
+// Check if adminToken is expired by parsing JWT
+function isAdminTokenExpired(token: string): boolean {
+  try {
+    const parts = token.split('.')
+    if (parts.length !== 3) {
+      return true
+    }
+
+    const payload = JSON.parse(
+      atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')),
+    ) as { exp?: number }
+
+    const bufferTime = 5 * 60 * 1000 // 5 minutes buffer
+
+    if (payload.exp) {
+      const expirationTime = payload.exp * 1000
+      return Date.now() + bufferTime >= expirationTime
+    }
+
+    // If no exp in token, consider it expired if older than 1 hour
+    return true
+  } catch (error) {
+    console.error('[admin-auth] Error parsing adminToken:', error)
+    return true
+  }
+}
+
+// Check and refresh auth if needed (returns true if valid, false if should redirect to login)
+export async function checkAndRefreshAuth(): Promise<boolean> {
+  if (typeof window === 'undefined') return false
+
+  const { token, user } = getAuthData()
+  
+  // No token or user data
+  if (!token || !user) {
+    return false
+  }
+
+  // Check if token is expired
+  if (isAdminTokenExpired(token)) {
+    console.log('[admin-auth] AdminToken expired, attempting refresh...')
+    
+    try {
+      // Import tokenStore dynamically
+      const { tokenStore } = await import('./tokenStore')
+      
+      // Check if we have refresh token
+      const refreshToken = tokenStore.getRefreshToken()
+      if (!refreshToken) {
+        console.log('[admin-auth] No refresh token available')
+        clearAuthData()
+        tokenStore.clearTokens()
+        return false
+      }
+
+      // Try to refresh token
+      const newTokenData = await tokenStore.refreshToken()
+      
+      // Update adminToken with new token
+      localStorage.setItem('adminToken', newTokenData.token)
+      console.log('[admin-auth] AdminToken refreshed successfully')
+      
+      return true
+    } catch (refreshError: any) {
+      // Silently handle refresh token errors - don't show error to user
+      // This is expected behavior when refresh token expires
+      const errorMessage = refreshError?.message || 'Unknown error'
+      console.log('[admin-auth] Token refresh failed (expected if refresh token expired):', errorMessage)
+      
+      // Clear auth data if refresh fails
+      clearAuthData()
+      try {
+        const { tokenStore } = await import('./tokenStore')
+        tokenStore.clearTokens()
+      } catch (e) {
+        // Ignore errors when clearing tokens
+      }
+      
+      // Return false to redirect to login (don't throw error to avoid UI error display)
+      return false
+    }
+  }
+
+  // Token is still valid
+  return true
+}

@@ -13,7 +13,7 @@ import OrderDetailModal from '@/components/admin/OrderDetailModal'
 import OrderStatusModal from '@/components/admin/OrderStatusModal'
 import AssignShipperModal from '@/components/admin/AssignShipperModal'
 import ConfirmModal from '@/components/ui/confirm-modal'
-import { getAuthData } from '@/lib/admin-auth'
+import { getAuthData, checkAndRefreshAuth } from '@/lib/admin-auth'
 import { ordersApi } from '@/lib/api'
 import { useLanguage } from '@/contexts/LanguageContext'
 import {
@@ -48,13 +48,34 @@ export default function AdminOrdersPage() {
       setLoading(true)
       console.log('Fetching orders...')
       
+      // Check and refresh token if needed
+      const isAuthValid = await checkAndRefreshAuth()
+      if (!isAuthValid) {
+        toast.error('Please login to view orders')
+        window.location.href = '/admin-login'
+        return
+      }
+      
+      // Get admin token (after refresh if needed)
+      const { token } = getAuthData()
+      if (!token) {
+        toast.error('Please login to view orders')
+        window.location.href = '/admin-login'
+        return
+      }
+      
       const params = new URLSearchParams()
       if (statusFilter) params.append('status', statusFilter)
       if (searchTerm) params.append('search', searchTerm)
       if (dateFrom) params.append('date_from', dateFrom)
       if (dateTo) params.append('date_to', dateTo)
       
-      const response = await fetch(`/api/backend/v1/orders?${params.toString()}`)
+      const response = await fetch(`/api/backend/v1/orders?${params.toString()}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      })
       console.log('Response status:', response.status)
       
       const data = await response.json()

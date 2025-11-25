@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { backendUrl } from '@/app/api/backend/config';
 
 export async function POST(request: NextRequest) {
   try {
@@ -15,10 +16,11 @@ export async function POST(request: NextRequest) {
       headers['Authorization'] = authHeader;
     }
     
-    console.log('Proxying refresh token request to backend:', 'http://localhost:8000/api/v1/auth/refresh');
+    const url = backendUrl('/api/v1/auth/refresh');
+    console.log('Proxying refresh token request to backend:', url);
     console.log('Request body:', body);
     
-    const response = await fetch('http://localhost:8000/api/v1/auth/refresh', {
+    const response = await fetch(url, {
       method: 'POST',
       headers,
       body: JSON.stringify(body),
