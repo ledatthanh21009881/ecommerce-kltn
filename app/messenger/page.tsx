@@ -1,18 +1,14 @@
 "use client"
 
-import { useState, useEffect, useRef, useMemo } from "react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Send, Paperclip, Image as ImageIcon, Video, MessageCircle, User, ArrowLeft, Mic, Smile } from "lucide-react"
-import { VoiceRecorder } from "@/components/VoiceRecorder"
-import { AudioPlayer } from "@/components/AudioPlayer"
+import { useState, useEffect, useMemo } from "react"
 import { toast } from "sonner"
 import Link from "next/link"
-import EmojiPicker from 'emoji-picker-react'
+import { ArrowLeft, Moon, Sun } from "lucide-react"
 import { useWebSocket } from "@/hooks/useWebSocket"
-
+import ChatWindow, {
+  ChatContact,
+  ChatMessage,
+} from "@/components/messenger/ChatWindow"
 
 interface Message {
   message_id: number
@@ -49,33 +45,20 @@ interface Conversation {
 
 export default function MessengerPage() {
   const [messages, setMessages] = useState<Message[]>([])
-  const [newMessage, setNewMessage] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [conversationId, setConversationId] = useState<number | null>(null)
-  const messagesEndRef = useRef<HTMLDivElement>(null)
-  const [showSidebar, setShowSidebar] = useState(false)
-  const [activeTab, setActiveTab] = useState('media')
-  const [showEmojiPicker, setShowEmojiPicker] = useState(false)
-  const [selectedImage, setSelectedImage] = useState<string | null>(null)
-  const [showScrollToBottom, setShowScrollToBottom] = useState(false)
+  const [isDarkMode, setIsDarkMode] = useState(false)
   const [isTyping, setIsTyping] = useState(false)
-  const [typingTimeout, setTypingTimeout] = useState<NodeJS.Timeout | null>(null)
-  const [showVoiceRecorder, setShowVoiceRecorder] = useState(false)
-  const fileInputRef = useRef<HTMLInputElement>(null)
 
   // WebSocket hook
   const {
     isConnected,
     isConnecting,
     connect,
-    disconnect,
     joinConversation,
-    leaveConversation,
-    sendTypingStart,
-    sendTypingStop
   } = useWebSocket({
     onMessage: (message) => {
-      console.log('🔍 Debug - New message received:', message)
+      console.log('Debug - New message received:', message)
       setMessages(prev => {
         // Check if message already exists
         const exists = prev.some(msg => msg.message_id === message.message_id)
@@ -83,36 +66,38 @@ export default function MessengerPage() {
         return [...prev, message]
       })
     },
-    onTypingStart: (conversationId) => {
-      console.log('🔍 Debug - Typing start for conversation:', conversationId)
-      setIsTyping(true)
+    onTypingStart: (convId) => {
+      console.log('Debug - Typing start for conversation:', convId)
+      if (conversationId && convId === conversationId) {
+        setIsTyping(true)
+      }
     },
-    onTypingStop: (conversationId) => {
-      console.log('🔍 Debug - Typing stop for conversation:', conversationId)
-      setIsTyping(false)
+    onTypingStop: (convId) => {
+      console.log('Debug - Typing stop for conversation:', convId)
+      if (conversationId && convId === conversationId) {
+        setIsTyping(false)
+      }
     },
     onConnect: () => {
-      console.log('🔍 Debug - WebSocket connected')
-      toast.success('Connected to chat server')
+      console.log('Debug - WebSocket connected')
     },
     onDisconnect: () => {
-      console.log('🔍 Debug - WebSocket disconnected')
-      toast.error('Disconnected from chat server')
+      console.log('Debug - WebSocket disconnected')
     }
   })
 
   useEffect(() => {
-    console.log('🔍 Debug - useEffect started - calling initializeChat and connectWebSocket')
+    console.log('Debug - useEffect started - calling initializeChat and connectWebSocket')
     const init = async () => {
-      console.log('🔍 Debug - Starting initialization...')
+      console.log('Debug - Starting initialization...')
       await initializeChat()
-      console.log('🔍 Debug - initializeChat completed')
+      console.log('Debug - initializeChat completed')
       
       // Connect WebSocket after chat initialization
       const token = localStorage.getItem('token') || localStorage.getItem('access_token') || localStorage.getItem('auth_token')
       if (token) {
         connect(token)
-        console.log('🔍 Debug - WebSocket connect called')
+        console.log('Debug - WebSocket connect called')
       }
     }
     init()
@@ -120,55 +105,26 @@ export default function MessengerPage() {
 
   // Join conversation when WebSocket connects and conversationId is available
   useEffect(() => {
-    console.log('🔍 Debug - useEffect triggered - isConnected:', isConnected, 'conversationId:', conversationId)
+    console.log('Debug - useEffect triggered - isConnected:', isConnected, 'conversationId:', conversationId)
     if (isConnected && conversationId) {
-      console.log('🔍 Debug - WebSocket connected, joining conversation:', conversationId)
+      console.log('Debug - WebSocket connected, joining conversation:', conversationId)
       joinConversation(conversationId)
-      console.log('🔍 Debug - Join conversation message sent successfully')
+      console.log('Debug - Join conversation message sent successfully')
     } else {
-      console.log('🔍 Debug - Cannot join - isConnected:', isConnected, 'conversationId:', conversationId)
+      console.log('Debug - Cannot join - isConnected:', isConnected, 'conversationId:', conversationId)
     }
   }, [isConnected, conversationId, joinConversation])
 
-  useEffect(() => {
-    scrollToBottom()
-  }, [messages])
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as Element
-      if (!target.closest('.emoji-picker-container')) {
-        setShowEmojiPicker(false)
-      }
-    }
-
-    if (showEmojiPicker) {
-      document.addEventListener('mousedown', handleClickOutside)
-    }
-
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside)
-    }
-  }, [showEmojiPicker])
-
-  // Cleanup typing timeout on unmount
-  useEffect(() => {
-    return () => {
-      if (typingTimeout) {
-        clearTimeout(typingTimeout)
-      }
-    }
-  }, [typingTimeout])
 
   const initializeChat = async () => {
-    console.log('🔍 Debug - initializeChat started')
+    console.log('Debug - initializeChat started')
     try {
       setIsLoading(true)
              const token = localStorage.getItem('token') || localStorage.getItem('access_token') || localStorage.getItem('auth_token')
-       console.log('🔍 Debug - Token:', token ? 'Token exists' : 'No token found')
-       console.log('🔍 Debug - Token length:', token ? token.length : 0)
-       console.log('🔍 Debug - Token preview:', token ? token.substring(0, 20) + '...' : 'No token')
-       console.log('🔍 Debug - All localStorage keys:', Object.keys(localStorage))
+       console.log('Debug - Token:', token ? 'Token exists' : 'No token found')
+       console.log('Debug - Token length:', token ? token.length : 0)
+       console.log('Debug - Token preview:', token ? token.substring(0, 20) + '...' : 'No token')
+       console.log('Debug - All localStorage keys:', Object.keys(localStorage))
       
              if (!token) {
          toast.error('Please login to use messenger')
@@ -180,7 +136,7 @@ export default function MessengerPage() {
        try {
          const payload = JSON.parse(atob(token.split('.')[1]))
          currentUserId = payload.user_id
-         console.log('🔍 Debug - Current user ID from token:', currentUserId)
+         console.log('Debug - Current user ID from token:', currentUserId)
        } catch (error) {
          console.error('Error decoding token:', error)
          toast.error('Invalid token')
@@ -188,38 +144,38 @@ export default function MessengerPage() {
        }
 
                        // First, try to find existing conversation for this customer
-         console.log('🔍 Debug - Checking for existing conversation for customer:', currentUserId)
+         console.log('Debug - Checking for existing conversation for customer:', currentUserId)
         const response = await fetch(`/api/messenger?action=get_conversations&customer_id=${currentUserId}`, {
           headers: {
             'Authorization': `Bearer ${token}`
           }
         })
 
-      console.log('🔍 Debug - Response status:', response.status)
-      console.log('🔍 Debug - Response ok:', response.ok)
+      console.log('Debug - Response status:', response.status)
+      console.log('Debug - Response ok:', response.ok)
 
       if (response.ok) {
         const data = await response.json()
-        console.log('🔍 Debug - Response data:', data)
+        console.log('Debug - Response data:', data)
         
         if (data.success && data.data && data.data.items && data.data.items.length > 0) {
-          console.log('🔍 Debug - Found existing conversation:', data.data.items[0])
+          console.log('Debug - Found existing conversation:', data.data.items[0])
           const existingConversationId = data.data.items[0].conversation_id
-          console.log('🔍 Debug - Setting conversationId to:', existingConversationId)
+          console.log('Debug - Setting conversationId to:', existingConversationId)
           setConversationId(existingConversationId)
           
           // Note: WebSocket join will be handled by useEffect when ws connects
           loadMessages(existingConversationId)
         } else if (data.success && data.data && Array.isArray(data.data) && data.data.length > 0) {
-          console.log('🔍 Debug - Found existing conversation (array format):', data.data[0])
+          console.log('Debug - Found existing conversation (array format):', data.data[0])
           const existingConversationId = data.data[0].conversation_id
-          console.log('🔍 Debug - Setting conversationId to (array format):', existingConversationId)
+          console.log('Debug - Setting conversationId to (array format):', existingConversationId)
           setConversationId(existingConversationId)
           
           // Note: WebSocket join will be handled by useEffect when ws connects
           loadMessages(existingConversationId)
         } else {
-          console.log('🔍 Debug - No conversations found, creating new one...')
+          console.log('Debug - No conversations found, creating new one...')
                      // Create new conversation
            const createResponse = await fetch('/api/messenger', {
              method: 'POST',
@@ -233,36 +189,36 @@ export default function MessengerPage() {
              })
            })
 
-          console.log('🔍 Debug - Create response status:', createResponse.status)
+          console.log('Debug - Create response status:', createResponse.status)
           
           if (createResponse.ok) {
             const createData = await createResponse.json()
-            console.log('🔍 Debug - Created conversation:', createData)
+            console.log('Debug - Created conversation:', createData)
             const newConversationId = createData.data.conversation_id
-            console.log('🔍 Debug - Setting conversationId to (new conversation):', newConversationId)
+            console.log('Debug - Setting conversationId to (new conversation):', newConversationId)
             setConversationId(newConversationId)
             
             // Note: WebSocket join will be handled by useEffect when ws connects
           } else {
-            console.log('🔍 Debug - Failed to create conversation')
+            console.log('Debug - Failed to create conversation')
             const errorData = await createResponse.json()
-            console.log('🔍 Debug - Create error:', errorData)
+            console.log('Debug - Create error:', errorData)
           }
         }
       } else {
-        console.log('🔍 Debug - Failed to fetch conversations')
+        console.log('Debug - Failed to fetch conversations')
         const errorData = await response.json()
-        console.log('🔍 Debug - Fetch error:', errorData)
+        console.log('Debug - Fetch error:', errorData)
       }
     } catch (error) {
       console.error('❌ Error initializing chat:', error)
-      console.log('🔍 Debug - Error details:', error)
+      console.log('Debug - Error details:', error)
       toast.error('Failed to initialize chat')
          } finally {
        setIsLoading(false)
-       console.log('🔍 Debug - initializeChat finally block completed')
+       console.log('Debug - initializeChat finally block completed')
      }
-     console.log('🔍 Debug - initializeChat function completed')
+     console.log('Debug - initializeChat function completed')
    }
 
 
@@ -270,7 +226,7 @@ export default function MessengerPage() {
   const loadMessages = async (convId: number) => {
          try {
        const token = localStorage.getItem('token') || localStorage.getItem('access_token') || localStorage.getItem('auth_token')
-       console.log('🔍 Debug - Loading messages for conversation:', convId)
+       console.log('Debug - Loading messages for conversation:', convId)
       
              const response = await fetch(`/api/messenger?action=get_messages&conversation_id=${convId}`, {
          headers: {
@@ -278,24 +234,24 @@ export default function MessengerPage() {
          }
        })
 
-      console.log('🔍 Debug - Load messages response status:', response.status)
+      console.log('Debug - Load messages response status:', response.status)
 
       if (response.ok) {
         const data = await response.json()
-        console.log('🔍 Debug - Load messages data:', data)
+        console.log('Debug - Load messages data:', data)
         if (data.success) {
           const messagesData = data.data && data.data.items ? data.data.items : data.data
-          console.log('🔍 Debug - Raw messages data:', messagesData)
-          console.log('🔍 Debug - First message structure:', messagesData[0])
+          console.log('Debug - Raw messages data:', messagesData)
+          console.log('Debug - First message structure:', messagesData[0])
           setMessages(messagesData)
-          console.log('🔍 Debug - Messages loaded:', messagesData.length, 'messages')
+          console.log('Debug - Messages loaded:', messagesData.length, 'messages')
           
           // Note: WebSocket join will be handled by useEffect when ws connects
         }
       } else {
-        console.log('🔍 Debug - Failed to load messages')
+        console.log('Debug - Failed to load messages')
         const errorData = await response.json()
-        console.log('🔍 Debug - Load messages error:', errorData)
+        console.log('Debug - Load messages error:', errorData)
       }
     } catch (error) {
       console.error('❌ Error loading messages:', error)
@@ -378,18 +334,16 @@ export default function MessengerPage() {
     }
   }, [])
 
-  const sendMessage = async () => {
-    console.log('🔍 Debug - sendMessage called')
-    console.log('🔍 Debug - newMessage:', newMessage)
-    console.log('🔍 Debug - conversationId:', conversationId)
+  const sendMessage = async (rawContent: string) => {
+    console.log('Debug - sendMessage called')
+    console.log('Debug - rawContent:', rawContent)
+    console.log('Debug - conversationId:', conversationId)
     
-    if (!newMessage.trim() || !conversationId) {
-      console.log('🔍 Debug - Cannot send message - missing content or conversationId')
+    const messageContent = rawContent.trim()
+    if (!messageContent || !conversationId) {
+      console.log('Debug - Cannot send message - missing content or conversationId')
       return
     }
-
-    const messageContent = newMessage.trim()
-    setNewMessage("")
 
     // Check if it's a valid URL
     const isValidUrlString = isValidUrl(messageContent)
@@ -434,8 +388,8 @@ export default function MessengerPage() {
 
          try {
        const token = localStorage.getItem('token') || localStorage.getItem('access_token') || localStorage.getItem('auth_token')
-       console.log('🔍 Debug - Sending message to conversation:', conversationId)
-      console.log('🔍 Debug - Message content:', messageContent)
+       console.log('Debug - Sending message to conversation:', conversationId)
+      console.log('Debug - Message content:', messageContent)
       
       const requestBody = {
         content: messageContent,
@@ -449,7 +403,7 @@ export default function MessengerPage() {
         is_link: isValidUrlString
       }
       
-      console.log('🔍 Debug - Request body:', requestBody)
+      console.log('Debug - Request body:', requestBody)
       
              const response = await fetch(`/api/messenger`, {
          method: 'POST',
@@ -464,12 +418,12 @@ export default function MessengerPage() {
          })
        })
       
-      console.log('🔍 Debug - Send message response status:', response.status)
+      console.log('Debug - Send message response status:', response.status)
 
              if (response.ok) {
-         const data = await response.json()
-         console.log('🔍 Debug - Send message response data:', data)
-         console.log('🔍 Debug - Response message structure:', data.data)
+        const data = await response.json()
+        console.log('Debug - Send message response data:', data)
+        console.log('Debug - Response message structure:', data.data)
                 if (data.success) {
          setMessages(prev => {
            const updated = prev.map(msg => 
@@ -481,21 +435,356 @@ export default function MessengerPage() {
          })
          
          // Message will be sent via WebSocket automatically by backend
-         console.log('🔍 Debug - Message sent successfully, backend will broadcast via WebSocket')
+         console.log('Debug - Message sent successfully, backend will broadcast via WebSocket')
        }
       } else {
         // Remove optimistic message on error
         setMessages(prev => prev.filter(msg => msg.message_id !== optimisticMessage.message_id))
-        setNewMessage(messageContent)
         toast.error('Failed to send message')
       }
     } catch (error) {
       console.error('Error sending message:', error)
       setMessages(prev => prev.filter(msg => msg.message_id !== optimisticMessage.message_id))
-      setNewMessage(messageContent)
       toast.error('Failed to send message')
     }
   }
+
+  const uploadMedia = async (file: File) => {
+    if (!conversationId) return
+
+    const isVideo = file.type.startsWith('video/')
+    const isAudio = file.type.startsWith('audio/')
+    const content = isVideo ? '[Video]' : isAudio ? '' : '[Image]'
+
+    // Get current user ID from token
+    const token = localStorage.getItem('token') || localStorage.getItem('access_token') || localStorage.getItem('auth_token')
+    let currentUserId = 1 // fallback
+    if (token) {
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]))
+        currentUserId = payload.user_id
+      } catch (error) {
+        console.error('Error decoding token for media upload:', error)
+      }
+    }
+
+    const optimisticMessage: Message = {
+      message_id: Date.now(),
+      conversation_id: conversationId,
+      sender_id: currentUserId, // Use actual customer ID
+      content: content,
+      sent_at: new Date().toISOString(),
+      is_read: 0,
+      first_name: 'You',
+      last_name: '',
+      email: '',
+      avatar_url: null,
+      media: [{
+        media_id: Date.now(),
+        url: URL.createObjectURL(file),
+        type: file.type,
+        file_name: file.name
+      }],
+      is_customer: true,
+      isUploading: true
+    }
+
+    setMessages(prev => [...prev, optimisticMessage])
+
+    const formData = new FormData()
+    formData.append('media', file)
+    
+    console.log('Debug - Uploading file:', file.name, 'Size:', file.size, 'Type:', file.type)
+    console.log('Debug - FormData entries:')
+    for (let [key, value] of formData.entries()) {
+      console.log('Debug -', key, ':', value)
+    }
+
+         try {
+       const token = localStorage.getItem('token') || localStorage.getItem('access_token') || localStorage.getItem('auth_token')
+       if (!token) {
+        toast.error('Please login to upload media')
+        setMessages(prev => prev.filter(msg => msg.message_id !== optimisticMessage.message_id))
+        return
+      }
+      
+             const response = await fetch(`/api/messenger`, {
+         method: 'POST',
+         headers: {
+           'Authorization': `Bearer ${token}`
+         },
+         body: formData
+       })
+
+      if (response.ok) {
+        const data = await response.json()
+        
+        if (data.success) {
+                     const messageResponse = await fetch(`/api/messenger`, {
+             method: 'POST',
+             headers: {
+               'Authorization': `Bearer ${token}`,
+               'Content-Type': 'application/json'
+             },
+             body: JSON.stringify({
+               action: 'send_message',
+               conversation_id: conversationId,
+               content: content,
+               media: [{
+                 name: file.name,
+                 type: file.type,
+                 size: file.size,
+                 url: data.data.url,
+                 public_id: data.data.public_id
+               }]
+             })
+           })
+
+          if (messageResponse.ok) {
+            const messageData = await messageResponse.json()
+            setMessages(prev => {
+              const updated = prev.map(msg => 
+                msg.message_id === optimisticMessage.message_id 
+                  ? { ...messageData.data, isUploading: false }
+                  : msg
+              )
+              return updated
+            })
+          } else {
+            setMessages(prev => prev.filter(msg => msg.message_id !== optimisticMessage.message_id))
+            toast.error('Failed to send media message')
+          }
+        } else {
+          setMessages(prev => prev.filter(msg => msg.message_id !== optimisticMessage.message_id))
+          toast.error('Failed to upload media: ' + (data.message || 'Unknown error'))
+        }
+      } else {
+        const errorData = await response.json()
+        setMessages(prev => prev.filter(msg => msg.message_id !== optimisticMessage.message_id))
+        toast.error('Upload failed: ' + (errorData.message || 'Unknown error'))
+      }
+    } catch (error) {
+      setMessages(prev => prev.filter(msg => msg.message_id !== optimisticMessage.message_id))
+      toast.error('Failed to upload media')
+    }
+  }
+
+  const formatTime = (dateString: string) => {
+    const date = new Date(dateString)
+    return date.toLocaleTimeString('en-US', { 
+      hour: '2-digit', 
+      minute: '2-digit',
+      hour12: true 
+    })
+  }
+
+  // Build data for new chat UI - MUST be called BEFORE any early return
+  const contact: ChatContact = useMemo(() => {
+    const otherMessage = messages.find((m) => !isMessageFromCustomer(m))
+    const name =
+      (otherMessage
+        ? `${otherMessage.first_name || ""} ${otherMessage.last_name || ""}`.trim()
+        : "") || "Customer Support"
+
+    return {
+      id: conversationId ?? "support",
+      name,
+      avatar:
+        otherMessage?.avatar_url ||
+        "https://ui-avatars.com/api/?name=CS&background=0D8ABC&color=fff",
+      online: isConnected,
+    }
+  }, [messages, conversationId, isConnected, isMessageFromCustomer])
+
+  const chatMessages: ChatMessage[] = useMemo(
+    () => {
+      console.log('Debug - Mapping messages to chatMessages. Total messages:', messages.length)
+      const mapped = messages.map((message) => {
+        const isMine = isMessageFromCustomer(message)
+        const firstMedia = message.media && message.media.length > 0 ? message.media[0] : null
+        
+        // Improved media URL detection - check type first, then URL extension
+        let imageUrl: string | undefined = undefined
+        let videoUrl: string | undefined = undefined
+        let audioUrl: string | undefined = undefined
+        
+        if (firstMedia && firstMedia.url) {
+          const mediaType = firstMedia.type || ''
+          const mediaUrl = firstMedia.url
+          
+          // Check by MIME type first
+          if (mediaType.startsWith("image/")) {
+            imageUrl = mediaUrl
+          } else if (mediaType.startsWith("video/")) {
+            videoUrl = mediaUrl
+          } else if (mediaType.startsWith("audio/")) {
+            audioUrl = mediaUrl
+          }
+          // Fallback: check by file extension if no type
+          else if (typeof mediaUrl === 'string') {
+            const urlLower = mediaUrl.toLowerCase()
+            const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.svg']
+            const videoExtensions = ['.mp4', '.webm', '.ogg', '.mov', '.avi', '.mkv']
+            const audioExtensions = ['.mp3', '.wav', '.ogg', '.m4a', '.aac', '.webm']
+            
+            if (imageExtensions.some(ext => urlLower.includes(ext))) {
+              imageUrl = mediaUrl
+            } else if (videoExtensions.some(ext => urlLower.includes(ext))) {
+              videoUrl = mediaUrl
+            } else if (audioExtensions.some(ext => urlLower.includes(ext))) {
+              audioUrl = mediaUrl
+            }
+          }
+        }
+
+        // Show text if it exists and is not a placeholder
+        const text = message.content &&
+          message.content !== "[Image]" &&
+          message.content !== "[Video]" &&
+          message.content !== "[Voice Message]" &&
+          message.content.trim() !== ""
+          ? message.content
+          : undefined
+
+        const chatMsg = {
+          id: message.message_id,
+          senderId: message.sender_id,
+          text,
+          image: imageUrl,
+          video: videoUrl,
+          audio: audioUrl,
+          timestamp: formatTime(message.sent_at),
+          isMine,
+        }
+        
+        console.log('Debug - Mapped message:', {
+          id: chatMsg.id,
+          text: chatMsg.text?.substring(0, 50),
+          image: chatMsg.image ? `has image: ${chatMsg.image.substring(0, 50)}...` : 'no image',
+          video: chatMsg.video ? `has video: ${chatMsg.video.substring(0, 50)}...` : 'no video',
+          audio: chatMsg.audio ? `has audio: ${chatMsg.audio.substring(0, 50)}...` : 'no audio',
+          media: firstMedia ? {
+            type: firstMedia.type,
+            url: firstMedia.url ? firstMedia.url.substring(0, 50) + '...' : 'no url',
+            hasType: !!firstMedia.type,
+            hasUrl: !!firstMedia.url
+          } : 'no media',
+          isMine: chatMsg.isMine,
+          timestamp: chatMsg.timestamp
+        })
+        
+        return chatMsg
+      })
+      
+      console.log('Debug - Final chatMessages count:', mapped.length)
+      return mapped
+    },
+    [messages, isMessageFromCustomer]
+  )
+
+  // Early return AFTER all hooks have been called
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-4"></div>
+          <p className="text-gray-600">Initializing chat...</p>
+        </div>
+      </div>
+    )
+  }
+
+  const handleSendFromUI = (text: string) => {
+    if (!conversationId) {
+      toast.error("Đang kết nối cuộc trò chuyện, vui lòng thử lại sau.")
+      return
+    }
+    sendMessage(text)
+  }
+
+  const handleRecallMessage = async (messageId: string | number) => {
+    if (!conversationId) return;
+    
+    try {
+      const token = localStorage.getItem('token') || localStorage.getItem('access_token') || localStorage.getItem('auth_token');
+      if (!token) {
+        toast.error('Please login to recall message');
+        return;
+      }
+
+      const response = await fetch('/api/messenger', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          action: 'recall_message',
+          message_id: messageId,
+          conversation_id: conversationId
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          // Remove message from local state
+          setMessages(prev => prev.filter(msg => msg.message_id !== messageId));
+          toast.success('Tin nhắn đã được thu hồi');
+        } else {
+          toast.error(data.message || 'Failed to recall message');
+        }
+      } else {
+        const errorData = await response.json();
+        toast.error(errorData.message || 'Failed to recall message');
+      }
+    } catch (error) {
+      console.error('Recall message error:', error);
+      toast.error('Failed to recall message');
+    }
+  };
+
+  const handleDeleteMessage = async (messageId: string | number) => {
+    if (!conversationId) return;
+    
+    try {
+      const token = localStorage.getItem('token') || localStorage.getItem('access_token') || localStorage.getItem('auth_token');
+      if (!token) {
+        toast.error('Please login to delete message');
+        return;
+      }
+
+      const response = await fetch('/api/messenger', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          action: 'delete_message',
+          message_id: messageId,
+          conversation_id: conversationId
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          // Remove message from local state (only for sender)
+          setMessages(prev => prev.filter(msg => msg.message_id !== messageId));
+          toast.success('Tin nhắn đã được xóa');
+        } else {
+          toast.error(data.message || 'Failed to delete message');
+        }
+      } else {
+        const errorData = await response.json();
+        toast.error(errorData.message || 'Failed to delete message');
+      }
+    } catch (error) {
+      console.error('Delete message error:', error);
+      toast.error('Failed to delete message');
+    }
+  };
 
   const handleVoiceRecordingComplete = async (audioBlob: Blob) => {
     if (!conversationId) return
@@ -549,8 +838,6 @@ export default function MessengerPage() {
             const messageData = await messageResponse.json()
             if (messageData.success) {
               setMessages(prev => [...prev, messageData.data])
-              setShowVoiceRecorder(false)
-              toast.success('Voice message sent successfully')
             } else {
               toast.error(messageData.message || 'Failed to send voice message')
             }
@@ -569,724 +856,61 @@ export default function MessengerPage() {
     }
   }
 
-  const uploadMedia = async (file: File) => {
-    if (!conversationId) return
-
-    const isVideo = file.type.startsWith('video/')
-    const isAudio = file.type.startsWith('audio/')
-    const content = isVideo ? '[Video]' : isAudio ? '' : '[Image]'
-
-    // Get current user ID from token
-    const token = localStorage.getItem('token') || localStorage.getItem('access_token') || localStorage.getItem('auth_token')
-    let currentUserId = 1 // fallback
-    if (token) {
-      try {
-        const payload = JSON.parse(atob(token.split('.')[1]))
-        currentUserId = payload.user_id
-      } catch (error) {
-        console.error('Error decoding token for media upload:', error)
-      }
-    }
-
-    const optimisticMessage: Message = {
-      message_id: Date.now(),
-      conversation_id: conversationId,
-      sender_id: currentUserId, // Use actual customer ID
-      content: content,
-      sent_at: new Date().toISOString(),
-      is_read: 0,
-      first_name: 'You',
-      last_name: '',
-      email: '',
-      avatar_url: null,
-      media: [{
-        media_id: Date.now(),
-        url: URL.createObjectURL(file),
-        type: file.type,
-        file_name: file.name
-      }],
-      is_customer: true,
-      isUploading: true
-    }
-
-    setMessages(prev => [...prev, optimisticMessage])
-
-    const formData = new FormData()
-    formData.append('media', file)
-    
-    console.log('🔍 Debug - Uploading file:', file.name, 'Size:', file.size, 'Type:', file.type)
-    console.log('🔍 Debug - FormData entries:')
-    for (let [key, value] of formData.entries()) {
-      console.log('🔍 Debug -', key, ':', value)
-    }
-
-         try {
-       const token = localStorage.getItem('token') || localStorage.getItem('access_token') || localStorage.getItem('auth_token')
-       if (!token) {
-        toast.error('Please login to upload media')
-        setMessages(prev => prev.filter(msg => msg.message_id !== optimisticMessage.message_id))
-        return
-      }
-      
-             const response = await fetch(`/api/messenger`, {
-         method: 'POST',
-         headers: {
-           'Authorization': `Bearer ${token}`
-         },
-         body: formData
-       })
-
-      if (response.ok) {
-        const data = await response.json()
-        
-        if (data.success) {
-                     const messageResponse = await fetch(`/api/messenger`, {
-             method: 'POST',
-             headers: {
-               'Authorization': `Bearer ${token}`,
-               'Content-Type': 'application/json'
-             },
-             body: JSON.stringify({
-               action: 'send_message',
-               conversation_id: conversationId,
-               content: content,
-               media: [{
-                 name: file.name,
-                 type: file.type,
-                 size: file.size,
-                 url: data.data.url,
-                 public_id: data.data.public_id
-               }]
-             })
-           })
-
-          if (messageResponse.ok) {
-            const messageData = await messageResponse.json()
-            setMessages(prev => {
-              const updated = prev.map(msg => 
-                msg.message_id === optimisticMessage.message_id 
-                  ? { ...messageData.data, isUploading: false }
-                  : msg
-              )
-              return updated
-            })
-            toast.success('Media sent successfully')
-          } else {
-            setMessages(prev => prev.filter(msg => msg.message_id !== optimisticMessage.message_id))
-            toast.error('Failed to send media message')
-          }
-        } else {
-          setMessages(prev => prev.filter(msg => msg.message_id !== optimisticMessage.message_id))
-          toast.error('Failed to upload media: ' + (data.message || 'Unknown error'))
-        }
-      } else {
-        const errorData = await response.json()
-        setMessages(prev => prev.filter(msg => msg.message_id !== optimisticMessage.message_id))
-        toast.error('Upload failed: ' + (errorData.message || 'Unknown error'))
-      }
-    } catch (error) {
-      setMessages(prev => prev.filter(msg => msg.message_id !== optimisticMessage.message_id))
-      toast.error('Failed to upload media')
-    }
-  }
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
-  }
-
-  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
-    const { scrollTop, scrollHeight, clientHeight } = e.currentTarget
-    const isNearBottom = scrollHeight - scrollTop - clientHeight < 100
-    const shouldShow = !isNearBottom && scrollHeight > clientHeight
-    setShowScrollToBottom(shouldShow)
-  }
-
-  const formatTime = (dateString: string) => {
-    const date = new Date(dateString)
-    return date.toLocaleTimeString('en-US', { 
-      hour: '2-digit', 
-      minute: '2-digit',
-      hour12: true 
-    })
-  }
-
-  const onEmojiClick = (emojiObject: any) => {
-    setNewMessage(prev => prev + emojiObject.emoji)
-    setShowEmojiPicker(false)
-  }
-
-     // Handle typing indicator
-   const handleTyping = () => {
-     console.log('🔍 Debug - handleTyping called')
-     console.log('🔍 Debug - WebSocket connected:', isConnected)
-     console.log('🔍 Debug - Conversation ID:', conversationId)
-     
-     // Send typing start
-     if (isConnected && conversationId) {
-       console.log('🔍 Debug - Sending typing_start event')
-       sendTypingStart(conversationId)
-     } else {
-       console.log('🔍 Debug - Cannot send typing_start - WebSocket not connected or no conversation')
-     }
-
-     // Clear existing timeout
-     if (typingTimeout) {
-       clearTimeout(typingTimeout)
-     }
-
-     // Set new timeout to stop typing indicator
-     const timeout = setTimeout(() => {
-       if (isConnected && conversationId) {
-         console.log('🔍 Debug - Sending typing_stop event')
-         sendTypingStop(conversationId)
-       }
-     }, 2000) // Stop typing indicator after 2 seconds of no input
-
-     setTypingTimeout(timeout)
-   }
-
-  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    if (file) {
-      uploadMedia(file)
-    }
-  }
-
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    if (file) {
-      // TODO: Implement file upload to server
-      console.log('File selected:', file)
-      toast.info('File upload feature coming soon!')
-    }
-  }
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-4"></div>
-          <p className="text-gray-600">Initializing chat...</p>
-        </div>
-      </div>
-    )
-  }
-
-  return (
-    <div className="flex justify-center min-h-screen bg-gray-50">
-      <div className="relative h-screen w-full max-w-4xl bg-white shadow-lg">
-        {/* Main Chat Area - Fixed width */}
-        <div className="flex flex-col h-screen w-full max-w-4xl">
-          {/* Header */}
-          <div className="bg-white border-b border-gray-200 px-5 py-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <Link href="/" className="p-2 hover:bg-gray-100 rounded-full transition-colors">
-                  <ArrowLeft className="w-4 h-4 text-gray-600" />
-                </Link>
-                <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center">
-                  <User className="w-5 h-5 text-white" />
-                </div>
-                                 <div>
-                   <h1 className="text-sm font-semibold text-gray-900">Customer Support</h1>
-                   <p className="text-xs text-gray-500">
-                     {isConnecting ? 'Connecting...' : isConnected ? 'Online' : 'Offline'} {conversationId ? `(ID: ${conversationId})` : '(No conversation)'}
-                   </p>
-                 </div>
-              </div>
-              
-              {/* 3-dot Menu Button */}
-              <Button
-                variant="ghost"
-                size="sm"
-                className="p-2 h-8 w-8 rounded-full hover:bg-gray-100"
-                onClick={() => setShowSidebar(!showSidebar)}
-                title="More options"
-              >
-                <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
-                </svg>
-              </Button>
-            </div>
-          </div>
-
-          {/* Messages Area */}
-          <div 
-            className="flex-1 overflow-y-auto p-5 space-y-3 relative"
-            onScroll={handleScroll}
+                                  return (
+    <div className={`flex justify-center items-center min-h-screen py-4 px-4 ${isDarkMode ? 'bg-gray-900' : 'bg-gray-50'}`}>
+      <div className={`w-full max-w-5xl h-[calc(100vh-3rem)] max-h-[calc(100vh-3rem)] shadow-xl flex flex-col rounded-2xl overflow-hidden ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
+        {/* Back Header */}
+        <div className={`flex items-center gap-2 px-4 py-2 border-b ${isDarkMode ? 'border-gray-700 bg-gray-800' : 'border-gray-200 bg-white'}`}>
+          <Link
+            href="/"
+            className={`p-2 rounded-full transition-colors ${isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}
           >
-            {messages.length === 0 ? (
-              <div className="text-center py-8">
-                <MessageCircle className="w-14 h-14 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-base font-medium text-gray-900 mb-2">Welcome to Customer Support</h3>
-                <p className="text-sm text-gray-500">Start a conversation with our support team. We're here to help!</p>
-              </div>
-            ) : (
-                             messages.map((message) => {
-                 const isCustomer = isMessageFromCustomer(message)
-                 return (
-                   <div
-                     key={message.message_id}
-                     className={`flex ${isCustomer ? 'justify-end' : 'justify-start'}`}
-                   >
-                     <div className={`flex items-end space-x-2 max-w-md ${isCustomer ? 'flex-row-reverse space-x-reverse' : ''}`}>
-                       <Avatar className="w-8 h-8">
-                         <AvatarImage src={message.avatar_url || undefined} />
-                         <AvatarFallback className="text-xs">
-                           {isCustomer ? 'You' : 'Support'}
-                         </AvatarFallback>
-                       </Avatar>
-                       <div className={`px-3 py-2 rounded-2xl ${
-                         isCustomer 
-                           ? 'bg-blue-500 text-white' 
-                           : 'bg-gray-200 text-gray-900'
-                       }`}>
-                      {/* Message Content */}
-                      {message.content && message.is_link ? (
-                        <div className="space-y-2">
-                          {/* If it's a direct media link, show media directly */}
-                          {isDirectMediaUrl(message.content) ? (
-                            <div>
-                              {(() => {
-                                const mediaType = getMediaTypeFromUrl(message.content);
-                                if (mediaType === 'image') {
-                                  return (
-                                    <img
-                                      src={message.content}
-                                      alt="Link media"
-                                      className="max-w-[350px] max-h-[250px] rounded cursor-pointer hover:opacity-90 transition-opacity object-cover"
-                                      onClick={() => setSelectedImage(message.content)}
-                                    />
-                                  );
-                                } else if (mediaType === 'video') {
-                                  return (
-                                    <video
-                                      src={message.content}
-                                      controls
-                                      className="max-w-[500px] max-h-[400px] rounded object-contain"
-                                      preload="metadata"
-                                    >
-                                      Your browser does not support the video tag.
-                                    </video>
-                                  );
-                                }
-                                return null;
-                              })()}
-                            </div>
-                          ) : (
-                            /* If it's a regular link, show link preview card */
-                            <div className="space-y-2">
-                              <p className="text-sm">{message.content}</p>
-                              <a
-                                href={message.content}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="block p-3 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors cursor-pointer"
-                              >
-                                <div className="flex items-center space-x-2">
-                                  <div className="w-8 h-8 bg-blue-500 rounded flex items-center justify-center">
-                                    <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
-                                      <path fillRule="evenodd" d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" clipRule="evenodd" />
-                                    </svg>
-                                  </div>
-                                  <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-medium text-blue-600 dark:text-blue-400 truncate">
-                                      {getDomainFromUrl(message.content)}
-                                    </p>
-                                    <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                                      {message.content}
-                                    </p>
-                                  </div>
-                                  <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                                  </svg>
-                                </div>
-                              </a>
-                            </div>
-                          )}
-                        </div>
-                      ) : message.content && message.content !== '[Image]' && message.content !== '[Video]' ? (
-                        <p className="text-sm">{message.content}</p>
-                      ) : null}
-                      
-                      {/* Only show media for uploaded files, not for link media */}
-                      {message.media && message.media.length > 0 && !message.is_link && (message.content === '[Image]' || message.content === '[Video]' || message.content === '[Voice Message]' || !message.content) && (
-                        <div className="mt-2 space-y-2">
-                          {message.media.map((media) => (
-                            <div key={media.media_id} className="relative">
-                              {message.isUploading && (
-                                <div className="absolute inset-0 bg-black bg-opacity-50 rounded flex items-center justify-center z-10">
-                                  <div className="text-white text-center">
-                                    {media.type.startsWith('video/') ? (
-                                      <div className="w-48">
-                                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto mb-2"></div>
-                                        <p className="text-sm mb-2">Đang tải video...</p>
-                                        <div className="w-full bg-gray-700 rounded-full h-2">
-                                          <div className="bg-blue-500 h-2 rounded-full animate-pulse" style={{width: '60%'}}></div>
-                                        </div>
-                                        <p className="text-xs mt-1">60%</p>
-                                      </div>
-                                    ) : (
-                                      <div>
-                                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto mb-2"></div>
-                                        <p className="text-sm">Đang tải lên...</p>
-                                      </div>
-                                    )}
-                                  </div>
-                                </div>
-                              )}
-                              {(() => {
-                                const getMediaType = (url: string, type?: string) => {
-                                  if (type && type.startsWith('image/')) return 'image';
-                                  if (type && type.startsWith('video/')) return 'video';
-                                  if (type && type.startsWith('audio/')) return 'audio';
-                                  
-                                  const urlLower = url.toLowerCase();
-                                  if (urlLower.includes('.jpg') || urlLower.includes('.jpeg') || 
-                                      urlLower.includes('.png') || urlLower.includes('.gif') || 
-                                      urlLower.includes('.webp') || urlLower.includes('.bmp')) {
-                                    return 'image';
-                                  }
-                                  if (urlLower.includes('.mp4') || urlLower.includes('.avi') || 
-                                      urlLower.includes('.mov') || urlLower.includes('.wmv') || 
-                                      urlLower.includes('.flv') || urlLower.includes('.webm')) {
-                                    return 'video';
-                                  }
-                                  if (urlLower.includes('.mp3') || urlLower.includes('.wav') || 
-                                      urlLower.includes('.ogg') || urlLower.includes('.webm')) {
-                                    return 'audio';
-                                  }
-                                  return 'file';
-                                };
-                                
-                                const mediaType = getMediaType(media.url, media.type);
-                                
-                                if (mediaType === 'image') {
-                                  return (
-                                    <img
-                                      src={media.url}
-                                      alt="Media"
-                                      className="max-w-[350px] max-h-[250px] rounded cursor-pointer hover:opacity-90 transition-opacity object-cover"
-                                      onClick={() => setSelectedImage(media.url)}
-                                    />
-                                  );
-                                } else if (mediaType === 'video') {
-                                  return (
-                                    <video
-                                      src={media.url}
-                                      controls
-                                      className="max-w-[500px] max-h-[400px] rounded object-contain"
-                                      preload="metadata"
-                                    >
-                                      Your browser does not support the video tag.
-                                    </video>
-                                  );
-                                } else if (mediaType === 'audio') {
-                                  return (
-                                    <AudioPlayer audioUrl={media.url} />
-                                  );
-                                } else {
-                                  return (
-                                    <a
-                                      href={media.url}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="text-blue-500 underline hover:text-blue-700"
-                                    >
-                                      {media.file_name || 'Download file'}
-                                    </a>
-                                  );
-                                }
-                              })()}
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                                             <p className={`text-xs mt-1 ${
-                         isCustomer ? 'text-blue-100' : 'text-gray-500'
-                       }`}>
-                         {formatTime(message.sent_at)}
-                       </p>
-                     </div>
-                   </div>
-                 </div>
-               )
-             })
-                         )}
-             
-             {/* Typing Indicator */}
-             {isTyping && (
-               <div className="flex justify-start">
-                 <div className="flex items-end space-x-2 max-w-md">
-                   <Avatar className="w-8 h-8">
-                     <AvatarFallback className="text-xs">Support</AvatarFallback>
-                   </Avatar>
-                   <div className="px-3 py-2 rounded-2xl bg-gray-200 text-gray-900">
-                     <div className="flex space-x-1">
-                       <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce"></div>
-                       <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                       <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-                     </div>
-                   </div>
-                 </div>
-               </div>
-             )}
-             
-             <div ref={messagesEndRef} />
-            
-            {/* Scroll to Bottom Button */}
-            {showScrollToBottom && (
-              <button
-                onClick={scrollToBottom}
-                className="fixed bottom-20 right-8 p-3 rounded-full shadow-lg transition-all duration-200 hover:scale-110 z-50 bg-white text-gray-600 hover:bg-gray-100"
-                title="Cuộn xuống tin nhắn gần nhất"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-                </svg>
-              </button>
-            )}
-          </div>
-
-                      {/* Message Input - Facebook Messenger Style */}
-          <div className="bg-white border-t border-gray-200 p-3">
-            {showVoiceRecorder ? (
-              <VoiceRecorder
-                onRecordingComplete={handleVoiceRecordingComplete}
-                onCancel={() => setShowVoiceRecorder(false)}
-              />
-            ) : (
-              <div className="flex items-center space-x-2">
-                {/* Microphone Button */}
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="p-2 h-10 w-10 rounded-full bg-gray-100 hover:bg-gray-200"
-                  title="Voice Message"
-                  onClick={() => setShowVoiceRecorder(true)}
-                >
-                  <Mic className="w-5 h-5 text-gray-600" />
-                </Button>
-              
-               {/* Image/Video Button */}
-               <div className="relative">
-                 <input
-                   type="file"
-                   accept="image/*,video/*"
-                   onChange={handleImageUpload}
-                   className="hidden"
-                   id="image-upload"
-                 />
-                 <Button
-                   variant="ghost"
-                   size="sm"
-                   className="p-2 h-10 w-10 rounded-full bg-gray-100 hover:bg-gray-200"
-                   title="Send Photo/Video"
-                   onClick={() => document.getElementById('image-upload')?.click()}
-                 >
-                   <ImageIcon className="w-5 h-5 text-gray-600" />
-                 </Button>
-               </div>
-               
-               {/* File Button */}
-               <div className="relative">
-                 <input
-                   type="file"
-                   onChange={handleFileUpload}
-                   className="hidden"
-                   id="file-upload"
-                 />
-                 <Button
-                   variant="ghost"
-                   size="sm"
-                   className="p-2 h-10 w-10 rounded-full bg-gray-100 hover:bg-gray-200"
-                   title="Send File"
-                   onClick={() => document.getElementById('file-upload')?.click()}
-                 >
-                   <Paperclip className="w-5 h-5 text-gray-600" />
-                 </Button>
-               </div>
-               
-               {/* Emoji Button */}
-               <Button
-                 variant="ghost"
-                 size="sm"
-                 className="p-2 h-10 w-10 rounded-full bg-gray-100 hover:bg-gray-200 relative"
-                 title="Emoji"
-                 onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-               >
-                 <Smile className="w-5 h-5 text-gray-600" />
-                 
-                 {/* Emoji Picker */}
-                 {showEmojiPicker && (
-                   <div className="absolute bottom-full right-0 mb-2 z-50 emoji-picker-container">
-                     <EmojiPicker
-                       onEmojiClick={onEmojiClick}
-                       width={300}
-                       height={400}
-                     />
-                   </div>
-                 )}
-               </Button>
-
-                             {/* Message Input */}
-                               <Input
-                  value={newMessage}
-                  onChange={(e) => {
-                    setNewMessage(e.target.value)
-                    handleTyping()
-                  }}
-                  onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
-                  placeholder={conversationId ? (isConnected ? "Aa" : "Connecting...") : "Connecting..."}
-                  className="flex-1 text-sm py-2 px-3 rounded-full bg-gray-100 border-0 focus:ring-2 focus:ring-blue-500 focus:bg-white"
-                  disabled={!conversationId || !isConnected}
-                />
-              
-              {/* Send Button */}
-              <Button
-                onClick={sendMessage}
-                disabled={!newMessage.trim() || !conversationId || !isConnected}
-                className="p-2 h-10 w-10 rounded-full bg-blue-500 hover:bg-blue-600 text-white disabled:bg-gray-400 disabled:cursor-not-allowed"
-                title={!isConnected ? "Connecting..." : "Send Message"}
-              >
-                <Send className="w-5 h-5" />
-              </Button>
-            </div>
-            )}
-          </div>
-        </div>
-
-        {/* Right Sidebar - Absolute positioned */}
-        {showSidebar && (
-          <div className="absolute top-0 right-0 h-full w-96 bg-white border-l border-gray-200 flex flex-col shadow-lg">
-            {/* Sidebar Header */}
-            <div className="p-6 border-b border-gray-200">
-              <div className="flex items-center justify-between">
-                <h2 className="text-xl font-semibold text-gray-900">Chat Info</h2>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="p-2 h-8 w-8"
-                  onClick={() => setShowSidebar(false)}
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </Button>
-              </div>
-            </div>
-
-            {/* Sidebar Tabs */}
-            <div className="flex border-b border-gray-200">
-              <button
-                onClick={() => setActiveTab('media')}
-                className={`flex-1 px-6 py-4 text-base font-medium ${
-                  activeTab === 'media'
-                    ? 'text-blue-600 border-b-2 border-blue-600'
-                    : 'text-gray-500 hover:text-gray-700'
+            <ArrowLeft className={`w-4 h-4 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`} />
+          </Link>
+          <span className={`text-sm font-medium ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>
+            Quay lại trang chủ
+          </span>
+          <div className="ml-auto flex items-center gap-3">
+            {/* Dark Mode Toggle */}
+            <button
+              onClick={() => setIsDarkMode(!isDarkMode)}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 border ${
+                isDarkMode 
+                  ? "bg-gray-700 border-gray-600" 
+                  : "bg-gray-300 border-gray-400"
+              }`}
+              aria-label="Toggle dark mode"
+            >
+              <span
+                className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-lg transition-transform border ${
+                  isDarkMode ? "translate-x-6 border-gray-500" : "translate-x-1 border-gray-300"
                 }`}
               >
-                File phương tiện
-              </button>
-              <button
-                onClick={() => setActiveTab('files')}
-                className={`flex-1 px-6 py-4 text-base font-medium ${
-                  activeTab === 'files'
-                    ? 'text-blue-600 border-b-2 border-blue-600'
-                    : 'text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                File
-              </button>
-            </div>
-
-            {/* Sidebar Content */}
-            <div className="flex-1 overflow-y-auto p-6">
-              {activeTab === 'media' ? (
-                <div>
-                  <h3 className="text-base font-medium text-gray-900 mb-4">Media Files</h3>
-                  <div className="space-y-3">
-                    {messages.filter(msg => msg.media && msg.media.length > 0).length > 0 ? (
-                      <div className="grid grid-cols-2 gap-2">
-                        {messages
-                          .filter(msg => msg.media && msg.media.length > 0)
-                          .flatMap(msg => msg.media)
-                          .filter(media => media.type && (media.type.startsWith('image/') || media.type.startsWith('video/')))
-                          .slice(0, 10)
-                          .map((media, index) => (
-                            <div key={index} className="relative group">
-                              {media.type.startsWith('image/') ? (
-                                <img
-                                  src={media.url}
-                                  alt="Shared media"
-                                  className="w-full h-24 object-cover rounded cursor-pointer hover:opacity-90 transition-opacity"
-                                  onClick={() => setSelectedImage(media.url)}
-                                />
-                              ) : media.type.startsWith('video/') ? (
-                                <div className="relative w-full h-24 rounded cursor-pointer hover:opacity-90 transition-opacity overflow-hidden">
-                                  <video
-                                    src={media.url}
-                                    className="w-full h-full object-contain"
-                                    preload="metadata"
-                                  />
-                                  <div className="absolute inset-0 flex items-center justify-center">
-                                    <svg className="w-8 h-8 text-white bg-black bg-opacity-50 rounded-full p-1" fill="currentColor" viewBox="0 0 24 24">
-                                      <path d="M8 5v14l11-7z"/>
-                                    </svg>
-                                  </div>
+                {isDarkMode ? (
+                  <Moon className="h-full w-full p-0.5 text-gray-200" />
+                ) : (
+                  <Sun className="h-full w-full p-0.5 text-yellow-600" />
+                )}
+              </span>
+            </button>
+          </div>
                                 </div>
-                              ) : null}
-                            </div>
-                          ))}
-                      </div>
-                    ) : (
-                      <div className="text-center py-12 text-gray-500">
-                        <ImageIcon className="w-16 h-16 mx-auto mb-4 text-gray-300" />
-                        <p className="text-base">No media files yet</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ) : (
-                <div>
-                  <h3 className="text-base font-medium text-gray-900 mb-4">Files</h3>
-                  <div className="space-y-3">
-                    <div className="text-center py-12 text-gray-500">
-                      <Paperclip className="w-16 h-16 mx-auto mb-4 text-gray-300" />
-                      <p className="text-base">No files shared yet</p>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
 
-        {/* Image Modal */}
-        {selectedImage && (
-          <div 
-            className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50 p-6"
-            onClick={() => setSelectedImage(null)}
-          >
-            <div className="relative max-w-[85vw] max-h-[85vh]">
-              <button
-                onClick={() => setSelectedImage(null)}
-                className="absolute -top-8 right-0 text-white hover:text-gray-300 transition-colors z-10 bg-black bg-opacity-50 rounded-full p-1"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-              <img
-                src={selectedImage}
-                alt="Fullscreen"
-                className="max-w-full max-h-full object-contain rounded-lg shadow-lg"
-                onClick={(e) => e.stopPropagation()}
-                style={{ maxHeight: 'calc(85vh - 2rem)' }}
-              />
-            </div>
-          </div>
-        )}
+        {/* New Chat Window UI */}
+        <div className="flex-1 min-h-0">
+          <ChatWindow
+            contact={contact}
+            messages={chatMessages}
+            onSendMessage={handleSendFromUI}
+            onUploadMedia={uploadMedia}
+            onVoiceRecordingComplete={handleVoiceRecordingComplete}
+            isConnected={isConnected}
+            isDarkMode={isDarkMode}
+            onRecallMessage={handleRecallMessage}
+            onDeleteMessage={handleDeleteMessage}
+            isTyping={isTyping}
+          />
+        </div>
       </div>
     </div>
   )

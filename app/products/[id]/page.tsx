@@ -58,15 +58,24 @@ const getProductPrice = (product: Product): { price: string; originalPrice?: str
   }
 }
 
-// Helper function to get available sizes
-const getAvailableSizes = (product: Product): string[] => {
+// Helper function to get all sizes (including out of stock)
+const getAllSizes = (product: Product): string[] => {
   if (product.variants && product.variants.length > 0) {
     return product.variants
-      .filter(v => v.is_active === 1 && v.stock_quantity > 0)
+      .filter(v => v.is_active === 1)
       .map(v => v.size_name || '')
       .filter(size => size)
   }
   return []
+}
+
+// Helper function to check if a size is out of stock
+const isSizeOutOfStock = (product: Product, sizeName: string): boolean => {
+  if (!product.variants) return true
+  const variant = product.variants.find(
+    v => v.size_name === sizeName && v.is_active === 1
+  )
+  return !variant || variant.stock_quantity <= 0
 }
 
 export default function ProductPage({ params }: { params: Promise<{ id: string }> }) {
@@ -215,7 +224,15 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
 
   const productImages = getProductImages(product)
   const productPrice = getProductPrice(product)
-  const availableSizes = getAvailableSizes(product)
+  const allSizes = getAllSizes(product)
+  
+  // Get available sizes (for default selection and validation)
+  const availableSizes = allSizes.filter(size => {
+    const variant = product.variants?.find(
+      v => v.size_name === size && v.is_active === 1
+    )
+    return variant && variant.stock_quantity > 0
+  })
 
   // Helper function to get selected variant
   const getSelectedVariant = () => {
@@ -310,20 +327,30 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
               <div className="flex items-center justify-between mb-2">
                 <h3 className="text-xs font-bold text-gray-800 uppercase tracking-wider">Kích thước</h3>
                 <div className="flex gap-3">
-                  {availableSizes.length > 0 ? (
-                    availableSizes.map((size) => (
+                  {allSizes.length > 0 ? (
+                    allSizes.map((size) => {
+                      const isOutOfStock = isSizeOutOfStock(product, size)
+                      return (
                       <button
                         key={size}
-                        onClick={() => setSelectedSize(size)}
-                        className={`text-xs font-normal text-gray-600 transition-colors ${
-                          selectedSize === size 
+                          onClick={() => {
+                            if (!isOutOfStock) {
+                              setSelectedSize(size)
+                            }
+                          }}
+                          disabled={isOutOfStock}
+                          className={`text-xs font-normal transition-colors ${
+                            isOutOfStock
+                              ? 'text-gray-400 cursor-not-allowed opacity-50'
+                              : selectedSize === size 
                             ? 'border-b border-gray-800 text-gray-800' 
-                            : 'hover:text-gray-800'
+                                : 'text-gray-600 hover:text-gray-800'
                         }`}
                       >
                         {size}
                       </button>
-                    ))
+                      )
+                    })
                   ) : (
                     <p className="text-gray-500 text-xs">No sizes available</p>
                   )}
@@ -510,7 +537,7 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
                 }}
               >
                 <span className="relative z-10 font-sans font-bold uppercase tracking-wider">
-                  {isVariantOutOfStock() ? "Hết Hàng" : (availableSizes.length === 0 ? "Out of Stock" : "THÊM VÀO GIỎ")}
+                  {availableSizes.length === 0 ? "HẾT HÀNG" : (isVariantOutOfStock() ? "Hết Hàng" : "THÊM VÀO GIỎ")}
                 </span>
                 <div className="absolute inset-0 bg-white transform translate-x-full transition-transform duration-300 ease-in-out group-hover:translate-x-0"></div>
               </button>
@@ -529,7 +556,6 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
                     {product.stock !== undefined && <li>Stock: {product.stock} units</li>}
                     {product.category_name && <li>Category: {product.category_name}</li>}
                     {product.variant_count && <li>Available in {product.variant_count} variants</li>}
-                    <li>Product ID: {product.product_id}</li>
                   </ul>
                 </div>
               </details>

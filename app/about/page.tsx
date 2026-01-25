@@ -4,7 +4,7 @@ import Link from "next/link"
 export default function AboutPage() {
   return (
     <main className="pt-24">
-      <div className="container mx-auto px-8 py-12">
+      <div className="p-8 max-w-[85%] ml-[224px] mr-8">
         {/* Header */}
         <section className="mb-16 text-center">
           <h1 className="font-serif text-3xl font-light md:text-4xl">Our Beginning</h1>

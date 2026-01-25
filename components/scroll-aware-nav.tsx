@@ -44,6 +44,21 @@ export default function ScrollAwareNav() {
     return () => window.removeEventListener('scroll', handleScroll)
   }, [isClient, isHomePage])
 
+  // Auto-close shop dropdown on scroll
+  useEffect(() => {
+    if (!isShopOpen) return
+
+    const handleScroll = () => {
+      setIsShopOpen(false)
+    }
+
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    
+    return () => {
+      window.removeEventListener('scroll', handleScroll)
+    }
+  }, [isShopOpen])
+
   // Handle logout
   const handleLogout = async () => {
     try {
@@ -76,7 +91,7 @@ export default function ScrollAwareNav() {
   console.log('ScrollAwareNav - isClient:', isClient, 'isHomePage:', isHomePage, 'isOverVideo:', isOverVideo, 'textColorClass:', textColorClass, 'isLoggedIn:', isLoggedIn)
 
   return (
-    <div className="fixed left-0 top-0 w-56 h-full bg-transparent p-8 overflow-y-auto z-50 pointer-events-auto">
+    <div className="fixed left-0 top-0 w-56 h-full bg-transparent p-8 overflow-y-auto z-[100] pointer-events-auto">
              {/* Brand Name */}
        <div className="mb-8">
          <Link href="/" className={`text-lg font-bold uppercase tracking-wider ${textColorClass} hover:opacity-80 transition-opacity`}>
@@ -85,7 +100,7 @@ export default function ScrollAwareNav() {
        </div>
 
       {/* Shop Section */}
-      <div className="mb-6">
+      <div className="mb-6 relative">
         <div className="mb-3">
           <button
             onClick={() => setIsShopOpen(!isShopOpen)}
@@ -96,7 +111,7 @@ export default function ScrollAwareNav() {
         </div>
         
         {isShopOpen && (
-          <nav className="space-y-1 sidebar-nav">
+          <nav className="space-y-1 sidebar-nav relative z-[110] bg-transparent">
             <Link href="/all-products" className={`block text-xs font-bold uppercase tracking-wider ${textColorClass} ${hoverColorClass} transition-colors py-0.5`}>
               ALL
             </Link>

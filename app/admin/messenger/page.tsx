@@ -92,11 +92,9 @@ export default function AdminMessengerPage() {
     },
     onConnect: () => {
       console.log('🔍 Debug - WebSocket connected')
-      toast.success('Connected to chat server')
     },
     onDisconnect: () => {
       console.log('🔍 Debug - WebSocket disconnected')
-      toast.error('Disconnected from chat server')
     }
   })
   const messagesEndRef = useRef<HTMLDivElement>(null)

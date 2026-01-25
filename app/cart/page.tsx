@@ -347,71 +347,71 @@ export default function CartPage() {
                       key={item.item_id} 
                       className={`flex gap-6 pb-6 border-b border-gray-200 ${isOutOfStock ? 'opacity-50' : ''}`}
                     >
-                      {/* Product Image */}
-                      <div className="relative w-24 h-32 flex-shrink-0 overflow-hidden bg-gray-100">
-                        {item.image_url ? (
-                          <Image
-                            src={item.image_url}
-                            alt={item.product_name}
-                            fill
-                            className="object-cover"
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">
-                            No Image
-                          </div>
-                        )}
-                      </div>
+                    {/* Product Image */}
+                    <div className="relative w-24 h-32 flex-shrink-0 overflow-hidden bg-gray-100">
+                      {item.image_url ? (
+                        <Image
+                          src={item.image_url}
+                          alt={item.product_name}
+                          fill
+                          className="object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">
+                          No Image
+                        </div>
+                      )}
+                    </div>
 
-                      {/* Product Info */}
-                      <div className="flex-1">
-                        <div className="flex justify-between items-start mb-2">
-                          <div>
-                            <h3 className="font-serif text-lg font-light mb-1">{item.product_name}</h3>
-                            <p className="text-sm text-gray-500 mb-2">
-                              Default Title / {item.size_name}
-                            </p>
+                    {/* Product Info */}
+                    <div className="flex-1">
+                      <div className="flex justify-between items-start mb-2">
+                        <div>
+                          <h3 className="font-serif text-lg font-light mb-1">{item.product_name}</h3>
+                          <p className="text-sm text-gray-500 mb-2">
+                            Default Title / {item.size_name}
+                          </p>
                             {isOutOfStock && (
                               <p className="text-xs text-red-600 mb-2">
                                 Sản phẩm đã hết hàng (Còn lại: {stockStatus?.stock || 0})
                               </p>
                             )}
+                        </div>
+                        <button
+                          onClick={() => removeItem(item.item_id)}
+                          className="text-gray-400 hover:text-black transition-colors"
+                        >
+                          <X className="h-5 w-5" />
+                        </button>
+                      </div>
+
+                      {/* Quantity Selector and Price */}
+                      <div className="flex items-center justify-between">
+                          <div className={`flex h-8 w-24 items-center border border-gray-300 ${isOutOfStock ? 'opacity-50' : ''}`}>
+                          <button
+                              className="flex h-full w-8 items-center justify-center border-r border-gray-300 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
+                            onClick={() => updateQuantity(item.item_id, item.quantity - 1)}
+                              disabled={updating === item.item_id || item.quantity <= 1 || isOutOfStock}
+                          >
+                            <Minus className="h-3 w-3" />
+                          </button>
+                          <div className="flex h-full flex-1 items-center justify-center text-sm">
+                            {updating === item.item_id ? '...' : item.quantity}
                           </div>
                           <button
-                            onClick={() => removeItem(item.item_id)}
-                            className="text-gray-400 hover:text-black transition-colors"
+                              className="flex h-full w-8 items-center justify-center border-l border-gray-300 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
+                            onClick={() => updateQuantity(item.item_id, item.quantity + 1)}
+                              disabled={updating === item.item_id || isOutOfStock || (stockStatus && item.quantity >= stockStatus.stock)}
                           >
-                            <X className="h-5 w-5" />
+                            <Plus className="h-3 w-3" />
                           </button>
                         </div>
-
-                        {/* Quantity Selector and Price */}
-                        <div className="flex items-center justify-between">
-                          <div className={`flex h-8 w-24 items-center border border-gray-300 ${isOutOfStock ? 'opacity-50' : ''}`}>
-                            <button
-                              className="flex h-full w-8 items-center justify-center border-r border-gray-300 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
-                              onClick={() => updateQuantity(item.item_id, item.quantity - 1)}
-                              disabled={updating === item.item_id || item.quantity <= 1 || isOutOfStock}
-                            >
-                              <Minus className="h-3 w-3" />
-                            </button>
-                            <div className="flex h-full flex-1 items-center justify-center text-sm">
-                              {updating === item.item_id ? '...' : item.quantity}
-                            </div>
-                            <button
-                              className="flex h-full w-8 items-center justify-center border-l border-gray-300 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
-                              onClick={() => updateQuantity(item.item_id, item.quantity + 1)}
-                              disabled={updating === item.item_id || isOutOfStock || (stockStatus && item.quantity >= stockStatus.stock)}
-                            >
-                              <Plus className="h-3 w-3" />
-                            </button>
-                          </div>
-                          <p className="text-sm font-medium">
-                            {formatPrice(item.quantity * item.unit_price_snapshot)}
-                          </p>
-                        </div>
+                        <p className="text-sm font-medium">
+                          {formatPrice(item.quantity * item.unit_price_snapshot)}
+                        </p>
                       </div>
                     </div>
+                  </div>
                   )
                 })}
               </div>

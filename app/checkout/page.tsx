@@ -523,6 +523,12 @@ export default function CheckoutPage() {
                       COD (Thanh toán khi nhận hàng)
                     </Label>
                   </div>
+                  <div className="flex items-center space-x-2 border rounded p-4">
+                    <RadioGroupItem value="casso" id="payment-casso" />
+                    <Label htmlFor="payment-casso" className="flex-1 cursor-pointer">
+                      Chuyển khoản ngân hàng (Casso)
+                    </Label>
+                  </div>
                 </div>
               </RadioGroup>
             </CardContent>

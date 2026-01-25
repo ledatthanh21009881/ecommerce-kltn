@@ -1,10 +1,11 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { CheckCircle2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { tokenStore } from '@/lib/tokenStore'
 
 interface OrderData {
   order_id: number
@@ -24,12 +25,38 @@ export default function PaymentSuccessPage() {
   const orderId = searchParams.get('order_id')
   const [order, setOrder] = useState<OrderData | null>(null)
   const [loading, setLoading] = useState(true)
+  const cartCleared = useRef(false)
 
   useEffect(() => {
     if (orderId) {
       loadOrder()
+      clearCart()
     }
   }, [orderId])
+
+  // Xóa giỏ hàng sau khi thanh toán thành công
+  const clearCart = async () => {
+    if (cartCleared.current) return
+    cartCleared.current = true
+    
+    try {
+      const token = tokenStore.getAccessToken()
+      if (!token) return
+
+      await fetch('/api/backend/v1/cart/clear', {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+      
+      // Dispatch event để cập nhật cart icon trên header
+      window.dispatchEvent(new CustomEvent('cart-updated'))
+      console.log('Cart cleared successfully')
+    } catch (error) {
+      console.error('Error clearing cart:', error)
+    }
+  }
 
   const loadOrder = async () => {
     try {

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { getWebSocketUrl } from '@/app/api/backend/config'
 
 interface WebSocketMessage {
   type: string
@@ -57,7 +58,7 @@ export const useWebSocket = ({
     console.log('🔍 Debug - Connecting to WebSocket...')
 
           try {
-        const ws = new WebSocket('ws://localhost:3001')
+        const ws = new WebSocket(getWebSocketUrl())
       
       ws.onopen = () => {
         console.log('🔍 Debug - WebSocket connected')
@@ -67,10 +68,8 @@ export const useWebSocket = ({
 
         // Authenticate immediately after connection
         ws.send(JSON.stringify({
-          event: 'auth',
-          payload: {
-            token: token
-          }
+          type: 'auth',
+          token: token
         }))
       }
 
@@ -145,10 +144,8 @@ export const useWebSocket = ({
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       console.log('🔍 Debug - Joining conversation:', conversationId)
       wsRef.current.send(JSON.stringify({
-        event: 'join_conversation',
-        payload: {
-          conversation_id: conversationId
-        }
+        type: 'join_conversation',
+        conversation_id: conversationId
       }))
     } else {
       console.log('🔍 Debug - Cannot join conversation - WebSocket not connected')
@@ -159,10 +156,8 @@ export const useWebSocket = ({
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       console.log('🔍 Debug - Leaving conversation:', conversationId)
       wsRef.current.send(JSON.stringify({
-        event: 'leave_conversation',
-        payload: {
-          conversation_id: conversationId
-        }
+        type: 'leave_conversation',
+        conversation_id: conversationId
       }))
     }
   }, [])
@@ -171,10 +166,8 @@ export const useWebSocket = ({
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       console.log('🔍 Debug - Sending typing start for conversation:', conversationId)
       wsRef.current.send(JSON.stringify({
-        event: 'typing_start',
-        payload: {
-          conversation_id: conversationId
-        }
+        type: 'typing_start',
+        conversation_id: conversationId
       }))
     }
   }, [])
@@ -183,10 +176,8 @@ export const useWebSocket = ({
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       console.log('🔍 Debug - Sending typing stop for conversation:', conversationId)
       wsRef.current.send(JSON.stringify({
-        event: 'typing_stop',
-        payload: {
-          conversation_id: conversationId
-        }
+        type: 'typing_stop',
+        conversation_id: conversationId
       }))
     }
   }, [])
@@ -195,11 +186,9 @@ export const useWebSocket = ({
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       console.log('🔍 Debug - Sending message via WebSocket:', message, 'for conversation:', conversationId)
       wsRef.current.send(JSON.stringify({
-        event: 'new_message',
-        payload: {
-          message: message,
-          conversation_id: conversationId
-        }
+        type: 'new_message',
+        conversation_id: conversationId,
+        message: message
       }))
     }
   }, [])
