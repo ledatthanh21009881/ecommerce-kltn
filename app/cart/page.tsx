@@ -439,7 +439,7 @@ export default function CartPage() {
                 </div>
 
                 <Button
-                  className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-white mb-4 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                  className="w-full h-12 mb-4 disabled:bg-gray-400 disabled:cursor-not-allowed"
                   disabled={hasOutOfStockItems()}
                   onClick={() => {
                     if (hasOutOfStockItems()) {

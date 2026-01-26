@@ -10,6 +10,10 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from '@/components/ui/command'
+import { Check, ChevronsUpDown } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 interface CartItem {
   item_id: number
@@ -38,6 +42,32 @@ interface ShippingMethod {
   estimated_days: number
 }
 
+interface Province {
+  name: string
+  code: number
+  division_type: string
+  codename: string
+  phone_code: number
+  districts?: District[]
+}
+
+interface District {
+  name: string
+  code: number
+  division_type: string
+  codename: string
+  province_code: number
+  wards?: Ward[]
+}
+
+interface Ward {
+  name: string
+  code: number
+  division_type: string
+  codename: string
+  district_code: number
+}
+
 export default function CheckoutPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(true)
@@ -60,10 +90,61 @@ export default function CheckoutPage() {
   const [subtotal, setSubtotal] = useState(0)
   const [shippingFee, setShippingFee] = useState(0)
   const [total, setTotal] = useState(0)
+  
+  // Address dropdown states
+  const [provinces, setProvinces] = useState<Province[]>([])
+  const [districts, setDistricts] = useState<District[]>([])
+  const [wards, setWards] = useState<Ward[]>([])
+  const [selectedProvinceCode, setSelectedProvinceCode] = useState<number | null>(null)
+  const [selectedDistrictCode, setSelectedDistrictCode] = useState<number | null>(null)
+  const [selectedWardCode, setSelectedWardCode] = useState<number | null>(null)
+  
+  // Popover open states for searchable selects
+  const [provinceOpen, setProvinceOpen] = useState(false)
+  const [districtOpen, setDistrictOpen] = useState(false)
+  const [wardOpen, setWardOpen] = useState(false)
 
   useEffect(() => {
     loadCheckoutData()
+    loadProvinces()
   }, [])
+
+  useEffect(() => {
+    if (selectedProvinceCode) {
+      loadDistricts(selectedProvinceCode)
+    } else {
+      setDistricts([])
+      setWards([])
+      setSelectedDistrictCode(null)
+      setSelectedWardCode(null)
+      // Clear address fields when province is cleared
+      setAddresses(prev => {
+        const newAddresses = [...prev]
+        if (newAddresses[0]) {
+          newAddresses[0].district = ''
+          newAddresses[0].ward = ''
+        }
+        return newAddresses
+      })
+    }
+  }, [selectedProvinceCode])
+
+  useEffect(() => {
+    if (selectedDistrictCode) {
+      loadWards(selectedDistrictCode)
+    } else {
+      setWards([])
+      setSelectedWardCode(null)
+      // Clear ward field when district is cleared
+      setAddresses(prev => {
+        const newAddresses = [...prev]
+        if (newAddresses[0]) {
+          newAddresses[0].ward = ''
+        }
+        return newAddresses
+      })
+    }
+  }, [selectedDistrictCode])
 
   useEffect(() => {
     if (selectedShippingId) {
@@ -75,6 +156,76 @@ export default function CheckoutPage() {
   useEffect(() => {
     setTotal(subtotal + shippingFee)
   }, [subtotal, shippingFee])
+
+  const loadProvinces = async () => {
+    try {
+      const response = await fetch('https://provinces.open-api.vn/api/p/')
+      if (response.ok) {
+        const data: Province[] = await response.json()
+        setProvinces(data)
+      } else {
+        console.error('Failed to load provinces')
+        toast.error('Không thể tải danh sách tỉnh/thành phố')
+      }
+    } catch (error) {
+      console.error('Error loading provinces:', error)
+      toast.error('Lỗi khi tải danh sách tỉnh/thành phố')
+    }
+  }
+
+  const loadDistricts = async (provinceCode: number) => {
+    try {
+      const response = await fetch(`https://provinces.open-api.vn/api/p/${provinceCode}?depth=2`)
+      if (response.ok) {
+        const province: Province = await response.json()
+        if (province.districts) {
+          setDistricts(province.districts)
+        } else {
+          // Fallback: try alternative endpoint
+          const altResponse = await fetch(`https://provinces.open-api.vn/api/p/${provinceCode}`)
+          if (altResponse.ok) {
+            const altProvince: Province = await altResponse.json()
+            setDistricts(altProvince.districts || [])
+          } else {
+            setDistricts([])
+          }
+        }
+      } else {
+        console.error('Failed to load districts')
+        setDistricts([])
+      }
+    } catch (error) {
+      console.error('Error loading districts:', error)
+      setDistricts([])
+    }
+  }
+
+  const loadWards = async (districtCode: number) => {
+    try {
+      const response = await fetch(`https://provinces.open-api.vn/api/d/${districtCode}?depth=2`)
+      if (response.ok) {
+        const district: District = await response.json()
+        if (district.wards) {
+          setWards(district.wards)
+        } else {
+          // Fallback: try alternative endpoint
+          const altResponse = await fetch(`https://provinces.open-api.vn/api/d/${districtCode}`)
+          if (altResponse.ok) {
+            const altDistrict: District = await altResponse.json()
+            setWards(altDistrict.wards || [])
+          } else {
+            setWards([])
+          }
+        }
+      } else {
+        console.error('Failed to load wards')
+        setWards([])
+      }
+    } catch (error) {
+      console.error('Error loading wards:', error)
+      setWards([])
+    }
+  }
 
   const loadCheckoutData = async () => {
     try {
@@ -371,7 +522,7 @@ export default function CheckoutPage() {
                   }}
                 />
                 <Input
-                  placeholder="Địa chỉ"
+                  placeholder="Số nhà, tên đường"
                   value={addresses[0]?.address_line || ''}
                   onChange={(e) => {
                     setAddresses(prev => {
@@ -393,72 +544,194 @@ export default function CheckoutPage() {
                   }}
                 />
                 <div className="grid grid-cols-3 gap-4">
-                  <Input
-                    placeholder="Phường/Xã"
-                    value={addresses[0]?.ward || ''}
-                    onChange={(e) => {
-                      setAddresses(prev => {
-                        const newAddresses = [...prev]
-                        if (!newAddresses[0]) {
-                          newAddresses[0] = {
-                            address_id: 0,
-                            receiver_name: '',
-                            phone: '',
-                            address_line: '',
-                            ward: '',
-                            district: '',
-                            province: ''
-                          }
-                        }
-                        newAddresses[0].ward = e.target.value
-                        return newAddresses
-                      })
-                    }}
-                  />
-                  <Input
-                    placeholder="Quận/Huyện"
-                    value={addresses[0]?.district || ''}
-                    onChange={(e) => {
-                      setAddresses(prev => {
-                        const newAddresses = [...prev]
-                        if (!newAddresses[0]) {
-                          newAddresses[0] = {
-                            address_id: 0,
-                            receiver_name: '',
-                            phone: '',
-                            address_line: '',
-                            ward: '',
-                            district: '',
-                            province: ''
-                          }
-                        }
-                        newAddresses[0].district = e.target.value
-                        return newAddresses
-                      })
-                    }}
-                  />
-                  <Input
-                    placeholder="Tỉnh/Thành phố"
-                    value={addresses[0]?.province || ''}
-                    onChange={(e) => {
-                      setAddresses(prev => {
-                        const newAddresses = [...prev]
-                        if (!newAddresses[0]) {
-                          newAddresses[0] = {
-                            address_id: 0,
-                            receiver_name: '',
-                            phone: '',
-                            address_line: '',
-                            ward: '',
-                            district: '',
-                            province: ''
-                          }
-                        }
-                        newAddresses[0].province = e.target.value
-                        return newAddresses
-                      })
-                    }}
-                  />
+                  <div>
+                    <Label className="text-sm mb-2 block">Tỉnh/Thành phố</Label>
+                    <Popover open={provinceOpen} onOpenChange={setProvinceOpen}>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          role="combobox"
+                          aria-expanded={provinceOpen}
+                          className="w-full justify-between"
+                        >
+                          {selectedProvinceCode
+                            ? provinces.find((p) => p.code === selectedProvinceCode)?.name
+                            : "Chọn Tỉnh/Thành phố"}
+                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+                        <Command>
+                          <CommandInput placeholder="Tìm kiếm tỉnh/thành phố..." />
+                          <CommandList>
+                            <CommandEmpty>Không tìm thấy.</CommandEmpty>
+                            <CommandGroup>
+                              {provinces.map((province) => (
+                                <CommandItem
+                                  key={province.code}
+                                  value={province.name}
+                                  onSelect={() => {
+                                    setSelectedProvinceCode(province.code)
+                                    setProvinceOpen(false)
+                                    setAddresses(prev => {
+                                      const newAddresses = [...prev]
+                                      if (!newAddresses[0]) {
+                                        newAddresses[0] = {
+                                          address_id: 0,
+                                          receiver_name: '',
+                                          phone: '',
+                                          address_line: '',
+                                          ward: '',
+                                          district: '',
+                                          province: ''
+                                        }
+                                      }
+                                      newAddresses[0].province = province.name
+                                      return newAddresses
+                                    })
+                                  }}
+                                >
+                                  <Check
+                                    className={cn(
+                                      "mr-2 h-4 w-4",
+                                      selectedProvinceCode === province.code ? "opacity-100" : "opacity-0"
+                                    )}
+                                  />
+                                  {province.name}
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                  <div>
+                    <Label className="text-sm mb-2 block">Quận/Huyện</Label>
+                    <Popover open={districtOpen} onOpenChange={setDistrictOpen}>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          role="combobox"
+                          aria-expanded={districtOpen}
+                          className="w-full justify-between"
+                          disabled={!selectedProvinceCode || districts.length === 0}
+                        >
+                          {selectedDistrictCode
+                            ? districts.find((d) => d.code === selectedDistrictCode)?.name
+                            : "Chọn Quận/Huyện"}
+                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+                        <Command>
+                          <CommandInput placeholder="Tìm kiếm quận/huyện..." />
+                          <CommandList>
+                            <CommandEmpty>Không tìm thấy.</CommandEmpty>
+                            <CommandGroup>
+                              {districts.map((district) => (
+                                <CommandItem
+                                  key={district.code}
+                                  value={district.name}
+                                  onSelect={() => {
+                                    setSelectedDistrictCode(district.code)
+                                    setDistrictOpen(false)
+                                    setAddresses(prev => {
+                                      const newAddresses = [...prev]
+                                      if (!newAddresses[0]) {
+                                        newAddresses[0] = {
+                                          address_id: 0,
+                                          receiver_name: '',
+                                          phone: '',
+                                          address_line: '',
+                                          ward: '',
+                                          district: '',
+                                          province: ''
+                                        }
+                                      }
+                                      newAddresses[0].district = district.name
+                                      return newAddresses
+                                    })
+                                  }}
+                                >
+                                  <Check
+                                    className={cn(
+                                      "mr-2 h-4 w-4",
+                                      selectedDistrictCode === district.code ? "opacity-100" : "opacity-0"
+                                    )}
+                                  />
+                                  {district.name}
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                  <div>
+                    <Label className="text-sm mb-2 block">Phường/Xã</Label>
+                    <Popover open={wardOpen} onOpenChange={setWardOpen}>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          role="combobox"
+                          aria-expanded={wardOpen}
+                          className="w-full justify-between"
+                          disabled={!selectedDistrictCode || wards.length === 0}
+                        >
+                          {selectedWardCode
+                            ? wards.find((w) => w.code === selectedWardCode)?.name
+                            : "Chọn Phường/Xã"}
+                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+                        <Command>
+                          <CommandInput placeholder="Tìm kiếm phường/xã..." />
+                          <CommandList>
+                            <CommandEmpty>Không tìm thấy.</CommandEmpty>
+                            <CommandGroup>
+                              {wards.map((ward) => (
+                                <CommandItem
+                                  key={ward.code}
+                                  value={ward.name}
+                                  onSelect={() => {
+                                    setSelectedWardCode(ward.code)
+                                    setWardOpen(false)
+                                    setAddresses(prev => {
+                                      const newAddresses = [...prev]
+                                      if (!newAddresses[0]) {
+                                        newAddresses[0] = {
+                                          address_id: 0,
+                                          receiver_name: '',
+                                          phone: '',
+                                          address_line: '',
+                                          ward: '',
+                                          district: '',
+                                          province: ''
+                                        }
+                                      }
+                                      newAddresses[0].ward = ward.name
+                                      return newAddresses
+                                    })
+                                  }}
+                                >
+                                  <Check
+                                    className={cn(
+                                      "mr-2 h-4 w-4",
+                                      selectedWardCode === ward.code ? "opacity-100" : "opacity-0"
+                                    )}
+                                  />
+                                  {ward.name}
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
+                  </div>
                 </div>
               </div>
             </CardContent>
