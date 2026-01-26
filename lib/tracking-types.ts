@@ -24,6 +24,8 @@ export interface OrderTracking {
   current_lat?: number
   current_lng?: number
   location_updated_at?: string
+  destination_lat?: number
+  destination_lng?: number
   event_count: number
   last_status?: string
   last_event_at?: string
@@ -44,6 +46,8 @@ export interface OrderDetail {
     phone: string
     email: string
     address: string
+    destination_lat?: number
+    destination_lng?: number
   }
   shipper?: {
     user_id: number

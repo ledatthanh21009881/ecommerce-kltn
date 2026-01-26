@@ -11,6 +11,7 @@ interface TrackingMapProps {
   orders: OrderTracking[]
   shippers: Shipper[]
   selectedOrderId?: number
+  selectedShipperId?: number
   onOrderSelect?: (orderId: number) => void
   onShipperSelect?: (shipperId: number) => void
   className?: string
@@ -20,6 +21,7 @@ export default function TrackingMap({
   orders,
   shippers,
   selectedOrderId,
+  selectedShipperId,
   onOrderSelect,
   onShipperSelect,
   className = ''
@@ -65,6 +67,7 @@ export default function TrackingMap({
           orders={orders}
           shippers={shippers}
           selectedOrderId={selectedOrderId}
+          selectedShipperId={selectedShipperId}
           onOrderSelect={onOrderSelect}
           onShipperSelect={onShipperSelect}
         />
@@ -80,16 +83,20 @@ export function MapLegend() {
       <h3 className="font-semibold mb-3">Map Legend</h3>
       <div className="space-y-2">
         <div className="flex items-center gap-2">
-          <div className="w-4 h-4 bg-blue-500 rounded-full"></div>
-          <span className="text-sm">Shipper</span>
+          <div className="w-4 h-4 bg-green-500 rounded-full"></div>
+          <span className="text-sm">Available Shipper</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-4 h-4 bg-green-500 rounded-full"></div>
-          <span className="text-sm">Delivery Destination</span>
+          <div className="w-4 h-4 bg-blue-500 rounded-full"></div>
+          <span className="text-sm">Shipper In Transit</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="w-4 h-4 bg-gray-500 rounded-full"></div>
+          <span className="text-sm">Inactive Shipper</span>
         </div>
         <div className="flex items-center gap-2">
           <div className="w-4 h-4 bg-red-500 rounded-full"></div>
-          <span className="text-sm">Selected Order</span>
+          <span className="text-sm">Selected Shipper</span>
         </div>
       </div>
     </div>

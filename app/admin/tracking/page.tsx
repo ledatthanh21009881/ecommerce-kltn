@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { 
   Search, 
   Filter, 
@@ -24,7 +25,8 @@ import {
   Eye,
   Phone,
   MessageSquare,
-  Star
+  Star,
+  X
 } from 'lucide-react'
 import { 
   OrderTracking, 
@@ -32,9 +34,11 @@ import {
   OrderFilters, 
   ORDER_STATUS_CONFIG,
   ensureArray,
-  getNestedValue
+  getNestedValue,
+  Shipper
 } from '@/lib/tracking-types'
 import TrackingMap, { MapLegend, MapStats } from '@/components/admin/TrackingMap'
+import ShipperDetailMap from '@/components/admin/ShipperDetailMap'
 import { authUtils } from '@/lib/auth'
 import { fetchJsonSafe } from '@/lib/api'
 import { toast } from 'sonner'
@@ -154,7 +158,7 @@ const mockShippers = [
 export default function OrderTrackingPage() {
   // State management - áp dụng error prevention patterns từ Loi_thuong_gap.md
   const [orders, setOrders] = useState<OrderTracking[]>([])
-  const [shippers, setShippers] = useState(mockShippers)
+  const [shippers, setShippers] = useState<Shipper[]>(mockShippers as Shipper[])
   const [stats, setStats] = useState<TrackingStats>(mockStats)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -248,7 +252,7 @@ export default function OrderTrackingPage() {
 
       const { ok, data } = await fetchJsonSafe('api/backend/v1/shippers')
       if (ok && data?.success) {
-        const shippersData = ensureArray(data.data?.shippers || [])
+        const shippersData = ensureArray<Shipper>(data.data?.shippers || [])
         setShippers(shippersData)
       }
     } catch (err) {
@@ -306,8 +310,16 @@ export default function OrderTrackingPage() {
 
   const handleShipperSelect = (shipperId: number) => {
     setSelectedShipperId(shipperId)
-    setActiveTab('map')
   }
+
+  const handleCloseShipperDetail = () => {
+    setSelectedShipperId(undefined)
+  }
+
+  // Find selected shipper
+  const selectedShipper = selectedShipperId 
+    ? ensureArray<Shipper>(shippers).find((s: Shipper) => s.user_id === selectedShipperId) || null
+    : null
 
   const getStatusConfig = (status: string) => {
     return ORDER_STATUS_CONFIG[status as keyof typeof ORDER_STATUS_CONFIG] || {
@@ -550,7 +562,7 @@ export default function OrderTrackingPage() {
                         </TableCell>
                       </TableRow>
                     ) : (
-                      ensureArray(orders).map((order) => {
+                      ensureArray<OrderTracking>(orders).map((order: OrderTracking) => {
                         const statusConfig = getStatusConfig(order.status)
                         return (
                           <TableRow key={order.order_id}>
@@ -603,7 +615,13 @@ export default function OrderTrackingPage() {
                                 <Button
                                   size="sm"
                                   variant="outline"
-                                  onClick={() => handleOrderSelect(order.order_id)}
+                                  onClick={() => {
+                                    if (order.shipper_id) {
+                                      handleShipperSelect(order.shipper_id)
+                                    } else {
+                                      toast.error('Đơn hàng chưa được gán shipper')
+                                    }
+                                  }}
                                 >
                                   <Eye className="h-3 w-3" />
                                 </Button>
@@ -636,7 +654,7 @@ export default function OrderTrackingPage() {
                 <CardHeader>
                   <CardTitle>Live Tracking Map</CardTitle>
                   <CardDescription>
-                    Real-time location of shippers and delivery destinations
+                    Fleet overview - Real-time location of all shippers
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -644,6 +662,7 @@ export default function OrderTrackingPage() {
                     orders={ensureArray(orders)}
                     shippers={ensureArray(shippers)}
                     selectedOrderId={selectedOrderId}
+                    selectedShipperId={selectedShipperId}
                     onOrderSelect={handleOrderSelect}
                     onShipperSelect={handleShipperSelect}
                     className="h-96"
@@ -681,7 +700,7 @@ export default function OrderTrackingPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {ensureArray(shippers).map((shipper) => (
+                    {ensureArray<Shipper>(shippers).map((shipper: Shipper) => (
                       <TableRow key={shipper.user_id}>
                         <TableCell>
                           <div>
@@ -745,6 +764,29 @@ export default function OrderTrackingPage() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Shipper Detail Map Dialog */}
+      <Dialog open={!!selectedShipperId} onOpenChange={(open) => {
+        if (!open) handleCloseShipperDetail()
+      }}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              {selectedShipper ? `${selectedShipper.shipper_name} - Delivery Route` : 'Shipper Details'}
+            </DialogTitle>
+            <DialogDescription>
+              Real-time location and delivery route for selected shipper
+            </DialogDescription>
+          </DialogHeader>
+          <div className="mt-4">
+            <ShipperDetailMap 
+              shipper={selectedShipper}
+              orders={ensureArray(orders)}
+              className="h-[500px]"
+            />
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
