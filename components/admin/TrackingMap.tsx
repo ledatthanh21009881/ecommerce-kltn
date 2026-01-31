@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, useState } from 'react'
 import dynamic from 'next/dynamic'
-const LeafletMapCore = dynamic(() => import('./LeafletMapCore'), { ssr: false })
+const MapboxMapCore = dynamic(() => import('./MapboxMapCore'), { ssr: false })
 import { OrderTracking, Shipper } from '@/lib/tracking-types'
 
 import { Star } from 'lucide-react'
@@ -36,17 +36,6 @@ export default function TrackingMap({
     const id = setTimeout(() => setShowMap(true), 50)
     return () => {
       setShowMap(false)
-      // Defensive cleanup: clear any leftover Leaflet container id (fix double init in StrictMode)
-      try {
-        const host = containerRef.current
-        if (host) {
-          const leaf = host.querySelector('.leaflet-container') as any
-          if (leaf) {
-            try { delete leaf._leaflet_id } catch {}
-            try { leaf.parentNode?.removeChild(leaf) } catch {}
-          }
-        }
-      } catch {}
       clearTimeout(id)
     }
   }, [])
@@ -63,7 +52,7 @@ export default function TrackingMap({
   return (
     <div ref={containerRef} className={`w-full h-96 rounded-lg overflow-hidden border ${className}`}>
       {showMap && (
-        <LeafletMapCore
+        <MapboxMapCore
           orders={orders}
           shippers={shippers}
           selectedOrderId={selectedOrderId}

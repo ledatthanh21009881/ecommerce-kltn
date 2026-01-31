@@ -1,6 +1,6 @@
 /**
- * Route Service - OSRM Routing API Integration
- * Free public routing service, no API key required
+ * Route Service - Mapbox Directions API (driving-traffic)
+ * Requires NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN
  */
 
 export interface RoutePoint {
@@ -8,47 +8,51 @@ export interface RoutePoint {
   lng: number
 }
 
-export interface RouteResponse {
-  code: string
-  routes: Array<{
+/** Mapbox Directions API response shape */
+export interface MapboxRouteResponse {
+  routes?: Array<{
     geometry: {
-      coordinates: number[][] // [lng, lat] pairs
+      coordinates: [number, number][] // [lng, lat]
+      type: string
     }
     distance: number
     duration: number
   }>
+  code?: string
+  message?: string
 }
 
 /**
- * Get route from origin to destination using OSRM
+ * Get route from origin to destination using Mapbox Directions (driving-traffic).
  * @param origin - Starting point
  * @param destination - End point
- * @returns Array of [lat, lng] coordinates for polyline, or null if error
+ * @returns Array of { lat, lng } for polyline, or null if error
  */
 export async function getRoute(
   origin: RoutePoint,
   destination: RoutePoint
 ): Promise<RoutePoint[] | null> {
+  const token = typeof window !== 'undefined'
+    ? (process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN ?? '')
+    : (process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN ?? '')
+  if (!token) {
+    console.warn('Mapbox token missing: NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN')
+    return null
+  }
   try {
-    // OSRM API format: /route/v1/driving/{lng1},{lat1};{lng2},{lat2}
-    // Returns coordinates in [lng, lat] format, we need to convert to [lat, lng]
-    const url = `https://router.project-osrm.org/route/v1/driving/${origin.lng},${origin.lat};${destination.lng},${destination.lat}?overview=full&geometries=geojson`
-    
+    // Mapbox: driving-traffic for traffic-aware route
+    const coords = `${origin.lng},${origin.lat};${destination.lng},${destination.lat}`
+    const url = `https://api.mapbox.com/directions/v5/mapbox/driving-traffic/${coords}?geometries=geojson&overview=full&access_token=${token}`
     const response = await fetch(url)
-    
     if (!response.ok) {
-      console.error('OSRM API error:', response.status, response.statusText)
+      console.error('Mapbox Directions error:', response.status, response.statusText)
       return null
     }
-    
-    const data: RouteResponse = await response.json()
-    
-    if (data.code !== 'Ok' || !data.routes || data.routes.length === 0) {
-      console.error('OSRM route not found:', data)
+    const data: MapboxRouteResponse = await response.json()
+    if (!data.routes?.length) {
+      console.error('Mapbox route not found:', data.message ?? data)
       return null
     }
-    
-    // Convert [lng, lat] to [lat, lng] for Leaflet
     const coordinates = data.routes[0].geometry.coordinates
     return coordinates.map(([lng, lat]) => ({ lat, lng }))
   } catch (error) {
@@ -58,16 +62,38 @@ export async function getRoute(
 }
 
 /**
+ * Get route geometry as [lng, lat][] for Mapbox GL (e.g. line layer, animation).
+ * Same API call as getRoute but returns raw coordinates.
+ */
+export async function getRouteCoordinates(
+  origin: RoutePoint,
+  destination: RoutePoint
+): Promise<[number, number][] | null> {
+  const token = typeof window !== 'undefined'
+    ? (process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN ?? '')
+    : (process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN ?? '')
+  if (!token) return null
+  try {
+    const coords = `${origin.lng},${origin.lat};${destination.lng},${destination.lat}`
+    const url = `https://api.mapbox.com/directions/v5/mapbox/driving-traffic/${coords}?geometries=geojson&overview=full&access_token=${token}`
+    const response = await fetch(url)
+    if (!response.ok) return null
+    const data: MapboxRouteResponse = await response.json()
+    if (!data.routes?.length) return null
+    return data.routes[0].geometry.coordinates
+  } catch {
+    return null
+  }
+}
+
+/**
  * Calculate distance between two points (Haversine formula)
- * @param point1 - First point
- * @param point2 - Second point
- * @returns Distance in kilometers
  */
 export function calculateDistance(point1: RoutePoint, point2: RoutePoint): number {
-  const R = 6371 // Earth radius in km
+  const R = 6371
   const dLat = (point2.lat - point1.lat) * Math.PI / 180
   const dLng = (point2.lng - point1.lng) * Math.PI / 180
-  const a = 
+  const a =
     Math.sin(dLat / 2) * Math.sin(dLat / 2) +
     Math.cos(point1.lat * Math.PI / 180) * Math.cos(point2.lat * Math.PI / 180) *
     Math.sin(dLng / 2) * Math.sin(dLng / 2)

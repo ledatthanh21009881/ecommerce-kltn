@@ -37,8 +37,13 @@ import {
   getNestedValue,
   Shipper
 } from '@/lib/tracking-types'
+import dynamic from 'next/dynamic'
 import TrackingMap, { MapLegend, MapStats } from '@/components/admin/TrackingMap'
-import ShipperDetailMap from '@/components/admin/ShipperDetailMap'
+
+const MapboxShipperDetailMap = dynamic(
+  () => import('@/components/admin/MapboxShipperDetailMap'),
+  { ssr: false, loading: () => <div className="h-[500px] bg-gray-100 rounded-lg flex items-center justify-center">Loading map...</div> }
+)
 import { authUtils } from '@/lib/auth'
 import { fetchJsonSafe } from '@/lib/api'
 import { toast } from 'sonner'
@@ -76,6 +81,8 @@ const mockOrders: OrderTracking[] = [
     rating: 4.8,
     current_lat: 10.762622,
     current_lng: 106.660172,
+    destination_lat: 10.776000,
+    destination_lng: 106.678000,
     location_updated_at: '2025-10-28 14:45:00',
     event_count: 5,
     last_status: 'in_transit',
@@ -97,6 +104,8 @@ const mockOrders: OrderTracking[] = [
     rating: 4.5,
     current_lat: 10.775000,
     current_lng: 106.675000,
+    destination_lat: 10.780000,
+    destination_lng: 106.682000,
     location_updated_at: '2025-10-28 14:40:00',
     event_count: 3,
     last_status: 'picking_up',
@@ -769,7 +778,7 @@ export default function OrderTrackingPage() {
       <Dialog open={!!selectedShipperId} onOpenChange={(open) => {
         if (!open) handleCloseShipperDetail()
       }}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-[95vw] w-full max-h-[95vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               {selectedShipper ? `${selectedShipper.shipper_name} - Delivery Route` : 'Shipper Details'}
@@ -779,10 +788,10 @@ export default function OrderTrackingPage() {
             </DialogDescription>
           </DialogHeader>
           <div className="mt-4">
-            <ShipperDetailMap 
+            <MapboxShipperDetailMap 
               shipper={selectedShipper}
               orders={ensureArray(orders)}
-              className="h-[500px]"
+              className="h-[75vh] min-h-[500px]"
             />
           </div>
         </DialogContent>
