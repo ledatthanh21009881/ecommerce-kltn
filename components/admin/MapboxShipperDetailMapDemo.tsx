@@ -18,7 +18,7 @@ import { Shipper, OrderTracking } from '@/lib/tracking-types'
 
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN ?? ''
 const DEFAULT_CENTER: [number, number] = [106.660172, 10.762622]
-const ANIM_INTERVAL_MS = 100 // EXACT like HTML demo
+const ANIM_INTERVAL_MS = 400 // ~tốc độ xe máy thực tế trong phố (100ms = quá nhanh)
 
 interface Props {
   shipper: Shipper | null
