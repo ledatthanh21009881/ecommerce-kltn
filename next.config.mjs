@@ -45,6 +45,10 @@ const nextConfig = {
         destination: 'http://localhost:8000/api/v1/:path*',
       },
       {
+        source: '/api/user/:path*',
+        destination: 'http://localhost:8000/api/user/:path*',
+      },
+      {
         source: '/api/products/:path*',
         destination: 'http://localhost:8000/api/products/:path*',
       },

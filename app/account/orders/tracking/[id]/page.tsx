@@ -91,11 +91,11 @@ export default function OrderTrackingPage({ params }) {
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
             {/* Back Button */}
             <Link
-              href="/account/orders"
+              href="/account"
               className="mb-6 inline-flex items-center text-sm text-gray-600 hover:text-black"
             >
               <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to Orders
+              Quay lại trang tài khoản
             </Link>
 
             {/* Order Header */}

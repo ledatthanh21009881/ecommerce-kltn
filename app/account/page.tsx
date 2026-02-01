@@ -7,27 +7,8 @@ import { Input } from "@/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import ProtectedRoute from "@/components/protected-route"
 import { authUtils, type User } from "@/lib/auth"
-
-// Sample order data
-const orders = [
-  {
-    id: "ORD-12345",
-    date: "May 15, 2023",
-    status: "Delivered",
-    total: "$300.00",
-    items: [
-      { name: "VIVIENNE Silk Blouse", quantity: 1, price: "$120.00" },
-      { name: "Tailored Wool Trousers", quantity: 1, price: "$180.00" },
-    ],
-  },
-  {
-    id: "ORD-12344",
-    date: "April 2, 2023",
-    status: "Delivered",
-    total: "$220.00",
-    items: [{ name: "Oversized Cashmere Sweater", quantity: 1, price: "$220.00" }],
-  },
-]
+import { userOrdersApi } from "@/lib/userOrdersApi"
+import { OrderListSection, type Order, mapApiOrdersToOrders } from "@/components/account/OrderListSection"
 
 const contentClass =
   "font-gotham text-black text-[17px] leading-[1.8] space-y-6"
@@ -42,6 +23,21 @@ export default function AccountPage() {
     email: "",
     phone: "",
   })
+  const [orders, setOrders] = useState<Order[]>([])
+  const [ordersLoading, setOrdersLoading] = useState(true)
+  const [ordersError, setOrdersError] = useState<string | null>(null)
+
+  const loadOrders = async () => {
+    setOrdersLoading(true)
+    setOrdersError(null)
+    const { ok, data } = await userOrdersApi.getOrders()
+    setOrdersLoading(false)
+    if (!ok) {
+      setOrdersError((data as { message?: string })?.message ?? "Không tải được đơn hàng")
+      return
+    }
+    setOrders(mapApiOrdersToOrders(data))
+  }
 
   useEffect(() => {
     const userData = authUtils.getUser()
@@ -54,6 +50,10 @@ export default function AccountPage() {
         phone: userData.phone,
       })
     }
+  }, [])
+
+  useEffect(() => {
+    loadOrders()
   }, [])
 
   const handleProfileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -96,69 +96,13 @@ export default function AccountPage() {
               </TabsList>
 
               <TabsContent value="orders" className="mt-0">
-                {orders.length > 0 ? (
-                  <div className="space-y-8">
-                    {orders.map((order) => (
-                      <div
-                        key={order.id}
-                        className="border border-black/10 p-6 font-gotham text-[17px]"
-                      >
-                        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-black/10 pb-4">
-                          <div>
-                            <p className="font-medium">{order.id}</p>
-                            <p className="text-[15px] text-black/60">{order.date}</p>
-                          </div>
-                          <div className="flex items-center gap-6 text-[15px]">
-                            <p>
-                              Status: <span className="font-medium">{order.status}</span>
-                            </p>
-                            <p>
-                              Total: <span className="font-medium">{order.total}</span>
-                            </p>
-                          </div>
-                        </div>
-                        <div className="mt-4">
-                          <h3 className="mb-2 text-xs font-bold uppercase tracking-wider">
-                            Items
-                          </h3>
-                          <ul className="space-y-2">
-                            {order.items.map((item, index) => (
-                              <li
-                                key={index}
-                                className="flex justify-between text-[15px]"
-                              >
-                                <span>
-                                  {item.name} x {item.quantity}
-                                </span>
-                                <span>{item.price}</span>
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                        <div className="mt-4 flex justify-end">
-                          <Link
-                            href={`/account/orders/${order.id}`}
-                            className="text-xs font-bold uppercase tracking-wider underline underline-offset-4 hover:no-underline"
-                          >
-                            View Details
-                          </Link>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="flex flex-col items-start py-12">
-                    <p className="mb-6 text-[17px] text-black/70">
-                      You haven&apos;t placed any orders yet.
-                    </p>
-                    <Link
-                      href="/collections"
-                      className="inline-block border border-black px-6 py-3 text-xs font-bold uppercase tracking-wider transition-colors hover:bg-black hover:text-white"
-                    >
-                      Start Shopping
-                    </Link>
-                  </div>
-                )}
+                <OrderListSection
+                  orders={orders}
+                  loading={ordersLoading}
+                  error={ordersError}
+                  onRetry={loadOrders}
+                  showTitle={false}
+                />
               </TabsContent>
 
               <TabsContent value="profile" className="mt-0">

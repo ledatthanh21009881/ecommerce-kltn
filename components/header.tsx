@@ -207,7 +207,7 @@ export default function Header() {
                       {t('nav.myAccount')}
                     </Link>
                     <Link
-                      href="/account/orders"
+                      href="/account"
                       className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                       onClick={() => setIsAccountMenuOpen(false)}
                     >
@@ -310,7 +310,7 @@ export default function Header() {
                       My Account
                     </Link>
                     <Link
-                      href="/account/orders"
+                      href="/account"
                       className="flex items-center gap-2 text-lg tracking-wider"
                       onClick={() => setIsMenuOpen(false)}
                     >
