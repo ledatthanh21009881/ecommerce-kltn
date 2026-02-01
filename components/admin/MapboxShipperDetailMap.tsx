@@ -1,21 +1,18 @@
 'use client'
 
 import React, { useEffect, useRef, useState, useMemo } from 'react'
-import { Map as MapboxMap, Source, Layer } from 'react-map-gl'
+import { Map as MapboxMap, Marker, Source, Layer } from 'react-map-gl'
 import type { MapRef } from 'react-map-gl'
-import mapboxgl from 'mapbox-gl'
 import { Shipper, OrderTracking } from '@/lib/tracking-types'
 import { getRouteCoordinates, RoutePoint } from '@/lib/routeService'
 import { Navigation } from 'lucide-react'
 
 /**
- * DEMO-ONLY: Behaves exactly like the plain HTML Mapbox demo.
- * Vehicle marker moves strictly along routeCoords from Directions API.
- * Single source of truth: routeCoords (no GPS, no snapping).
+ * Production map: react-map-gl, GPS-based, route display.
+ * Use MapboxShipperDetailMapDemo for demo/presentation.
  */
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN ?? ''
 const DEFAULT_CENTER = { lng: 106.660172, lat: 10.762622 }
-const ANIM_STEP_MS = 100 // Match HTML demo setInterval(100)
 
 interface Props {
   shipper: Shipper | null
@@ -29,12 +26,8 @@ export default function MapboxShipperDetailMap({
   className = ''
 }: Props) {
   const mapRef = useRef<MapRef | null>(null)
-  const markerRef = useRef<mapboxgl.Marker | null>(null)
-  const animRef = useRef<number | null>(null)
-
   const [routeCoords, setRouteCoords] = useState<[number, number][] | null>(null)
   const [routeLoading, setRouteLoading] = useState(false)
-  const [mapReady, setMapReady] = useState(false)
   const routeCacheRef = useRef<Record<string, [number, number][]>>({})
 
   const activeOrder = useMemo(() => {
@@ -60,9 +53,6 @@ export default function MapboxShipperDetailMap({
     return { lat: activeOrder.destination_lat, lng: activeOrder.destination_lng }
   }, [activeOrder])
 
-  useEffect(() => setMapReady(false), [shipper?.user_id])
-
-  /* Route loading - origin/destination only for API call */
   useEffect(() => {
     if (!origin || !destination || !shipper) {
       setRouteCoords(null)
@@ -88,89 +78,22 @@ export default function MapboxShipperDetailMap({
       .finally(() => setRouteLoading(false))
   }, [origin, destination, shipper])
 
-  /* Camera: center on routeCoords[0], zoom 14, no fitBounds */
   useEffect(() => {
-    if (!mapReady || !routeCoords?.length) return
-    const ref = mapRef.current
-    if (!ref?.getMap) return
-    const map = ref.getMap()
-    if (!map) return
-    const center = routeCoords[0]
-    map.flyTo({ center: [center[0], center[1]], zoom: 14, duration: 0 })
-  }, [mapReady, routeCoords])
-
-  /* Marker + animation: ONLY routeCoords, create once, animate by index */
-  useEffect(() => {
-    const map = mapRef.current?.getMap?.()
-    if (!mapReady || !map || !routeCoords?.length) {
-      if (markerRef.current) {
-        markerRef.current.remove()
-        markerRef.current = null
-      }
-      if (animRef.current) {
-        cancelAnimationFrame(animRef.current)
-        animRef.current = null
-      }
-      return
+    const map = mapRef.current?.getMap()
+    if (!map || !origin) return
+    if (routeCoords?.length) {
+      const c = routeCoords[0]
+      map.flyTo({ center: [c[0], c[1]], zoom: 14, duration: 0 })
+    } else {
+      map.flyTo({ center: [origin.lng, origin.lat], zoom: 14, duration: 0 })
     }
+  }, [origin, routeCoords])
 
-    const cleanup = () => {
-      if (animRef.current) {
-        cancelAnimationFrame(animRef.current)
-        animRef.current = null
-      }
-      if (markerRef.current) {
-        markerRef.current.remove()
-        markerRef.current = null
-      }
-    }
-
-    cleanup()
-
-    const coords = routeCoords
-
-    const el = document.createElement('div')
-    el.style.width = '48px'
-    el.style.height = '48px'
-    el.style.borderRadius = '50%'
-    el.style.background = 'linear-gradient(135deg,#10b981,#059669)'
-    el.style.border = '3px solid white'
-    el.style.boxShadow = '0 4px 12px rgba(0,0,0,.25)'
-    el.style.display = 'flex'
-    el.style.alignItems = 'center'
-    el.style.justifyContent = 'center'
-    el.style.fontSize = '24px'
-    el.textContent = '🏍️'
-
-    const marker = new mapboxgl.Marker({ element: el })
-    markerRef.current = marker
-    marker.setLngLat(coords[0]).addTo(map)
-
-    let i = 0
-    let lastTime = 0
-    const animate = (time: number) => {
-      if (!markerRef.current || i >= coords.length) return
-      if (time - lastTime >= ANIM_STEP_MS || lastTime === 0) {
-        lastTime = time
-        markerRef.current.setLngLat(coords[i])
-        i++
-      }
-      if (i < coords.length) {
-        animRef.current = requestAnimationFrame(animate)
-      }
-    }
-    animRef.current = requestAnimationFrame(animate)
-
-    return cleanup
-  }, [mapReady, routeCoords])
+  const routeEnd = routeCoords?.[routeCoords.length - 1]
 
   if (!shipper || !MAPBOX_TOKEN) {
     return <div className={`h-96 bg-gray-100 rounded-lg ${className}`} />
   }
-
-  const initialCenter = routeCoords?.length
-    ? routeCoords[0]
-    : [origin?.lng ?? DEFAULT_CENTER.lng, origin?.lat ?? DEFAULT_CENTER.lat]
 
   return (
     <div className={`w-full h-96 rounded-xl overflow-hidden border border-gray-200 shadow-lg relative ${className}`}>
@@ -178,10 +101,9 @@ export default function MapboxShipperDetailMap({
         key={`shipper-map-${shipper.user_id}`}
         ref={mapRef}
         mapboxAccessToken={MAPBOX_TOKEN}
-        onLoad={() => setMapReady(true)}
         initialViewState={{
-          longitude: initialCenter[0],
-          latitude: initialCenter[1],
+          longitude: origin?.lng ?? DEFAULT_CENTER.lng,
+          latitude: origin?.lat ?? DEFAULT_CENTER.lat,
           zoom: 14
         }}
         minZoom={12}
@@ -189,46 +111,67 @@ export default function MapboxShipperDetailMap({
         style={{ width: '100%', height: '100%' }}
         mapStyle="mapbox://styles/mapbox/streets-v12"
       >
-        {mapReady && routeCoords && routeCoords.length > 0 && (
-          <>
-            <Source
-              id="route"
-              type="geojson"
-              data={{
-                type: 'Feature',
-                properties: {},
-                geometry: { type: 'LineString', coordinates: routeCoords }
-              }}
-            >
-              <Layer
-                id="route-line"
-                type="line"
-                layout={{ 'line-cap': 'round', 'line-join': 'round' }}
-                paint={{ 'line-color': '#10b981', 'line-width': 6 }}
-              />
-            </Source>
+        {routeCoords && routeCoords.length > 0 && (
+          <Source
+            id="route"
+            type="geojson"
+            data={{
+              type: 'Feature',
+              properties: {},
+              geometry: { type: 'LineString', coordinates: routeCoords }
+            }}
+          >
+            <Layer
+              id="route-line"
+              type="line"
+              layout={{ 'line-cap': 'round', 'line-join': 'round' }}
+              paint={{ 'line-color': '#10b981', 'line-width': 6 }}
+            />
+          </Source>
+        )}
 
-            <Source
-              id="destination"
-              type="geojson"
-              data={{
-                type: 'Feature',
-                properties: {},
-                geometry: { type: 'Point', coordinates: routeCoords[routeCoords.length - 1] }
+        {routeEnd && (
+          <Source
+            id="destination"
+            type="geojson"
+            data={{
+              type: 'Feature',
+              properties: {},
+              geometry: { type: 'Point', coordinates: routeEnd }
+            }}
+          >
+            <Layer
+              id="destination-circle"
+              type="circle"
+              paint={{
+                'circle-radius': 12,
+                'circle-color': '#ef4444',
+                'circle-stroke-width': 3,
+                'circle-stroke-color': '#fff'
+              }}
+            />
+          </Source>
+        )}
+
+        {origin && (
+          <Marker longitude={origin.lng} latitude={origin.lat} anchor="center">
+            <div
+              style={{
+                width: 48,
+                height: 48,
+                borderRadius: '50%',
+                background: 'linear-gradient(135deg,#10b981,#059669)',
+                border: '3px solid white',
+                boxShadow: '0 4px 12px rgba(0,0,0,.25)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: 24
               }}
             >
-              <Layer
-                id="destination-circle"
-                type="circle"
-                paint={{
-                  'circle-radius': 12,
-                  'circle-color': '#ef4444',
-                  'circle-stroke-width': 3,
-                  'circle-stroke-color': '#fff'
-                }}
-              />
-            </Source>
-          </>
+              🏍️
+            </div>
+          </Marker>
         )}
       </MapboxMap>
 

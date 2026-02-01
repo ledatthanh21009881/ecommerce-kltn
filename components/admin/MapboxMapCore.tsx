@@ -18,7 +18,6 @@ interface Props {
   orders: OrderTracking[]
   shippers: Shipper[]
   selectedOrderId?: number
-  selectedShipperId?: number
   onOrderSelect?: (orderId: number) => void
   onShipperSelect?: (shipperId: number) => void
   className?: string
@@ -42,7 +41,6 @@ function getMarkerColor(shipper: Shipper, isSelected: boolean): string {
 export default function MapboxMapCore({
   orders,
   shippers,
-  selectedShipperId,
   onShipperSelect,
   className = ''
 }: Props) {
@@ -77,20 +75,6 @@ export default function MapboxMapCore({
     const ne = [Math.max(...lngs), Math.max(...lats)] as [number, number]
     map.fitBounds([sw, ne], { padding: 40, duration: 0 })
   }, [shippers])
-
-  useEffect(() => {
-    const map = mapRef.current?.getMap()
-    const s = shippers.find(x => x.user_id === selectedShipperId)
-    if (!map || !selectedShipperId || !s?.current_lat || !s.current_lng) return
-    map.flyTo({ center: [s.current_lng, s.current_lat], zoom: 15, duration: 500 })
-  }, [selectedShipperId, shippers])
-
-  // Đóng popup khi mở detail modal - shipper đã chọn do detail map render
-  useEffect(() => {
-    if (selectedShipperId != null && popupShipperId === selectedShipperId) {
-      setPopupShipperId(null)
-    }
-  }, [selectedShipperId, popupShipperId])
 
   const getStatusColor = (s?: string) => {
     if (s === 'available') return 'bg-green-100 text-green-800'
@@ -127,11 +111,9 @@ export default function MapboxMapCore({
         style={{ width: '100%', height: '100%' }}
         mapStyle="mapbox://styles/mapbox/streets-v12"
       >
-        {markers
-          .filter(m => m.id !== selectedShipperId)
-          .map(m => {
+        {markers.map(m => {
           const shipper = shippers.find(s => s.user_id === m.id)
-          const isSelected = selectedShipperId === m.id
+          const isSelected = false
           const color = shipper ? getMarkerColor(shipper, isSelected) : '#6B7280'
           return (
             <Marker
@@ -166,7 +148,7 @@ export default function MapboxMapCore({
             </Marker>
           )
         })}
-        {popupShipperId != null && popupShipperId !== selectedShipperId && (() => {
+        {popupShipperId != null && (() => {
           const m = markers.find(x => x.id === popupShipperId)
           const shipper = shippers.find(s => s.user_id === popupShipperId)
           if (!m) return null

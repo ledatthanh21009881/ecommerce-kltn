@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useEffect, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -8,7 +9,6 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { 
   Search, 
   Filter, 
@@ -37,13 +37,7 @@ import {
   getNestedValue,
   Shipper
 } from '@/lib/tracking-types'
-import dynamic from 'next/dynamic'
 import TrackingMap, { MapLegend, MapStats } from '@/components/admin/TrackingMap'
-
-const MapboxShipperDetailMap = dynamic(
-  () => import('@/components/admin/MapboxShipperDetailMap'),
-  { ssr: false, loading: () => <div className="h-[500px] bg-gray-100 rounded-lg flex items-center justify-center">Loading map...</div> }
-)
 import { authUtils } from '@/lib/auth'
 import { fetchJsonSafe } from '@/lib/api'
 import { toast } from 'sonner'
@@ -165,6 +159,7 @@ const mockShippers = [
 ]
 
 export default function OrderTrackingPage() {
+  const router = useRouter()
   // State management - áp dụng error prevention patterns từ Loi_thuong_gap.md
   const [orders, setOrders] = useState<OrderTracking[]>([])
   const [shippers, setShippers] = useState<Shipper[]>(mockShippers as Shipper[])
@@ -182,7 +177,6 @@ export default function OrderTrackingPage() {
   
   // UI state
   const [selectedOrderId, setSelectedOrderId] = useState<number | undefined>()
-  const [selectedShipperId, setSelectedShipperId] = useState<number | undefined>()
   const [activeTab, setActiveTab] = useState('overview')
   const [warned, setWarned] = useState(false)
 
@@ -318,17 +312,8 @@ export default function OrderTrackingPage() {
   }
 
   const handleShipperSelect = (shipperId: number) => {
-    setSelectedShipperId(shipperId)
+    router.push(`/admin/tracking/shipper/${shipperId}`)
   }
-
-  const handleCloseShipperDetail = () => {
-    setSelectedShipperId(undefined)
-  }
-
-  // Find selected shipper
-  const selectedShipper = selectedShipperId 
-    ? ensureArray<Shipper>(shippers).find((s: Shipper) => s.user_id === selectedShipperId) || null
-    : null
 
   const getStatusConfig = (status: string) => {
     return ORDER_STATUS_CONFIG[status as keyof typeof ORDER_STATUS_CONFIG] || {
@@ -671,7 +656,6 @@ export default function OrderTrackingPage() {
                     orders={ensureArray(orders)}
                     shippers={ensureArray(shippers)}
                     selectedOrderId={selectedOrderId}
-                    selectedShipperId={selectedShipperId}
                     onOrderSelect={handleOrderSelect}
                     onShipperSelect={handleShipperSelect}
                     className="h-96"
@@ -773,29 +757,6 @@ export default function OrderTrackingPage() {
           </Card>
         </TabsContent>
       </Tabs>
-
-      {/* Shipper Detail Map Dialog */}
-      <Dialog open={!!selectedShipperId} onOpenChange={(open) => {
-        if (!open) handleCloseShipperDetail()
-      }}>
-        <DialogContent className="max-w-[95vw] w-full max-h-[95vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>
-              {selectedShipper ? `${selectedShipper.shipper_name} - Delivery Route` : 'Shipper Details'}
-            </DialogTitle>
-            <DialogDescription>
-              Real-time location and delivery route for selected shipper
-            </DialogDescription>
-          </DialogHeader>
-          <div className="mt-4">
-            <MapboxShipperDetailMap 
-              shipper={selectedShipper}
-              orders={ensureArray(orders)}
-              className="h-[75vh] min-h-[500px]"
-            />
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }

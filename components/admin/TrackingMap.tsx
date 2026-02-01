@@ -11,7 +11,6 @@ interface TrackingMapProps {
   orders: OrderTracking[]
   shippers: Shipper[]
   selectedOrderId?: number
-  selectedShipperId?: number
   onOrderSelect?: (orderId: number) => void
   onShipperSelect?: (shipperId: number) => void
   className?: string
@@ -21,7 +20,6 @@ export default function TrackingMap({
   orders,
   shippers,
   selectedOrderId,
-  selectedShipperId,
   onOrderSelect,
   onShipperSelect,
   className = ''
@@ -56,7 +54,6 @@ export default function TrackingMap({
           orders={orders}
           shippers={shippers}
           selectedOrderId={selectedOrderId}
-          selectedShipperId={selectedShipperId}
           onOrderSelect={onOrderSelect}
           onShipperSelect={onShipperSelect}
         />
