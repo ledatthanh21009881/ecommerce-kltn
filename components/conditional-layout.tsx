@@ -11,12 +11,12 @@ interface ConditionalLayoutProps {
 export default function ConditionalLayout({ children }: ConditionalLayoutProps) {
   const pathname = usePathname()
   
-  // Check if current route is admin-related or messenger page
+  // Check if current route is admin-related, messenger, or collections (editorial layout)
   const isAdminRoute = pathname?.startsWith('/admin') || pathname?.startsWith('/admin-login')
   const isMessengerPage = pathname === '/messenger'
+  const isCollectionsPage = pathname?.startsWith('/collections')
   
-  if (isAdminRoute || isMessengerPage) {
-    // For admin routes and messenger page, only render children without Header/Footer
+  if (isAdminRoute || isMessengerPage || isCollectionsPage) {
     return <>{children}</>
   }
   

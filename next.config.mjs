@@ -8,7 +8,7 @@ const nextConfig = {
   },
   images: {
     unoptimized: true,
-    domains: ['res.cloudinary.com', 'img.vietqr.io'],
+    domains: ['res.cloudinary.com', 'img.vietqr.io', 'file.hstatic.net'],
     remotePatterns: [
       {
         protocol: 'https',
@@ -19,6 +19,12 @@ const nextConfig = {
       {
         protocol: 'https',
         hostname: 'img.vietqr.io',
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'file.hstatic.net',
         port: '',
         pathname: '/**',
       },

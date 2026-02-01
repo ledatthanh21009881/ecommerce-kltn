@@ -5,23 +5,33 @@ import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { authUtils } from "@/lib/auth"
 import { toast } from "sonner"
+import { fetchCollections } from "@/lib/collections-api"
+import type { Collection } from "@/lib/collections-api"
 
 export default function ScrollAwareNav() {
   const [isOverVideo, setIsOverVideo] = useState(true)
   const [isClient, setIsClient] = useState(false)
   const [isShopOpen, setIsShopOpen] = useState(false)
+  const [isCollectionOpen, setIsCollectionOpen] = useState(false)
+  const [collections, setCollections] = useState<Collection[]>([])
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const pathname = usePathname()
   const router = useRouter()
+  const isCollectionPage = pathname?.startsWith("/collections/")
 
   // Check if we're on the home page (has video)
   const isHomePage = pathname === "/"
 
   useEffect(() => {
     setIsClient(true)
-    // Check login status on mount
     setIsLoggedIn(authUtils.isLoggedIn())
+    fetchCollections().then(setCollections).catch(console.error)
   }, [])
+
+  // Keep collection dropdown open when on a collection page
+  useEffect(() => {
+    if (isCollectionPage) setIsCollectionOpen(true)
+  }, [isCollectionPage])
 
   useEffect(() => {
     if (!isClient || !isHomePage) return
@@ -44,20 +54,16 @@ export default function ScrollAwareNav() {
     return () => window.removeEventListener('scroll', handleScroll)
   }, [isClient, isHomePage])
 
-  // Auto-close shop dropdown on scroll
+  // Auto-close dropdowns on scroll (except collection dropdown when on collection page)
   useEffect(() => {
-    if (!isShopOpen) return
-
     const handleScroll = () => {
-      setIsShopOpen(false)
+      if (isShopOpen) setIsShopOpen(false)
+      if (isCollectionOpen && !isCollectionPage) setIsCollectionOpen(false)
     }
 
     window.addEventListener('scroll', handleScroll, { passive: true })
-    
-    return () => {
-      window.removeEventListener('scroll', handleScroll)
-    }
-  }, [isShopOpen])
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [isShopOpen, isCollectionOpen, isCollectionPage])
 
   // Handle logout
   const handleLogout = async () => {
@@ -86,9 +92,6 @@ export default function ScrollAwareNav() {
       hoverColorClass = "hover:text-gray-600"
     }
   }
-
-  // Debug: log the state
-  console.log('ScrollAwareNav - isClient:', isClient, 'isHomePage:', isHomePage, 'isOverVideo:', isOverVideo, 'textColorClass:', textColorClass, 'isLoggedIn:', isLoggedIn)
 
   return (
     <div className="fixed left-0 top-0 w-56 h-full bg-transparent p-8 overflow-y-auto z-[100] pointer-events-auto">
@@ -137,25 +140,54 @@ export default function ScrollAwareNav() {
         )}
       </div>
 
-      {/* Collection Section */}
-      <div className="mb-6">
-                 <h2 className={`text-xs font-bold uppercase tracking-wider ${textColorClass} mb-3`}>COLLECTION</h2>
+      {/* Collection Section - dropdown like SHOP */}
+      <div className="mb-6 relative">
+        <div className="mb-3">
+          <button
+            onClick={() => setIsCollectionOpen(!isCollectionOpen)}
+            className={`text-xs font-bold uppercase tracking-wider ${textColorClass} ${hoverColorClass} transition-colors cursor-pointer`}
+          >
+            COLLECTION
+          </button>
+        </div>
+        {isCollectionOpen && (
+          <nav className="space-y-1 sidebar-nav relative z-[110] bg-transparent mb-4">
+            {collections.map((c) => {
+              const isActive = pathname === `/collections/${c.slug}`
+              return (
+                <Link
+                  key={c.collection_id}
+                  href={`/collections/${c.slug}`}
+                  className={`block text-xs font-bold uppercase tracking-wider py-0.5 ${
+                    isActive
+                      ? "text-black font-semibold"
+                      : `${textColorClass} ${hoverColorClass}`
+                  } transition-colors`}
+                >
+                  {c.collection_name}
+                </Link>
+              )
+            })}
+          </nav>
+        )}
         <nav className="space-y-1 sidebar-nav">
-                     <Link href="/editorial" className={`block text-xs font-bold uppercase tracking-wider ${textColorClass} ${hoverColorClass} transition-colors py-0.5`}>
-             EDITORIAL
-           </Link>
-           <Link href="/about" className={`block text-xs font-bold uppercase tracking-wider ${textColorClass} ${hoverColorClass} transition-colors py-0.5`}>
-             ABOUT
-           </Link>
-           <Link href="/search" className={`block text-xs font-bold uppercase tracking-wider ${textColorClass} ${hoverColorClass} transition-colors py-0.5`}>
-             SEARCH
-           </Link>
-           <Link href="/cart" className={`block text-xs font-bold uppercase tracking-wider ${textColorClass} ${hoverColorClass} transition-colors py-0.5`}>
-             CART
-           </Link>
-           <Link href="/messenger" className={`block text-xs font-bold uppercase tracking-wider ${textColorClass} ${hoverColorClass} transition-colors py-0.5`}>
-             MESSENGER
-           </Link>
+          <Link href="/about" className={`block text-xs font-bold uppercase tracking-wider ${textColorClass} ${hoverColorClass} transition-colors py-0.5`}>
+            ABOUT
+          </Link>
+          <Link href="/search" className={`block text-xs font-bold uppercase tracking-wider ${textColorClass} ${hoverColorClass} transition-colors py-0.5`}>
+            SEARCH
+          </Link>
+          <Link href="/cart" className={`block text-xs font-bold uppercase tracking-wider ${textColorClass} ${hoverColorClass} transition-colors py-0.5`}>
+            CART
+          </Link>
+          <Link href="/messenger" className={`block text-xs font-bold uppercase tracking-wider ${textColorClass} ${hoverColorClass} transition-colors py-0.5`}>
+            MESSENGER
+          </Link>
+          {isLoggedIn && (
+            <Link href="/account" className={`block text-xs font-bold uppercase tracking-wider ${textColorClass} ${hoverColorClass} transition-colors py-0.5`}>
+              ACCOUNT
+            </Link>
+          )}
         </nav>
       </div>
 

@@ -5,6 +5,9 @@
 /* Mapbox GL JS styles - required for map rendering */
 @import 'mapbox-gl/dist/mapbox-gl.css';
 
+/* SVN-Gotham - font GIAN SAIGON */
+@import url('https://db.onlinewebfonts.com/c/be20082439dd82b9b5a7cf4ea48c59ff?family=SVN-Gotham+Book');
+
 body {
   font-family: Arial, Helvetica, sans-serif;
 }

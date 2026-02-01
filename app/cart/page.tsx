@@ -289,7 +289,7 @@ export default function CartPage() {
   }
 
   return (
-    <main className="pt-24">
+    <main className="pt-[5px] pb-[95px]">
       {/* Error Banner - Top Right */}
       {errorMessage && (
         <div className="fixed top-4 right-4 z-50 max-w-md animate-in slide-in-from-top-5">
@@ -317,13 +317,8 @@ export default function CartPage() {
       )}
       
       <div className="p-8 max-w-[85%] ml-[224px] mr-8">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="font-serif text-3xl font-light md:text-4xl mb-2">Shopping Cart</h1>
-        </div>
-
         {cartData.items.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-12 text-center">
+          <div className="flex flex-col items-center justify-center pt-[82px] pb-[82px] text-center">
             <p className="mb-6 text-lg text-gray-600">Giỏ hàng của bạn trống</p>
             <Link
               href="/all-products"

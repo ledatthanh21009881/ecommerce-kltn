@@ -22,6 +22,8 @@ const config = {
       fontFamily: {
         sans: ["var(--font-sans)"],
         serif: ["var(--font-serif)"],
+        gotham: ['"SVN-Gotham Book"', '"SVN-Gotham"', "sans-serif"],
+        mono: ['"Geist Mono"', "ui-monospace", "monospace"],
       },
       colors: {
         border: "hsl(var(--border))",

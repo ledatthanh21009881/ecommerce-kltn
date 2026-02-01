@@ -46,7 +46,7 @@ export default function SearchPage() {
   }
 
   return (
-    <main className="pt-24">
+    <main className="pt-24 pl-[185px] pb-[170px]">
       <div className="container mx-auto px-4 py-12">
         <div className="mx-auto max-w-2xl">
           <h1 className="mb-8 text-center font-serif text-3xl font-light md:text-4xl">Search</h1>

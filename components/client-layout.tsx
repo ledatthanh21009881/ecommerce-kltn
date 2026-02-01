@@ -14,7 +14,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
   
   return (
     <div className="relative min-h-screen overflow-x-hidden">
-      {/* Only show customer navigation if NOT on admin pages, login page, or messenger page */}
+      {/* Show main nav on all pages except admin, login, messenger */}
       {!isAdminPage && !isLoginPage && !isMessengerPage && <ScrollAwareNav />}
 
       {/* Main Content - full width, no margin needed since sidebar is absolutely positioned */}
