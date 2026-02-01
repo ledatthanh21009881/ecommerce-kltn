@@ -254,8 +254,8 @@ export default function OrderDetailPage() {
     return (
       <ProtectedRoute>
         <main className="min-h-screen bg-[#f9fafb] pt-24 pb-12">
-          <div className="container mx-auto px-4">
-            <div className="mx-auto max-w-2xl animate-pulse space-y-4">
+          <div className="container mx-auto px-4 sm:px-6">
+            <div className="mx-auto max-w-4xl animate-pulse space-y-4">
               <div className="h-6 w-48 rounded-xl bg-gray-200" />
               <div className="h-32 rounded-2xl bg-gray-200" />
               <div className="h-64 rounded-2xl bg-gray-200" />
@@ -270,7 +270,7 @@ export default function OrderDetailPage() {
     return (
       <ProtectedRoute>
         <main className="min-h-screen bg-[#f9fafb] pt-24 pb-12">
-          <div className="container mx-auto px-4">
+          <div className="container mx-auto px-4 sm:px-6 max-w-4xl">
             <Link
               href="/account"
               className="inline-flex items-center text-sm text-gray-600 hover:text-black mb-6"
@@ -296,8 +296,8 @@ export default function OrderDetailPage() {
   return (
     <ProtectedRoute>
       <main className="min-h-screen bg-[#f9fafb] pt-24 pb-12">
-        <div className="container mx-auto px-4">
-          <div className="mx-auto max-w-2xl space-y-6">
+        <div className="container mx-auto px-4 sm:px-6">
+          <div className="mx-auto max-w-4xl space-y-6">
             {/* Header */}
             <header>
               <Link
@@ -308,17 +308,16 @@ export default function OrderDetailPage() {
                 Quay lại trang tài khoản
               </Link>
               <div className="flex flex-wrap items-center justify-between gap-3">
-                <h1 className="text-xl font-bold text-black">{orderLabel}</h1>
+                <h1 className="font-sans text-2xl font-bold text-black">{orderLabel}</h1>
                 <div className="flex items-center gap-2">
                   {showMap && (
-                    <button
-                      type="button"
-                      onClick={() => mapSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                    <Link
+                      href={`/account/orders/${orderId}/map`}
                       className="inline-flex items-center gap-2 rounded-xl border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
                     >
                       <MapPin className="h-4 w-4" />
                       Xem đơn giao
-                    </button>
+                    </Link>
                   )}
                   <span
                     className={`rounded-xl px-3 py-1 text-xs font-medium ${getStatusBadgeClass(order.status)}`}
@@ -330,9 +329,9 @@ export default function OrderDetailPage() {
             </header>
 
             {/* Một khối chi tiết đơn (hóa đơn) */}
-            <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm overflow-hidden">
+            <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm overflow-hidden">
               {/* Thông tin đơn hàng */}
-              <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4">Thông tin đơn hàng</h2>
+              <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4" style={{ fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, sans-serif' }}>Thông tin đơn hàng</h2>
               <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 text-sm mb-5">
                 <div>
                   <dt className="text-gray-500">Mã đơn hàng</dt>
@@ -364,8 +363,8 @@ export default function OrderDetailPage() {
 
               {/* Địa chỉ giao hàng */}
               {(addressLine || shippingAddress?.recipient_name || shippingAddress?.phone) && (
-                <div className="border-t border-gray-100 pt-5 pb-5">
-                    <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Địa chỉ giao hàng</h2>
+                <div className="border-t border-gray-100 pt-6 pb-6">
+                    <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3" style={{ fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, sans-serif' }}>Địa chỉ giao hàng</h2>
                     <div className="text-sm space-y-1">
                       {shippingAddress?.recipient_name && (
                         <p className="font-medium text-black">{shippingAddress.recipient_name}</p>
@@ -379,8 +378,8 @@ export default function OrderDetailPage() {
               )}
 
               {/* Sản phẩm */}
-              <div className="border-t border-gray-100 pt-5 pb-5">
-                <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4">Sản phẩm</h2>
+              <div className="border-t border-gray-100 pt-6 pb-6">
+                <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4" style={{ fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, sans-serif' }}>Sản phẩm</h2>
                 <div className="border border-gray-200 rounded-xl overflow-hidden">
                   <table className="w-full text-sm">
                     <thead>
@@ -426,8 +425,8 @@ export default function OrderDetailPage() {
               </div>
 
               {/* Thanh toán */}
-              <div className="border-t border-gray-100 pt-5 pb-5">
-                <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4">Thanh toán</h2>
+              <div className="border-t border-gray-100 pt-6 pb-6">
+                <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4" style={{ fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, sans-serif' }}>Thanh toán</h2>
                 <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 text-sm">
                   <div>
                     <dt className="text-gray-500">Hình thức</dt>
@@ -453,8 +452,8 @@ export default function OrderDetailPage() {
               </div>
 
               {/* Tổng cộng */}
-              <div className="border-t border-gray-100 pt-5 pb-5">
-                <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4">Tổng cộng</h2>
+              <div className="border-t border-gray-100 pt-6 pb-6">
+                <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4" style={{ fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, sans-serif' }}>Tổng cộng</h2>
                 <div className="space-y-2 text-sm">
                   {order.shipping_fee != null && order.shipping_fee > 0 && (
                     <div className="flex justify-between">
@@ -463,7 +462,7 @@ export default function OrderDetailPage() {
                     </div>
                   )}
                   <div className="flex justify-between pt-2 border-t border-gray-200">
-                    <span className="font-semibold text-black">Tổng thanh toán</span>
+                    <span className="font-semibold text-black" style={{ fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, sans-serif' }}>Tổng thanh toán</span>
                     <span className="text-lg font-bold text-black">{formatPrice(order.total_amount)}</span>
                   </div>
                 </div>
@@ -471,16 +470,16 @@ export default function OrderDetailPage() {
 
               {/* Ghi chú */}
               {order.note && (
-                <div className="border-t border-gray-100 pt-5">
-                  <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2">Ghi chú</h2>
+                <div className="border-t border-gray-100 pt-6">
+                  <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2" style={{ fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, sans-serif' }}>Ghi chú</h2>
                   <p className="text-sm text-gray-800">{order.note}</p>
                 </div>
               )}
 
               {/* Shipper (khi có) */}
               {(order.tracking?.shipper_id || shipper) && (
-                <div className="border-t border-gray-100 pt-5">
-                  <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4">Shipper giao hàng</h2>
+                <div className="border-t border-gray-100 pt-6">
+                  <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4" style={{ fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, sans-serif' }}>Shipper giao hàng</h2>
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="space-y-1 text-sm">
                       <p className="font-medium text-black">

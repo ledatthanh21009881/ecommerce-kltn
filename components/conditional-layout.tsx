@@ -11,12 +11,13 @@ interface ConditionalLayoutProps {
 export default function ConditionalLayout({ children }: ConditionalLayoutProps) {
   const pathname = usePathname()
   
-  // Check if current route is admin-related, messenger, or collections (editorial layout)
+  // Check if current route is admin-related, messenger, collections, or order map (full-screen, no chrome)
   const isAdminRoute = pathname?.startsWith('/admin') || pathname?.startsWith('/admin-login')
   const isMessengerPage = pathname === '/messenger'
   const isCollectionsPage = pathname?.startsWith('/collections')
+  const isOrderMapPage = pathname?.match(/^\/account\/orders\/[^/]+\/map(\/)?$/)
   
-  if (isAdminRoute || isMessengerPage || isCollectionsPage) {
+  if (isAdminRoute || isMessengerPage || isCollectionsPage || isOrderMapPage) {
     return <>{children}</>
   }
   
