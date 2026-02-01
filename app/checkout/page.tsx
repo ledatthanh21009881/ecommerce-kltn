@@ -33,6 +33,7 @@ interface Address {
   ward: string
   district: string
   province: string
+  is_default?: number
 }
 
 interface ShippingMethod {
@@ -73,6 +74,7 @@ export default function CheckoutPage() {
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [cartItems, setCartItems] = useState<CartItem[]>([])
+  const [savedAddresses, setSavedAddresses] = useState<Address[]>([])
   const [addresses, setAddresses] = useState<Address[]>([{
     address_id: 0,
     receiver_name: '',
@@ -82,6 +84,7 @@ export default function CheckoutPage() {
     district: '',
     province: ''
   }])
+  const [useNewAddress, setUseNewAddress] = useState(false)
   const [shippingMethods, setShippingMethods] = useState<ShippingMethod[]>([])
   const [selectedAddressId, setSelectedAddressId] = useState<number | null>(null)
   const [selectedShippingId, setSelectedShippingId] = useState<number | null>(null)
@@ -259,22 +262,20 @@ export default function CheckoutPage() {
         setSubtotal(cartData.data.subtotal || 0)
       }
 
-      // Load addresses (using customer API)
+      // Load customer info and saved addresses
       const customerRes = await fetch('/api/backend/v1/auth/me', {
         headers: { 'Authorization': `Bearer ${token}` }
       })
       const customerData = await customerRes.json()
       if (customerData.success && customerData.data?.customer_id) {
-        // Update existing address with customer info
         setAddresses(prev => {
           const newAddresses = [...prev]
           if (newAddresses[0]) {
             newAddresses[0].receiver_name = customerData.data.name || ''
             newAddresses[0].phone = customerData.data.phone || ''
-            newAddresses[0].address_id = 1
           } else {
             newAddresses[0] = {
-              address_id: 1,
+              address_id: 0,
               receiver_name: customerData.data.name || '',
               phone: customerData.data.phone || '',
               address_line: '',
@@ -285,7 +286,21 @@ export default function CheckoutPage() {
           }
           return newAddresses
         })
-        setSelectedAddressId(1)
+      }
+
+      const addrRes = await fetch('/api/backend/v1/user/addresses', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+      const addrData = await addrRes.json()
+      if (addrData.success && Array.isArray(addrData.data) && addrData.data.length > 0) {
+        setSavedAddresses(addrData.data)
+        const defaultAddr = addrData.data.find((a: Address) => a.is_default) || addrData.data[0]
+        setSelectedAddressId(defaultAddr.address_id)
+        setUseNewAddress(false)
+      } else {
+        setSavedAddresses([])
+        setSelectedAddressId(null)
+        setUseNewAddress(true)
       }
 
       // Load shipping methods (only active ones)
@@ -316,17 +331,19 @@ export default function CheckoutPage() {
   }
 
   const handleSubmit = async () => {
-    // Validate address fields
+    const useAddressForm = useNewAddress || savedAddresses.length === 0
     const address = addresses[0]
-    if (!address || 
-        !address.receiver_name?.trim() || 
-        !address.phone?.trim() || 
-        !address.address_line?.trim() || 
-        !address.ward?.trim() || 
-        !address.district?.trim() || 
-        !address.province?.trim()) {
-      toast.error('Vui lòng điền đầy đủ thông tin địa chỉ giao hàng')
-      return
+    if (useAddressForm) {
+      if (!address ||
+          !address.receiver_name?.trim() ||
+          !address.phone?.trim() ||
+          !address.address_line?.trim() ||
+          !address.ward?.trim() ||
+          !address.district?.trim() ||
+          !address.province?.trim()) {
+        toast.error('Vui lòng điền đầy đủ thông tin địa chỉ giao hàng')
+        return
+      }
     }
 
     if (!selectedShippingId) {
@@ -376,12 +393,6 @@ export default function CheckoutPage() {
         return
       }
 
-      // Prepare address data for order
-      // If address_id is 0, null, or 1 (default), send address data to backend to create it
-      let addressId = selectedAddressId || address.address_id
-      
-      // Create order with address data
-      // Backend will create address if address_id is 0/1 and address data is provided
       const orderData: any = {
         customer_id: customerData.data.customer_id,
         shipping_method_id: selectedShippingId,
@@ -392,23 +403,20 @@ export default function CheckoutPage() {
         })),
         note: note
       }
-      
-      // If address_id is valid and > 1, use it
-      // Otherwise, send address data for backend to create
-      if (addressId && addressId > 1) {
-        orderData.address_id = addressId
-      } else {
-        // Send address data so backend can create it
-        orderData.address_id = 1 // Temporary, backend will create new one
+
+      if (useAddressForm) {
         orderData.address = {
-          receiver_name: address.receiver_name,
-          phone: address.phone,
-          address_line: address.address_line,
-          ward: address.ward,
-          district: address.district,
-          province: address.province
+          receiver_name: address!.receiver_name,
+          phone: address!.phone,
+          address_line: address!.address_line,
+          ward: address!.ward,
+          district: address!.district,
+          province: address!.province
         }
+      } else if (selectedAddressId && selectedAddressId > 0) {
+        orderData.address_id = selectedAddressId
       }
+      // else: backend will use default address
 
       const orderRes = await fetch('/api/backend/v1/orders', {
         method: 'POST',
@@ -473,79 +481,91 @@ export default function CheckoutPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                <Input
-                  placeholder="Tên người nhận"
-                  value={addresses[0]?.receiver_name || ''}
-                  onChange={(e) => {
-                    setAddresses(prev => {
-                      const newAddresses = [...prev]
-                      if (!newAddresses[0]) {
-                        newAddresses[0] = {
-                          address_id: 1,
-                          receiver_name: '',
-                          phone: '',
-                          address_line: '',
-                          ward: '',
-                          district: '',
-                          province: ''
+                {savedAddresses.length > 0 && (
+                  <div className="space-y-3">
+                    <Label className="text-sm font-medium">Chọn địa chỉ có sẵn hoặc nhập mới</Label>
+                    <RadioGroup
+                      value={useNewAddress ? 'new' : String(selectedAddressId ?? '')}
+                      onValueChange={(v) => {
+                        if (v === 'new') {
+                          setUseNewAddress(true)
+                          setSelectedAddressId(null)
+                        } else {
+                          setUseNewAddress(false)
+                          setSelectedAddressId(Number(v))
                         }
-                      }
-                      newAddresses[0].receiver_name = e.target.value
-                      // Auto-set selectedAddressId when address is being filled
-                      if (!selectedAddressId) {
-                        setSelectedAddressId(newAddresses[0].address_id || 1)
-                      }
-                      return newAddresses
-                    })
-                  }}
-                />
-                <Input
-                  placeholder="Số điện thoại"
-                  value={addresses[0]?.phone || ''}
-                  onChange={(e) => {
-                    setAddresses(prev => {
-                      const newAddresses = [...prev]
-                      if (!newAddresses[0]) {
-                        newAddresses[0] = {
-                          address_id: 0,
-                          receiver_name: '',
-                          phone: '',
-                          address_line: '',
-                          ward: '',
-                          district: '',
-                          province: ''
-                        }
-                      }
-                      newAddresses[0].phone = e.target.value
-                      return newAddresses
-                    })
-                  }}
-                />
-                <Input
-                  placeholder="Số nhà, tên đường"
-                  value={addresses[0]?.address_line || ''}
-                  onChange={(e) => {
-                    setAddresses(prev => {
-                      const newAddresses = [...prev]
-                      if (!newAddresses[0]) {
-                        newAddresses[0] = {
-                          address_id: 0,
-                          receiver_name: '',
-                          phone: '',
-                          address_line: '',
-                          ward: '',
-                          district: '',
-                          province: ''
-                        }
-                      }
-                      newAddresses[0].address_line = e.target.value
-                      return newAddresses
-                    })
-                  }}
-                />
-                <div className="grid grid-cols-3 gap-4">
-                  <div>
-                    <Label className="text-sm mb-2 block">Tỉnh/Thành phố</Label>
+                      }}
+                      className="space-y-2"
+                    >
+                      {savedAddresses.map((addr) => (
+                        <div key={addr.address_id} className="flex items-start gap-3 rounded-lg border p-3">
+                          <RadioGroupItem value={String(addr.address_id)} id={`addr-${addr.address_id}`} />
+                          <Label htmlFor={`addr-${addr.address_id}`} className="flex-1 cursor-pointer text-sm">
+                            <span className="font-medium">{addr.receiver_name}</span>
+                            {addr.is_default ? <span className="ml-2 text-xs text-muted-foreground">(Mặc định)</span> : null}
+                            <p className="text-muted-foreground">{addr.phone}</p>
+                            <p className="text-muted-foreground">{addr.address_line}, {[addr.ward, addr.district, addr.province].filter(Boolean).join(', ')}</p>
+                          </Label>
+                        </div>
+                      ))}
+                      <div className="flex items-start gap-3 rounded-lg border p-3">
+                        <RadioGroupItem value="new" id="addr-new" />
+                        <Label htmlFor="addr-new" className="flex-1 cursor-pointer text-sm font-medium">
+                          Giao đến địa chỉ khác (nhập mới)
+                        </Label>
+                      </div>
+                    </RadioGroup>
+                  </div>
+                )}
+
+                {(!savedAddresses.length || useNewAddress) && (
+                  <>
+                    <Label className="text-sm">Thông tin địa chỉ giao hàng</Label>
+                    <Input
+                      placeholder="Tên người nhận"
+                      value={addresses[0]?.receiver_name || ''}
+                      onChange={(e) => {
+                        setAddresses(prev => {
+                          const newAddresses = [...prev]
+                          if (!newAddresses[0]) {
+                            newAddresses[0] = { address_id: 0, receiver_name: '', phone: '', address_line: '', ward: '', district: '', province: '' }
+                          }
+                          newAddresses[0].receiver_name = e.target.value
+                          return newAddresses
+                        })
+                      }}
+                    />
+                    <Input
+                      placeholder="Số điện thoại"
+                      value={addresses[0]?.phone || ''}
+                      onChange={(e) => {
+                        setAddresses(prev => {
+                          const newAddresses = [...prev]
+                          if (!newAddresses[0]) {
+                            newAddresses[0] = { address_id: 0, receiver_name: '', phone: '', address_line: '', ward: '', district: '', province: '' }
+                          }
+                          newAddresses[0].phone = e.target.value
+                          return newAddresses
+                        })
+                      }}
+                    />
+                    <Input
+                      placeholder="Số nhà, tên đường"
+                      value={addresses[0]?.address_line || ''}
+                      onChange={(e) => {
+                        setAddresses(prev => {
+                          const newAddresses = [...prev]
+                          if (!newAddresses[0]) {
+                            newAddresses[0] = { address_id: 0, receiver_name: '', phone: '', address_line: '', ward: '', district: '', province: '' }
+                          }
+                          newAddresses[0].address_line = e.target.value
+                          return newAddresses
+                        })
+                      }}
+                    />
+                    <div className="grid grid-cols-3 gap-4">
+                      <div>
+                        <Label className="text-sm mb-2 block">Tỉnh/Thành phố</Label>
                     <Popover open={provinceOpen} onOpenChange={setProvinceOpen}>
                       <PopoverTrigger asChild>
                         <Button
@@ -731,8 +751,10 @@ export default function CheckoutPage() {
                         </Command>
                       </PopoverContent>
                     </Popover>
-                  </div>
-                </div>
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
             </CardContent>
           </Card>
