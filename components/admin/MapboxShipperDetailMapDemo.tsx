@@ -107,29 +107,88 @@ export default function MapboxShipperDetailMapDemo({
         })
 
         const coordinates = route.coordinates as [number, number][]
+        const lastCoord = coordinates[coordinates.length - 1]
 
-        // === SHIPPER AS CIRCLE LAYER (canvas, cùng hệ tọa độ với route → khớp mọi zoom) ===
+        // === ICON: Xe (custom - vòng tròn xanh + emoji xe máy) ===
+        const vehicleSize = 64
+        const vehicleCanvas = document.createElement('canvas')
+        vehicleCanvas.width = vehicleSize
+        vehicleCanvas.height = vehicleSize
+        const vCtx = vehicleCanvas.getContext('2d')!
+        vCtx.fillStyle = '#10b981'
+        vCtx.beginPath()
+        vCtx.arc(vehicleSize / 2, vehicleSize / 2, vehicleSize / 2 - 2, 0, Math.PI * 2)
+        vCtx.fill()
+        vCtx.strokeStyle = '#fff'
+        vCtx.lineWidth = 3
+        vCtx.stroke()
+        vCtx.font = '36px Arial'
+        vCtx.textAlign = 'center'
+        vCtx.textBaseline = 'middle'
+        vCtx.fillText('🏍️', vehicleSize / 2, vehicleSize / 2)
+        map.addImage('vehicle-icon', vCtx.getImageData(0, 0, vehicleSize, vehicleSize))
+
+        // === ICON: Đích đến (custom - pin đỏ như trong ảnh) ===
+        const pinW = 32
+        const pinH = 44
+        const pinCanvas = document.createElement('canvas')
+        pinCanvas.width = pinW
+        pinCanvas.height = pinH
+        const pCtx = pinCanvas.getContext('2d')!
+        pCtx.fillStyle = '#3b82f6'
+        pCtx.beginPath()
+        pCtx.arc(pinW / 2, pinW / 2 + 2, pinW / 2 - 2, 0, Math.PI * 2)
+        pCtx.fill()
+        pCtx.beginPath()
+        pCtx.moveTo(pinW / 2 - 4, pinW / 2 + 4)
+        pCtx.lineTo(pinW / 2, pinH - 2)
+        pCtx.lineTo(pinW / 2 + 4, pinW / 2 + 4)
+        pCtx.closePath()
+        pCtx.fill()
+        pCtx.fillStyle = '#fff'
+        pCtx.beginPath()
+        pCtx.arc(pinW / 2, pinW / 2, 3, 0, Math.PI * 2)
+        pCtx.fill()
+        map.addImage('destination-icon', pCtx.getImageData(0, 0, pinW, pinH))
+
+        // === Đích đến (pin cố định cuối route) ===
+        map.addSource('destination', {
+          type: 'geojson',
+          data: {
+            type: 'Feature',
+            properties: {},
+            geometry: { type: 'Point', coordinates: lastCoord }
+          }
+        })
+        map.addLayer({
+          id: 'destination-marker',
+          type: 'symbol',
+          source: 'destination',
+          layout: {
+            'icon-image': 'destination-icon',
+            'icon-size': 1.2,
+            'icon-allow-overlap': true,
+            'icon-anchor': 'bottom'
+          }
+        })
+
+        // === Xe shipper (di chuyển theo route) ===
         map.addSource('shipper-position', {
           type: 'geojson',
           data: {
             type: 'Feature',
             properties: {},
-            geometry: {
-              type: 'Point',
-              coordinates: coordinates[0]
-            }
+            geometry: { type: 'Point', coordinates: coordinates[0] }
           }
         })
-
         map.addLayer({
-          id: 'shipper-circle',
-          type: 'circle',
+          id: 'shipper-vehicle',
+          type: 'symbol',
           source: 'shipper-position',
-          paint: {
-            'circle-radius': 14,
-            'circle-color': '#10b981',
-            'circle-stroke-width': 3,
-            'circle-stroke-color': '#fff'
+          layout: {
+            'icon-image': 'vehicle-icon',
+            'icon-size': 0.6,
+            'icon-allow-overlap': true
           }
         })
 
