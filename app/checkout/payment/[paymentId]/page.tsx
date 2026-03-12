@@ -137,14 +137,27 @@ export default function PaymentPage() {
 
       const data = await response.json()
       if (data.success) {
+        // #region agent log
+        fetch('http://127.0.0.1:7244/ingest/f2f3a4ec-56d7-4905-bcec-0faf157590e4',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'e7f3bb'},body:JSON.stringify({sessionId:'e7f3bb',runId:'pre-fix',hypothesisId:'H1',location:'web/app/checkout/payment/[paymentId]/page.tsx:138',message:'loadPayment got data.success',data:{paymentId,method:data?.data?.method,status:data?.data?.status,order_id:data?.data?.order_id,has_payment_url:!!data?.data?.payment_url,has_qr_code:!!data?.data?.qr_code},timestamp:Date.now()})}).catch(()=>{});
+        // #endregion
         setPayment(data.data)
         
         // If COD or already confirmed, redirect to success
         if (data.data.method === 'cod' || data.data.status === 'confirmed') {
+          // #region agent log
+          fetch('http://127.0.0.1:7244/ingest/f2f3a4ec-56d7-4905-bcec-0faf157590e4',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'e7f3bb'},body:JSON.stringify({sessionId:'e7f3bb',runId:'pre-fix',hypothesisId:'H2',location:'web/app/checkout/payment/[paymentId]/page.tsx:143',message:'redirect success (cod or confirmed)',data:{paymentId,method:data?.data?.method,status:data?.data?.status,order_id:data?.data?.order_id},timestamp:Date.now()})}).catch(()=>{});
+          // #endregion
           router.push(`/checkout/payment/success?order_id=${data.data.order_id}`)
         }
         // If VNPay, redirect to payment URL
         else if (data.data.method === 'vnpay' && data.data.payment_url) {
+          // #region agent log
+          fetch('http://127.0.0.1:7244/ingest/f2f3a4ec-56d7-4905-bcec-0faf157590e4',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'e7f3bb'},body:JSON.stringify({sessionId:'e7f3bb',runId:'pre-fix',hypothesisId:'H3',location:'web/app/checkout/payment/[paymentId]/page.tsx:147',message:'redirect vnpay',data:{paymentId,has_payment_url:!!data?.data?.payment_url},timestamp:Date.now()})}).catch(()=>{});
+          // #endregion
+          window.location.href = data.data.payment_url
+        }
+        // If PayOS, redirect to payment URL (auto-redirect like VNPay)
+        else if (data.data.method === 'payos' && data.data.payment_url) {
           window.location.href = data.data.payment_url
         }
       } else {
@@ -181,7 +194,7 @@ export default function PaymentPage() {
 
   // Auto-check countdown and polling (giống Restaurant Management)
   useEffect(() => {
-    if (payment && payment.status === 'pending' && (payment.method === 'vietqr' || payment.method === 'mock_qr' || payment.method === 'casso')) {
+    if (payment && payment.status === 'pending' && (payment.method === 'vietqr' || payment.method === 'mock_qr' || payment.method === 'payos')) {
       console.log('🔄 [Payment] Starting auto-check countdown for payment:', paymentId)
       
       let pollInterval: NodeJS.Timeout | null = null
@@ -275,7 +288,7 @@ export default function PaymentPage() {
                   setPayment(prev => prev ? { ...prev, status: 'confirmed' } : {
                     payment_id: data.payment_id,
                     order_id: data.order_id,
-                    method: data.data?.method || 'casso',
+                    method: data.data?.method || 'payos',
                     status: 'confirmed',
                     payment_url: null,
                     expires_at: null
@@ -357,6 +370,10 @@ export default function PaymentPage() {
     )
   }
 
+  // #region agent log
+  fetch('http://127.0.0.1:7244/ingest/f2f3a4ec-56d7-4905-bcec-0faf157590e4',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'e7f3bb'},body:JSON.stringify({sessionId:'e7f3bb',runId:'pre-fix',hypothesisId:'H4',location:'web/app/checkout/payment/[paymentId]/page.tsx:360',message:'render branch selection',data:{paymentId,method:payment?.method,status:payment?.status,branch:(payment?.method==='mock_qr'||payment?.method==='vietqr')?'qr':(payment?.method==='payos')?'payos':(payment?.method==='vnpay')?'vnpay':'invalid'},timestamp:Date.now()})}).catch(()=>{});
+  // #endregion
+
   return (
     <div className="container mx-auto px-4 py-12 max-w-2xl">
       <Card>
@@ -391,7 +408,7 @@ export default function PaymentPage() {
                 )}
               </div>
             </>
-          ) : payment.method === 'casso' ? (
+          ) : payment.method === 'payos' ? (
             <>
               <div className="text-center space-y-4">
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">

@@ -819,9 +819,9 @@ export default function CheckoutPage() {
                     </Label>
                   </div>
                   <div className="flex items-center space-x-2 border rounded p-4">
-                    <RadioGroupItem value="casso" id="payment-casso" />
-                    <Label htmlFor="payment-casso" className="flex-1 cursor-pointer">
-                      Chuyển khoản ngân hàng (Casso)
+                    <RadioGroupItem value="payos" id="payment-payos" />
+                    <Label htmlFor="payment-payos" className="flex-1 cursor-pointer">
+                      Chuyển khoản ngân hàng (PayOS)
                     </Label>
                   </div>
                 </div>

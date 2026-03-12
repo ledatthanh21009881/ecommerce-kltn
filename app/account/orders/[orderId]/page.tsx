@@ -120,7 +120,7 @@ function getPaymentMethodLabel(method: string | undefined): string {
   if (!method) return '—'
   const m = method.toLowerCase()
   if (m === 'cod' || m === 'cash') return 'Tiền mặt (COD)'
-  if (m === 'casso' || m === 'bank_transfer') return 'Chuyển khoản ngân hàng'
+  if (m === 'payos' || m === 'bank_transfer') return 'Chuyển khoản ngân hàng'
   if (m === 'vnpay') return 'VNPay'
   if (m === 'momo') return 'Ví MoMo'
   return method
