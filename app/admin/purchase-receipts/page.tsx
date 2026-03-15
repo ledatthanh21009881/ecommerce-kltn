@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Search, RefreshCw, FileText, Plus, CheckCircle, XCircle, Clock, Building2, Eye, Edit, Trash2 } from 'lucide-react'
+import { Search, RefreshCw, FileText, Plus, CheckCircle, XCircle, Clock, Building2, Eye, Edit, Trash2, LayoutList, LayoutGrid, ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
@@ -32,52 +32,63 @@ export default function AdminPurchaseReceiptsPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
   const [supplierFilter, setSupplierFilter] = useState('')
-  
-  // Modal states
+  const [page, setPage] = useState(1)
+  const [limit] = useState(10)
+  const [pagination, setPagination] = useState<{ total: number; per_page: number; current_page: number; last_page: number; from: number; to: number } | null>(null)
+  const [viewMode, setViewMode] = useState<'list' | 'grid'>(() => {
+    if (typeof window !== 'undefined') return (localStorage.getItem('admin_receipts_view') as 'list' | 'grid') || 'list'
+    return 'list'
+  })
   const [isAddEditModalOpen, setIsAddEditModalOpen] = useState(false)
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false)
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
   const [selectedReceipt, setSelectedReceipt] = useState<PurchaseReceipt | null>(null)
   const [deletingReceipt, setDeletingReceipt] = useState<PurchaseReceipt | null>(null)
 
-  // Fetch purchase receipts
+  const setViewModeAndStore = (mode: 'list' | 'grid') => {
+    setViewMode(mode)
+    if (typeof window !== 'undefined') localStorage.setItem('admin_receipts_view', mode)
+  }
+
   const fetchReceipts = async () => {
     try {
       setLoading(true)
       const { token } = getAuthData()
-      
       const params = new URLSearchParams()
+      params.set('page', String(page))
+      params.set('limit', String(limit))
       if (statusFilter) params.append('status', statusFilter)
       if (supplierFilter) params.append('supplier_id', supplierFilter)
-      
-      const url = `/api/backend/v1/purchase-receipts${params.toString() ? '?' + params.toString() : ''}`
-      
+      const url = `/api/backend/v1/purchase-receipts?${params.toString()}`
       const response = await fetch(url, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
       })
-      
       const data = await response.json()
-      
       if (data.success) {
         const receiptsList = data.data?.items || data.data || []
         setReceipts(receiptsList)
+        if (data.data.pagination) {
+          setPagination({
+            total: data.data.pagination.total,
+            per_page: data.data.pagination.per_page,
+            current_page: data.data.pagination.current_page,
+            last_page: data.data.pagination.last_page,
+            from: data.data.pagination.from ?? (page - 1) * limit + 1,
+            to: data.data.pagination.to ?? Math.min(page * limit, data.data.pagination.total)
+          })
+        } else setPagination(null)
       } else {
         toast.error(data.message || t('failedToFetchPurchaseReceipts'))
       }
     } catch (error) {
-      console.error('Error fetching purchase receipts:', error)
       toast.error(t('failedToFetchPurchaseReceipts'))
     } finally {
       setLoading(false)
     }
   }
 
-  useEffect(() => {
-    fetchReceipts()
-  }, [statusFilter, supplierFilter])
+  useEffect(() => { setPage(1) }, [statusFilter, supplierFilter])
+  useEffect(() => { fetchReceipts() }, [page, statusFilter, supplierFilter])
 
   // Filter receipts
   const filteredReceipts = receipts.filter(receipt => {
@@ -115,7 +126,7 @@ export default function AdminPurchaseReceiptsPage() {
 
   const getReceiptStats = () => {
     const stats = {
-      total: receipts.length,
+      total: pagination?.total ?? receipts.length,
       pending: receipts.filter(r => r.status === 'pending').length,
       confirmed: receipts.filter(r => r.status === 'confirmed').length,
       cancelled: receipts.filter(r => r.status === 'cancelled').length,
@@ -232,156 +243,182 @@ export default function AdminPurchaseReceiptsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-6">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 p-6">
       <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-slate-900 mb-2">{t('purchaseReceiptManagement')}</h1>
-          <p className="text-slate-600">{t('purchaseReceiptManagementDesc')}</p>
+        <div className="mb-8 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-slate-800 via-blue-800 to-indigo-800 bg-clip-text text-transparent mb-2">{t('purchaseReceiptManagement')}</h1>
+            <p className="text-slate-600">{t('purchaseReceiptManagementDesc')}</p>
+          </div>
+          <div className="flex items-center gap-2 shrink-0 flex-nowrap">
+            <span className="text-sm font-medium text-slate-600 mr-1 hidden sm:inline">{t('view')}:</span>
+            <div className="flex rounded-lg border border-slate-200 bg-white/80 overflow-hidden">
+              <Button variant="ghost" size="sm" onClick={() => setViewModeAndStore('list')} className={`rounded-none ${viewMode === 'list' ? 'bg-slate-100' : ''}`} title={t('viewList')}><LayoutList className="h-4 w-4" /></Button>
+              <Button variant="ghost" size="sm" onClick={() => setViewModeAndStore('grid')} className={`rounded-none ${viewMode === 'grid' ? 'bg-slate-100' : ''}`} title={t('viewGrid')}><LayoutGrid className="h-4 w-4" /></Button>
+            </div>
+            <Button variant="outline" onClick={fetchReceipts} disabled={loading} className="flex items-center gap-2 bg-white/80 backdrop-blur-sm border-slate-200 hover:bg-white">
+              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+              {t('refresh')}
+            </Button>
+            <Button onClick={handleAddClick} className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white">
+              <Plus className="h-4 w-4" />
+              {t('createReceipt')}
+            </Button>
+          </div>
         </div>
 
-        {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
-          <Card className="bg-white shadow-sm">
+          <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-slate-600">{t('receiptTotalReceipts')}</p>
-                  <p className="text-2xl font-bold text-slate-900">{stats.total}</p>
+                  <p className="text-sm font-medium text-slate-600 mb-1">{t('receiptTotalReceipts')}</p>
+                  <p className="text-3xl font-bold text-slate-900">{stats.total}</p>
                 </div>
-                <div className="h-12 w-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                  <FileText className="h-6 w-6 text-blue-600" />
+                <div className="h-12 w-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg">
+                  <FileText className="h-6 w-6 text-white" />
                 </div>
               </div>
             </CardContent>
           </Card>
-
-          <Card className="bg-white shadow-sm">
+          <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-slate-600">{t('pending')}</p>
-                  <p className="text-2xl font-bold text-slate-900">{stats.pending}</p>
+                  <p className="text-sm font-medium text-slate-600 mb-1">{t('pending')}</p>
+                  <p className="text-3xl font-bold text-slate-900">{stats.pending}</p>
                 </div>
-                <div className="h-12 w-12 bg-yellow-100 rounded-lg flex items-center justify-center">
-                  <Clock className="h-6 w-6 text-yellow-600" />
+                <div className="h-12 w-12 bg-gradient-to-br from-amber-500 to-yellow-500 rounded-xl flex items-center justify-center shadow-lg">
+                  <Clock className="h-6 w-6 text-white" />
                 </div>
               </div>
             </CardContent>
           </Card>
-
-          <Card className="bg-white shadow-sm">
+          <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-slate-600">{t('confirmed')}</p>
-                  <p className="text-2xl font-bold text-slate-900">{stats.confirmed}</p>
+                  <p className="text-sm font-medium text-slate-600 mb-1">{t('confirmed')}</p>
+                  <p className="text-3xl font-bold text-slate-900">{stats.confirmed}</p>
                 </div>
-                <div className="h-12 w-12 bg-green-100 rounded-lg flex items-center justify-center">
-                  <CheckCircle className="h-6 w-6 text-green-600" />
+                <div className="h-12 w-12 bg-gradient-to-br from-emerald-500 to-green-600 rounded-xl flex items-center justify-center shadow-lg">
+                  <CheckCircle className="h-6 w-6 text-white" />
                 </div>
               </div>
             </CardContent>
           </Card>
-
-          <Card className="bg-white shadow-sm">
+          <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-slate-600">{t('cancelled')}</p>
-                  <p className="text-2xl font-bold text-slate-900">{stats.cancelled}</p>
+                  <p className="text-sm font-medium text-slate-600 mb-1">{t('cancelled')}</p>
+                  <p className="text-3xl font-bold text-slate-900">{stats.cancelled}</p>
                 </div>
-                <div className="h-12 w-12 bg-red-100 rounded-lg flex items-center justify-center">
-                  <XCircle className="h-6 w-6 text-red-600" />
+                <div className="h-12 w-12 bg-gradient-to-br from-red-500 to-red-600 rounded-xl flex items-center justify-center shadow-lg">
+                  <XCircle className="h-6 w-6 text-white" />
                 </div>
               </div>
             </CardContent>
           </Card>
-
-          <Card className="bg-white shadow-sm">
+          <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-slate-600">{t('receiptTotalRevenue')}</p>
-                  <p className="text-2xl font-bold text-slate-900">{formatCurrency(stats.total_amount)}</p>
+                  <p className="text-sm font-medium text-slate-600 mb-1">{t('receiptTotalRevenue')}</p>
+                  <p className="text-3xl font-bold text-emerald-600">{formatCurrency(stats.total_amount)}</p>
                 </div>
-                <div className="h-12 w-12 bg-green-100 rounded-lg flex items-center justify-center">
-                  <span className="text-green-600 text-xl">₫</span>
+                <div className="h-12 w-12 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl flex items-center justify-center shadow-lg">
+                  <FileText className="h-6 w-6 text-white" />
                 </div>
               </div>
             </CardContent>
           </Card>
         </div>
 
-        {/* Controls */}
-        <Card className="bg-white shadow-sm mb-6">
+        <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg mb-6">
           <CardContent className="p-6">
-            <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
-              <div className="flex flex-col sm:flex-row gap-4 flex-1">
-                {/* Search */}
-                <div className="relative flex-1 max-w-md">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 h-4 w-4" />
-                  <Input
-                    placeholder={t('searchReceiptsPlaceholder')}
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10"
-                  />
+            <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-end justify-between">
+              <div className="flex flex-col lg:flex-row gap-4 flex-1 w-full">
+                <div className="flex flex-col flex-1 max-w-md">
+                  <label className="text-xs font-medium text-slate-600 mb-1">{t('search')}</label>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 h-4 w-4" />
+                    <Input
+                      placeholder={t('searchReceiptsPlaceholder')}
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="pl-10 bg-white/50 border-slate-200 focus:bg-white focus:border-blue-500 transition-all duration-200"
+                    />
+                  </div>
                 </div>
-
-                {/* Status Filter */}
-                <select
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                  className="px-3 py-2 border border-slate-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  <option value="">{t('allStatus')}</option>
-                  <option value="pending">{t('pending')}</option>
-                  <option value="confirmed">{t('confirmed')}</option>
-                  <option value="cancelled">{t('cancelled')}</option>
-                </select>
-              </div>
-
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  onClick={fetchReceipts}
-                  disabled={loading}
-                  className="flex items-center gap-2"
-                >
-                  <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-                  {t('refresh')}
-                </Button>
-                <Button
-                  onClick={handleAddClick}
-                  className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700"
-                >
-                  <Plus className="h-4 w-4" />
-                  {t('createReceipt')}
-                </Button>
+                <div className="flex flex-col">
+                  <label className="text-xs font-medium text-slate-600 mb-1">{t('statusFilter')}</label>
+                  <select
+                    value={statusFilter}
+                    onChange={(e) => setStatusFilter(e.target.value)}
+                    className="px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white/50 focus:bg-white min-w-[140px]"
+                  >
+                    <option value="">{t('allStatus')}</option>
+                    <option value="pending">{t('pending')}</option>
+                    <option value="confirmed">{t('confirmed')}</option>
+                    <option value="cancelled">{t('cancelled')}</option>
+                  </select>
+                </div>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        {/* Receipts Table */}
         {loading ? (
-          <Card className="bg-white shadow-sm">
+          <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg">
             <CardContent className="p-12 text-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-              <p className="text-gray-600">{t('loadingPurchaseReceipts')}</p>
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4" />
+              <p className="text-slate-600">{t('loadingPurchaseReceipts')}</p>
             </CardContent>
           </Card>
         ) : filteredReceipts.length === 0 ? (
-          <Card className="bg-white shadow-sm">
+          <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg">
             <CardContent className="p-12 text-center">
-              <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">{t('noPurchaseReceiptsFound')}</h3>
-              <p className="text-gray-500">{t('noPurchaseReceiptsMatch')}</p>
+              <FileText className="h-12 w-12 text-slate-400 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-slate-900 mb-2">{t('noPurchaseReceiptsFound')}</h3>
+              <p className="text-slate-500">{t('noPurchaseReceiptsMatch')}</p>
             </CardContent>
           </Card>
+        ) : viewMode === 'grid' ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filteredReceipts.map((receipt) => (
+              <Card key={receipt.receipt_id} className="bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300">
+                <CardContent className="p-4">
+                  <div className="flex items-start justify-between gap-2 mb-3">
+                    <div className="flex items-center gap-2">
+                      <div className="h-10 w-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center">
+                        <FileText className="h-5 w-5 text-white" />
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-slate-900">#{receipt.receipt_id}</h3>
+                        <p className="text-sm text-slate-600 flex items-center gap-1"><Building2 className="h-3.5 w-3.5" />{receipt.supplier_name}</p>
+                      </div>
+                    </div>
+                    <Badge variant="outline" className={`${getStatusColor(receipt.status)}`}>{getStatusIcon(receipt.status)}</Badge>
+                  </div>
+                  <p className="text-sm text-slate-600">{t('itemsCountSuffix', { count: String(receipt.item_count) })} · {formatCurrency(receipt.total_amount)}</p>
+                  <p className="text-xs text-slate-400 mt-2">{formatDate(receipt.created_at)}</p>
+                  <div className="flex gap-2 mt-3 pt-3 border-t border-slate-100">
+                    <Button variant="outline" size="sm" onClick={() => handleViewDetails(receipt)} className="flex-1 bg-white/80 border-slate-200 hover:bg-white"><Eye className="h-4 w-4 mr-1" />{t('view')}</Button>
+                    {receipt.status === 'pending' && (
+                      <>
+                        <Button variant="outline" size="sm" onClick={() => handleEditClick(receipt)} className="bg-white/80 border-slate-200 hover:bg-white"><Edit className="h-4 w-4" /></Button>
+                        <Button variant="outline" size="sm" onClick={() => handleConfirm(receipt.receipt_id)} className="text-green-600 border-green-200"><CheckCircle className="h-4 w-4" /></Button>
+                        <Button variant="outline" size="sm" onClick={() => handleDeleteClick(receipt)} className="text-red-600 border-red-200"><Trash2 className="h-4 w-4" /></Button>
+                      </>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
         ) : (
-          <Card className="bg-white shadow-sm">
+          <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg">
             <CardContent className="p-0">
               <div className="overflow-x-auto">
                 <table className="w-full">
@@ -472,6 +509,28 @@ export default function AdminPurchaseReceiptsPage() {
             </CardContent>
           </Card>
         )}
+
+        {!loading && pagination && pagination.last_page > 1 && (
+          <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg mt-4">
+            <CardContent className="p-4 flex flex-wrap items-center justify-between gap-4">
+              <p className="text-sm text-slate-600">
+                {t('showingXOfY', { from: String(pagination.from), to: String(pagination.to), total: String(pagination.total) })}
+              </p>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={pagination.current_page <= 1} className="bg-white/80 border-slate-200 hover:bg-white">
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <span className="text-sm font-medium text-slate-700 min-w-[120px] text-center">
+                  {t('pageOf', { current: String(pagination.current_page), total: String(pagination.last_page) })}
+                </span>
+                <Button variant="outline" size="sm" onClick={() => setPage(p => Math.min(pagination.last_page, p + 1))} disabled={pagination.current_page >= pagination.last_page} className="bg-white/80 border-slate-200 hover:bg-white">
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Modals */}
         <PurchaseReceiptModal
           isOpen={isAddEditModalOpen}

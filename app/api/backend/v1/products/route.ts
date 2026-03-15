@@ -4,15 +4,19 @@ import { backendUrl } from '@/app/api/backend/config'
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
-    const limit = searchParams.get('limit') || '1000'
+    const limit = searchParams.get('limit') || '20'
+    const page = searchParams.get('page') || '1'
+    const category_id = searchParams.get('category_id') || ''
+    const search = searchParams.get('search') || ''
 
-    // Get token from request headers
     const token = request.headers.get('authorization')
-    console.log('🔍 Products API called with limit:', limit)
-    console.log('🔑 Token present:', !!token)
+    const params = new URLSearchParams()
+    params.set('limit', limit)
+    params.set('page', page)
+    if (category_id) params.set('category', category_id)
+    if (search) params.set('search', search)
     
-    // Call backend API
-    const url = `${backendUrl('/api/v1/products')}?limit=${limit}`
+    const url = `${backendUrl('/api/v1/products')}?${params.toString()}`
     console.log('🌐 Backend URL:', url)
     
     const response = await fetch(url, {

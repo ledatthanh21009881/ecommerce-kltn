@@ -342,12 +342,12 @@ export default function OrderTrackingPage() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 p-6">
+      <div className="space-y-6 max-w-7xl mx-auto">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Order Tracking</h1>
-          <p className="text-gray-600">Real-time order tracking and shipper management</p>
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-slate-800 via-blue-800 to-indigo-800 bg-clip-text text-transparent">Order Tracking</h1>
+          <p className="text-slate-600">Real-time order tracking and shipper management</p>
         </div>
         <div className="flex items-center gap-2">
           <Button
@@ -355,6 +355,7 @@ export default function OrderTrackingPage() {
             size="sm"
             onClick={handleRefresh}
             disabled={loading}
+            className="bg-white/80 backdrop-blur-sm border-slate-200 hover:bg-white"
           >
             <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
             Refresh
@@ -362,15 +363,16 @@ export default function OrderTrackingPage() {
         </div>
       </div>
 
-      {/* Stats Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-4 2xl:grid-cols-4 gap-4">
-        <Card>
+        <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg">
           <CardContent className="p-4">
             <div className="flex items-center space-x-2">
-              <Package className="h-5 w-5 text-blue-600" />
+              <div className="h-10 w-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center">
+                <Package className="h-5 w-5 text-white" />
+              </div>
               <div>
-                <p className="text-2xl font-bold">{stats.total_orders_today}</p>
-                <p className="text-sm text-gray-600">Total Today</p>
+                <p className="text-2xl font-bold text-slate-900">{stats.total_orders_today}</p>
+                <p className="text-sm text-slate-600">Total Today</p>
               </div>
             </div>
           </CardContent>
@@ -757,6 +759,7 @@ export default function OrderTrackingPage() {
           </Card>
         </TabsContent>
       </Tabs>
+      </div>
     </div>
   )
 }

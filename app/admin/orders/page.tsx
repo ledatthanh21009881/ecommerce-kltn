@@ -2,7 +2,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Search, RefreshCw, ShoppingCart, Eye, Package, Truck, CheckCircle, Clock, XCircle, Edit, MoreHorizontal, Download, FileText, Calendar, TrendingUp, Users, DollarSign, Mail } from 'lucide-react'
+import { Search, RefreshCw, ShoppingCart, Eye, Package, Truck, CheckCircle, Clock, XCircle, Edit, MoreHorizontal, Download, FileText, Calendar, TrendingUp, Users, DollarSign, Mail, LayoutList, LayoutGrid, ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
@@ -33,6 +33,15 @@ export default function AdminOrdersPage() {
   const [statusFilter, setStatusFilter] = useState('')
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
+  const [page, setPage] = useState(1)
+  const [limit] = useState(10)
+  const [pagination, setPagination] = useState<{ total: number; per_page: number; current_page: number; last_page: number; from: number; to: number } | null>(null)
+  const [viewMode, setViewMode] = useState<'list' | 'grid'>(() => {
+    if (typeof window !== 'undefined') {
+      return (localStorage.getItem('admin_orders_view') as 'list' | 'grid') || 'list'
+    }
+    return 'list'
+  })
   
   // Modal states
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false)
@@ -65,6 +74,8 @@ export default function AdminOrdersPage() {
       }
       
       const params = new URLSearchParams()
+      params.set('page', String(page))
+      params.set('limit', String(limit))
       if (statusFilter) params.append('status', statusFilter)
       if (searchTerm) params.append('search', searchTerm)
       if (dateFrom) params.append('date_from', dateFrom)
@@ -83,8 +94,19 @@ export default function AdminOrdersPage() {
       
       if (data.success) {
         const ordersData = data.data.items || data.data || []
-        console.log('Orders data:', ordersData)
         setOrders(ordersData)
+        if (data.data.pagination) {
+          setPagination({
+            total: data.data.pagination.total,
+            per_page: data.data.pagination.per_page,
+            current_page: data.data.pagination.current_page,
+            last_page: data.data.pagination.last_page,
+            from: data.data.pagination.from ?? (page - 1) * limit + 1,
+            to: data.data.pagination.to ?? Math.min(page * limit, data.data.pagination.total)
+          })
+        } else {
+          setPagination(null)
+        }
       } else {
         console.error('Failed to fetch orders:', data)
         toast.error('Failed to fetch orders')
@@ -112,10 +134,19 @@ export default function AdminOrdersPage() {
     }
   }
 
+  const setViewModeAndStore = (mode: 'list' | 'grid') => {
+    setViewMode(mode)
+    if (typeof window !== 'undefined') localStorage.setItem('admin_orders_view', mode)
+  }
+
+  useEffect(() => {
+    setPage(1)
+  }, [statusFilter, searchTerm, dateFrom, dateTo])
+
   useEffect(() => {
     fetchOrders()
     fetchStatistics()
-  }, [])
+  }, [page, statusFilter, searchTerm, dateFrom, dateTo])
 
   // Filter orders
   const filteredOrders = orders.filter(order => {
@@ -323,16 +354,39 @@ export default function AdminOrdersPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
       <div className="max-w-7xl mx-auto p-6">
-        {/* Header */}
+        {/* Header: tiêu đề và nút View + Làm mới cùng một hàng */}
         <div className="mb-8">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
             <div>
               <h1 className="text-4xl font-bold bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent">
                 {t('orderManagement')}
               </h1>
               <p className="text-slate-600 mt-2 text-lg">{t('orderManagementDesc')}</p>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 shrink-0 flex-nowrap">
+              <span className="text-sm font-medium text-slate-600 mr-1 hidden sm:inline">{t('view')}:</span>
+              <div className="flex rounded-lg border border-slate-200 bg-white/80 overflow-hidden">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setViewModeAndStore('list')}
+                  title={t('viewList')}
+                  className={`rounded-none gap-1.5 ${viewMode === 'list' ? 'bg-slate-100' : ''}`}
+                >
+                  <LayoutList className="h-4 w-4 shrink-0" />
+                  <span className="hidden sm:inline">{t('viewList')}</span>
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setViewModeAndStore('grid')}
+                  title={t('viewGrid')}
+                  className={`rounded-none gap-1.5 ${viewMode === 'grid' ? 'bg-slate-100' : ''}`}
+                >
+                  <LayoutGrid className="h-4 w-4 shrink-0" />
+                  <span className="hidden sm:inline">{t('viewGrid')}</span>
+                </Button>
+              </div>
               <Button
                 variant="outline"
                 onClick={() => {
@@ -518,13 +572,61 @@ export default function AdminOrdersPage() {
               <p className="text-slate-500">{t('noOrdersMatch')}</p>
             </CardContent>
           </Card>
+        ) : viewMode === 'grid' ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            {filteredOrders.map((order) => (
+              <Card key={order.order_id} className="bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300">
+                <CardContent className="p-4">
+                  <div className="flex items-start justify-between gap-2 mb-3">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className="h-9 w-9 shrink-0 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center">
+                        <FileText className="h-4 w-4 text-white" />
+                      </div>
+                      <div className="min-w-0">
+                        <h3 className="font-semibold text-slate-900 truncate">{order.invoice_number}</h3>
+                        <p className="text-xs text-slate-500">#{order.order_id}</p>
+                      </div>
+                    </div>
+                    <Badge variant="outline" className={`shrink-0 text-xs ${getStatusColor(order.status)}`}>
+                      {getStatusIcon(order.status)}
+                    </Badge>
+                  </div>
+                  <p className="text-sm text-slate-700 truncate">{order.first_name} {order.last_name}</p>
+                  <p className="text-sm font-semibold text-emerald-600 mt-1">{formatPrice(order.total_amount)}</p>
+                  <p className="text-xs text-slate-400 mt-2">{formatDate(order.created_at)}</p>
+                  <div className="flex gap-2 mt-3 pt-3 border-t border-slate-100">
+                    <Button variant="outline" size="sm" onClick={() => handleViewDetails(order)} className="flex-1 bg-white/80 border-slate-200 hover:bg-white">
+                      <Eye className="h-3.5 w-3.5 mr-1" />
+                      {t('view')}
+                    </Button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="outline" size="sm" className="bg-white/80 border-slate-200 hover:bg-white">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="bg-white/95 backdrop-blur-sm border-slate-200 z-50 shadow-lg">
+                        <DropdownMenuItem onClick={() => handleUpdateStatus(order)}><Package className="mr-2 h-4 w-4" />{t('updateStatus')}</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleAssignShipper(order)}><Truck className="mr-2 h-4 w-4" />{t('assignShipper')}</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleGenerateInvoice(order, 'pdf')} className={order.status !== 'completed' ? 'opacity-50' : ''}><FileText className="mr-2 h-4 w-4" />{t('printInvoice')}</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleGenerateInvoice(order, 'email')} className={order.status !== 'completed' ? 'opacity-50' : ''}><Mail className="mr-2 h-4 w-4" />{t('sendMail')}</DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        {order.status !== 'cancelled' && order.status !== 'completed' && (
+                          <DropdownMenuItem onClick={() => handleCancelOrder(order)} className="text-red-600"><XCircle className="mr-2 h-4 w-4" />{t('cancelOrder')}</DropdownMenuItem>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
         ) : (
           <div className="space-y-4">
             {filteredOrders.map((order) => (
               <Card key={order.order_id} className="bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300 group">
                 <CardContent className="p-6">
                   <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                    {/* Order Info */}
                     <div className="flex-1 space-y-4">
                       <div className="flex items-center gap-4">
                         <div className="flex items-center gap-3">
@@ -538,15 +640,11 @@ export default function AdminOrdersPage() {
                             <p className="text-sm text-slate-500">{t('orderNumber')}{order.order_id}</p>
                           </div>
                         </div>
-                        <Badge 
-                          variant="outline" 
-                          className={`flex items-center gap-1 px-3 py-1 ${getStatusColor(order.status)}`}
-                        >
+                        <Badge variant="outline" className={`flex items-center gap-1 px-3 py-1 ${getStatusColor(order.status)}`}>
                           {getStatusIcon(order.status)}
                           {t(order.status)}
                         </Badge>
                       </div>
-
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                         <div className="space-y-1">
                           <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">{t('customer')}</p>
@@ -566,7 +664,6 @@ export default function AdminOrdersPage() {
                           <p className="font-semibold text-slate-900">{order.item_count || 'N/A'} items</p>
                         </div>
                       </div>
-
                       <div className="text-xs text-slate-400 border-t border-slate-100 pt-3">
                         {t('created')}: {formatDate(order.created_at)}
                         {order.updated_at && order.updated_at !== order.created_at && (
@@ -574,19 +671,11 @@ export default function AdminOrdersPage() {
                         )}
                       </div>
                     </div>
-
-                    {/* Actions */}
                     <div className="flex gap-2 lg:flex-col relative isolate">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleViewDetails(order)}
-                        className="flex items-center gap-2 bg-white/80 backdrop-blur-sm border-slate-200 hover:bg-white"
-                      >
+                      <Button variant="outline" size="sm" onClick={() => handleViewDetails(order)} className="flex items-center gap-2 bg-white/80 backdrop-blur-sm border-slate-200 hover:bg-white">
                         <Eye className="h-4 w-4" />
                         {t('view')}
                       </Button>
-                      
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant="outline" size="sm" className="bg-white/80 backdrop-blur-sm border-slate-200 hover:bg-white">
@@ -594,43 +683,13 @@ export default function AdminOrdersPage() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="bg-white/95 backdrop-blur-sm border-slate-200 z-50 shadow-lg">
-                          <DropdownMenuItem onClick={() => handleUpdateStatus(order)}>
-                            <Package className="mr-2 h-4 w-4" />
-                            {t('updateStatus')}
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleAssignShipper(order)}>
-                            <Truck className="mr-2 h-4 w-4" />
-                            {t('assignShipper')}
-                          </DropdownMenuItem>
-                          <DropdownMenuItem 
-                            onClick={() => handleGenerateInvoice(order, 'pdf')}
-                            className={order.status !== 'completed' ? 'opacity-50 cursor-not-allowed' : ''}
-                          >
-                            <FileText className="mr-2 h-4 w-4" />
-                            {t('printInvoice')}
-                            {order.status !== 'completed' && (
-                              <span className="ml-2 text-xs text-slate-500">({t('requiresCompleted')})</span>
-                            )}
-                          </DropdownMenuItem>
-                          <DropdownMenuItem 
-                            onClick={() => handleGenerateInvoice(order, 'email')}
-                            className={order.status !== 'completed' ? 'opacity-50 cursor-not-allowed' : ''}
-                          >
-                            <Mail className="mr-2 h-4 w-4" />
-                            {t('sendMail')}
-                            {order.status !== 'completed' && (
-                              <span className="ml-2 text-xs text-slate-500">({t('requiresCompleted')})</span>
-                            )}
-                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleUpdateStatus(order)}><Package className="mr-2 h-4 w-4" />{t('updateStatus')}</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleAssignShipper(order)}><Truck className="mr-2 h-4 w-4" />{t('assignShipper')}</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleGenerateInvoice(order, 'pdf')} className={order.status !== 'completed' ? 'opacity-50 cursor-not-allowed' : ''}><FileText className="mr-2 h-4 w-4" />{t('printInvoice')}{order.status !== 'completed' && <span className="ml-2 text-xs text-slate-500">({t('requiresCompleted')})</span>}</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleGenerateInvoice(order, 'email')} className={order.status !== 'completed' ? 'opacity-50 cursor-not-allowed' : ''}><Mail className="mr-2 h-4 w-4" />{t('sendMail')}{order.status !== 'completed' && <span className="ml-2 text-xs text-slate-500">({t('requiresCompleted')})</span>}</DropdownMenuItem>
                           <DropdownMenuSeparator />
                           {order.status !== 'cancelled' && order.status !== 'completed' && (
-                            <DropdownMenuItem 
-                              onClick={() => handleCancelOrder(order)}
-                              className="text-red-600 focus:text-red-600"
-                            >
-                              <XCircle className="mr-2 h-4 w-4" />
-                              {t('cancelOrder')}
-                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleCancelOrder(order)} className="text-red-600 focus:text-red-600"><XCircle className="mr-2 h-4 w-4" />{t('cancelOrder')}</DropdownMenuItem>
                           )}
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -640,6 +699,40 @@ export default function AdminOrdersPage() {
               </Card>
             ))}
           </div>
+        )}
+
+        {/* Pagination */}
+        {!loading && pagination && pagination.last_page > 1 && (
+          <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg mt-4">
+            <CardContent className="p-4 flex flex-wrap items-center justify-between gap-4">
+              <p className="text-sm text-slate-600">
+                {t('showingXOfY', { from: String(pagination.from), to: String(pagination.to), total: String(pagination.total) })}
+              </p>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage(p => Math.max(1, p - 1))}
+                  disabled={pagination.current_page <= 1}
+                  className="bg-white/80 border-slate-200 hover:bg-white"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <span className="text-sm font-medium text-slate-700 min-w-[120px] text-center">
+                  {t('pageOf', { current: String(pagination.current_page), total: String(pagination.last_page) })}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage(p => Math.min(pagination.last_page, p + 1))}
+                  disabled={pagination.current_page >= pagination.last_page}
+                  className="bg-white/80 border-slate-200 hover:bg-white"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         )}
       </div>
 

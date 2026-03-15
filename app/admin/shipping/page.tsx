@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Plus, Search, RefreshCw, Truck, Edit, Trash2, DollarSign, Clock, Calendar, AlertTriangle } from 'lucide-react'
+import { Plus, Search, RefreshCw, Truck, Edit, Trash2, DollarSign, Clock, Calendar, AlertTriangle, LayoutList, LayoutGrid, ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
@@ -32,6 +32,17 @@ export default function AdminShippingPage() {
   const [editingMethod, setEditingMethod] = useState<ShippingMethod | null>(null)
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
   const [deletingMethodId, setDeletingMethodId] = useState<number | null>(null)
+  const [page, setPage] = useState(1)
+  const [limit] = useState(12)
+  const [viewMode, setViewMode] = useState<'list' | 'grid'>(() => {
+    if (typeof window !== 'undefined') return (localStorage.getItem('admin_shipping_view') as 'list' | 'grid') || 'list'
+    return 'list'
+  })
+
+  const setViewModeAndStore = (mode: 'list' | 'grid') => {
+    setViewMode(mode)
+    if (typeof window !== 'undefined') localStorage.setItem('admin_shipping_view', mode)
+  }
 
   // Fetch shipping methods
   const fetchMethods = async () => {
@@ -148,6 +159,15 @@ export default function AdminShippingPage() {
     return matchesSearch && matchesStatus
   })
 
+  const totalPages = Math.max(1, Math.ceil(filteredMethods.length / limit))
+  const from = filteredMethods.length === 0 ? 0 : (page - 1) * limit + 1
+  const to = Math.min(page * limit, filteredMethods.length)
+  const paginatedMethods = filteredMethods.slice((page - 1) * limit, page * limit)
+
+  useEffect(() => {
+    setPage(1)
+  }, [searchTerm, statusFilter])
+
   // Calculate stats
   const totalMethods = methods.length
   const activeMethods = methods.filter(m => m.is_active).length
@@ -155,97 +175,111 @@ export default function AdminShippingPage() {
   const averageFee = methods.length > 0 ? methods.reduce((sum, m) => sum + m.fee, 0) / methods.length : 0
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-6">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 p-6">
       <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-slate-900 mb-2">{t('shippingManagement')}</h1>
-          <p className="text-slate-600">{t('shippingManagementDesc')}</p>
+        <div className="mb-8 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-slate-800 via-blue-800 to-indigo-800 bg-clip-text text-transparent mb-2">{t('shippingManagement')}</h1>
+            <p className="text-slate-600">{t('shippingManagementDesc')}</p>
+          </div>
+          <div className="flex items-center gap-2 shrink-0 flex-nowrap">
+            <span className="text-sm font-medium text-slate-600 mr-1 hidden sm:inline">{t('view')}:</span>
+            <div className="flex rounded-lg border border-slate-200 bg-white/80 overflow-hidden">
+              <Button variant="ghost" size="sm" onClick={() => setViewModeAndStore('list')} className={`rounded-none ${viewMode === 'list' ? 'bg-slate-100' : ''}`} title={t('viewList')}>
+                <LayoutList className="h-4 w-4" />
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => setViewModeAndStore('grid')} className={`rounded-none ${viewMode === 'grid' ? 'bg-slate-100' : ''}`} title={t('viewGrid')}>
+                <LayoutGrid className="h-4 w-4" />
+              </Button>
+            </div>
+            <Button variant="outline" onClick={fetchMethods} disabled={loading} className="flex items-center gap-2 bg-white/80 backdrop-blur-sm border-slate-200 hover:bg-white">
+              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+              {t('refresh')}
+            </Button>
+            <Button onClick={handleAddMethod} className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white">
+              <Plus className="h-4 w-4" />
+              {t('addShippingMethod')}
+            </Button>
+          </div>
         </div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <Card className="bg-white shadow-sm">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-slate-600">{t('totalShippingMethods')}</p>
-                  <p className="text-2xl font-bold text-slate-900">{totalMethods}</p>
+                  <p className="text-sm font-medium text-slate-600 mb-1">{t('totalShippingMethods')}</p>
+                  <p className="text-3xl font-bold text-slate-900">{totalMethods}</p>
                 </div>
-                <div className="h-12 w-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                  <Truck className="h-6 w-6 text-blue-600" />
+                <div className="h-12 w-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg">
+                  <Truck className="h-6 w-6 text-white" />
                 </div>
               </div>
             </CardContent>
           </Card>
-
-          <Card className="bg-white shadow-sm">
+          <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-slate-600">{t('activeShippingMethods')}</p>
-                  <p className="text-2xl font-bold text-green-600">{activeMethods}</p>
+                  <p className="text-sm font-medium text-slate-600 mb-1">{t('activeShippingMethods')}</p>
+                  <p className="text-3xl font-bold text-slate-900">{activeMethods}</p>
                 </div>
-                <div className="h-12 w-12 bg-green-100 rounded-lg flex items-center justify-center">
-                  <span className="text-green-600 text-xl">✅</span>
+                <div className="h-12 w-12 bg-gradient-to-br from-emerald-500 to-green-600 rounded-xl flex items-center justify-center shadow-lg">
+                  <Truck className="h-6 w-6 text-white" />
                 </div>
               </div>
             </CardContent>
           </Card>
-
-          <Card className="bg-white shadow-sm">
+          <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-slate-600">{t('inactiveShippingMethods')}</p>
-                  <p className="text-2xl font-bold text-red-600">{inactiveMethods}</p>
+                  <p className="text-sm font-medium text-slate-600 mb-1">{t('inactiveShippingMethods')}</p>
+                  <p className="text-3xl font-bold text-slate-900">{inactiveMethods}</p>
                 </div>
-                <div className="h-12 w-12 bg-red-100 rounded-lg flex items-center justify-center">
-                  <span className="text-red-600 text-xl">❌</span>
+                <div className="h-12 w-12 bg-gradient-to-br from-slate-500 to-slate-600 rounded-xl flex items-center justify-center shadow-lg">
+                  <Truck className="h-6 w-6 text-white" />
                 </div>
               </div>
             </CardContent>
           </Card>
-
-          <Card className="bg-white shadow-sm">
+          <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-slate-600">{t('averageShippingFee')}</p>
-                  <p className="text-2xl font-bold text-orange-600">
-                    {averageFee.toLocaleString()}đ
-                  </p>
+                  <p className="text-sm font-medium text-slate-600 mb-1">{t('averageShippingFee')}</p>
+                  <p className="text-3xl font-bold text-emerald-600">{averageFee.toLocaleString()}đ</p>
                 </div>
-                <div className="h-12 w-12 bg-orange-100 rounded-lg flex items-center justify-center">
-                  <DollarSign className="h-6 w-6 text-orange-600" />
+                <div className="h-12 w-12 bg-gradient-to-br from-amber-500 to-orange-500 rounded-xl flex items-center justify-center shadow-lg">
+                  <DollarSign className="h-6 w-6 text-white" />
                 </div>
               </div>
             </CardContent>
           </Card>
         </div>
 
-        {/* Controls */}
-        <Card className="bg-white shadow-sm mb-6">
+        <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg mb-6">
           <CardContent className="p-6">
-            <div className="flex flex-col lg:flex-row gap-4 items-center justify-between">
+            <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-end justify-between">
               <div className="flex flex-col lg:flex-row gap-4 flex-1 w-full">
-                {/* Search */}
-                <div className="relative flex-1 max-w-md">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 h-4 w-4" />
-                  <Input
-                    placeholder={t('searchShippingMethods')}
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10"
-                  />
+                <div className="flex flex-col flex-1 max-w-md">
+                  <label className="text-xs font-medium text-slate-600 mb-1">{t('search')}</label>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 h-4 w-4" />
+                    <Input
+                      placeholder={t('searchShippingMethods')}
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="pl-10 bg-white/50 border-slate-200 focus:bg-white focus:border-blue-500 transition-all duration-200"
+                    />
+                  </div>
                 </div>
-
-                {/* Status Filter */}
-                <div className="flex-1 max-w-xs">
+                <div className="flex flex-col">
+                  <label className="text-xs font-medium text-slate-600 mb-1">{t('statusFilter')}</label>
                   <select
                     value={statusFilter}
                     onChange={(e) => setStatusFilter(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white/50 focus:bg-white min-w-[140px]"
                   >
                     <option value="all">{t('all')}</option>
                     <option value="active">{t('active')}</option>
@@ -253,98 +287,113 @@ export default function AdminShippingPage() {
                   </select>
                 </div>
               </div>
-
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  onClick={fetchMethods}
-                  disabled={loading}
-                  className="flex items-center gap-2"
-                >
-                  <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-                  {t('refresh')}
-                </Button>
-                <Button
-                  onClick={handleAddMethod}
-                  className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700"
-                >
-                  <Plus className="h-4 w-4" />
-                  {t('addShippingMethod')}
-                </Button>
-              </div>
             </div>
           </CardContent>
         </Card>
 
-        {/* Methods Table */}
-        <Card className="bg-white shadow-sm">
+        <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg">
           <CardContent className="p-6">
             {loading ? (
               <div className="space-y-4">
                 {[...Array(5)].map((_, i) => (
-                  <div key={i} className="flex items-center gap-4 p-4 border border-gray-200 rounded-lg animate-pulse">
-                    <div className="h-10 w-10 bg-gray-200 rounded"></div>
+                  <div key={i} className="flex items-center gap-4 p-4 border border-slate-200 rounded-lg animate-pulse">
+                    <div className="h-10 w-10 bg-slate-200 rounded" />
                     <div className="flex-1">
-                      <div className="h-4 bg-gray-200 rounded mb-2"></div>
-                      <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                      <div className="h-4 bg-slate-200 rounded mb-2" />
+                      <div className="h-3 bg-slate-200 rounded w-1/2" />
                     </div>
                     <div className="flex gap-2">
-                      <div className="h-8 w-8 bg-gray-200 rounded"></div>
-                      <div className="h-8 w-8 bg-gray-200 rounded"></div>
+                      <div className="h-8 w-8 bg-slate-200 rounded" />
+                      <div className="h-8 w-8 bg-slate-200 rounded" />
                     </div>
                   </div>
                 ))}
               </div>
             ) : filteredMethods.length === 0 ? (
               <div className="text-center py-12">
-                <Truck className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">{t('noShippingMethodsFound')}</h3>
-                <p className="text-gray-600">{t('getStartedByCreatingShippingMethod')}</p>
+                <Truck className="h-12 w-12 text-slate-400 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-slate-900 mb-2">{t('noShippingMethodsFound')}</h3>
+                <p className="text-slate-600">{t('getStartedByCreatingShippingMethod')}</p>
+              </div>
+            ) : viewMode === 'grid' ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {paginatedMethods.map((method) => (
+                  <Card key={method.shipping_method_id} className="bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300">
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                          <div className="h-10 w-10 bg-blue-100 rounded flex items-center justify-center">
+                            <Truck className="h-5 w-5 text-blue-600" />
+                          </div>
+                          <div>
+                            <div className="font-medium text-slate-900">{method.name}</div>
+                            <div className="text-xs text-slate-500">ID: {method.shipping_method_id}</div>
+                          </div>
+                        </div>
+                        <Badge variant={method.is_active ? 'default' : 'secondary'} className="cursor-pointer" onClick={() => handleToggleStatus(method.shipping_method_id)}>
+                          {method.is_active ? t('active') : t('inactive')}
+                        </Badge>
+                      </div>
+                      <div className="flex items-center gap-2 text-slate-600 mb-2">
+                        <DollarSign className="h-4 w-4 text-green-500" />
+                        <span className="font-medium">{method.fee.toLocaleString()}đ</span>
+                      </div>
+                      <div className="text-sm text-slate-600 mb-3">
+                        <Clock className="h-4 w-4 inline mr-1" />
+                        {method.estimated_days} {t('days')} — {method.estimated_days === 1 ? t('sameDay') : method.estimated_days <= 2 ? t('express') : t('standard')}
+                      </div>
+                      <div className="flex gap-2">
+                        <Button size="sm" variant="outline" onClick={() => handleEdit(method)} className="flex-1"><Edit className="h-4 w-4" /></Button>
+                        <Button size="sm" variant="outline" onClick={() => handleDelete(method.shipping_method_id)} className="text-red-600 border-red-200 hover:bg-red-50"><Trash2 className="h-4 w-4" /></Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
               </div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead>
-                    <tr className="border-b border-gray-200">
-                      <th className="text-left py-3 px-4 font-medium text-gray-900">{t('shippingMethodName')}</th>
-                      <th className="text-left py-3 px-4 font-medium text-gray-900">{t('shippingFee')}</th>
-                      <th className="text-left py-3 px-4 font-medium text-gray-900">{t('estimatedDays')}</th>
-                      <th className="text-left py-3 px-4 font-medium text-gray-900">{t('deliveryTime')}</th>
-                      <th className="text-left py-3 px-4 font-medium text-gray-900">{t('status')}</th>
-                      <th className="text-left py-3 px-4 font-medium text-gray-900">{t('actions')}</th>
+                    <tr className="border-b border-slate-200">
+                      <th className="text-left py-3 px-4 font-medium text-slate-900">{t('shippingMethodName')}</th>
+                      <th className="text-left py-3 px-4 font-medium text-slate-900">{t('shippingFee')}</th>
+                      <th className="text-left py-3 px-4 font-medium text-slate-900">{t('estimatedDays')}</th>
+                      <th className="text-left py-3 px-4 font-medium text-slate-900">{t('deliveryTime')}</th>
+                      <th className="text-left py-3 px-4 font-medium text-slate-900">{t('status')}</th>
+                      <th className="text-left py-3 px-4 font-medium text-slate-900">{t('actions')}</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredMethods.map((method) => (
-                      <tr key={method.shipping_method_id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                    {paginatedMethods.map((method) => (
+                      <tr key={method.shipping_method_id} className="border-b border-slate-100 hover:bg-slate-50/80 transition-colors">
                         <td className="py-4 px-4">
                           <div className="flex items-center gap-3">
                             <div className="h-8 w-8 bg-blue-100 rounded flex items-center justify-center">
                               <Truck className="h-4 w-4 text-blue-600" />
                             </div>
                             <div>
-                              <div className="font-medium text-gray-900">{method.name}</div>
-                              <div className="text-sm text-gray-500">ID: {method.shipping_method_id}</div>
+                              <div className="font-medium text-slate-900">{method.name}</div>
+                              <div className="text-sm text-slate-500">ID: {method.shipping_method_id}</div>
                             </div>
                           </div>
                         </td>
                         <td className="py-4 px-4">
                           <div className="flex items-center gap-2">
                             <DollarSign className="h-4 w-4 text-green-500" />
-                            <span className="font-medium text-gray-900">
+                            <span className="font-medium text-slate-900">
                               {method.fee.toLocaleString()}đ
                             </span>
                           </div>
                         </td>
-                        <td className="py-4 px-4 text-gray-600">
+                        <td className="py-4 px-4 text-slate-600">
                           {method.estimated_days}
                         </td>
                         <td className="py-4 px-4">
                           <div className="flex items-center gap-2">
-                            <Clock className="h-4 w-4 text-gray-400" />
+                            <Clock className="h-4 w-4 text-slate-400" />
                             <div className="text-sm">
                               <div>{method.estimated_days} {t('days')}</div>
-                              <div className="text-gray-500">
+                              <div className="text-slate-500">
                                 {method.estimated_days === 1 ? t('sameDay') : 
                                  method.estimated_days <= 2 ? t('express') : 
                                  t('standard')}
@@ -367,16 +416,16 @@ export default function AdminShippingPage() {
                               size="sm"
                               variant="secondary"
                               onClick={() => handleEdit(method)}
-                              className="bg-white text-gray-900 hover:bg-gray-100"
+                              className="bg-white/80 border-slate-200 hover:bg-white"
                               title={t('edit')}
                             >
                               <Edit className="h-4 w-4" />
                             </Button>
                             <Button
                               size="sm"
-                              variant="destructive"
+                              variant="outline"
                               onClick={() => handleDelete(method.shipping_method_id)}
-                              className="bg-red-600 hover:bg-red-700"
+                              className="text-red-600 border-red-200 hover:bg-red-50"
                               title={t('delete')}
                             >
                               <Trash2 className="h-4 w-4" />
@@ -391,6 +440,28 @@ export default function AdminShippingPage() {
             )}
           </CardContent>
         </Card>
+
+        {/* Pagination */}
+        {!loading && filteredMethods.length > 0 && totalPages > 1 && (
+          <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg mt-6">
+            <CardContent className="py-4 px-6">
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                <p className="text-sm text-slate-600">
+                  {t('showingXOfY', { from: String(from), to: String(to), total: String(filteredMethods.length) })}
+                </p>
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" size="sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page <= 1} className="bg-white/80 border-slate-200">
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <span className="text-sm text-slate-600 px-2">{t('pageOf', { current: String(page), total: String(totalPages) })}</span>
+                  <Button variant="outline" size="sm" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page >= totalPages} className="bg-white/80 border-slate-200">
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       {/* Shipping Modal */}

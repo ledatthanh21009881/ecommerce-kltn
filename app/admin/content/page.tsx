@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Search, RefreshCw, FileText, Plus, Calendar, Eye, Edit, Trash2, Send } from 'lucide-react'
+import { Search, RefreshCw, FileText, Plus, Calendar, Eye, Edit, Trash2, Send, LayoutList, LayoutGrid, ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
@@ -11,8 +11,10 @@ import { getAuthData } from '@/lib/admin-auth'
 import { Content, ContentCategory } from '@/lib/content-types'
 import ContentModal from '@/components/admin/ContentModal'
 import ContentCategoryModal from '@/components/admin/ContentCategoryModal'
+import { useLanguage } from '@/contexts/LanguageContext'
 
 export default function AdminContentPage() {
+  const { t } = useLanguage()
   const [contents, setContents] = useState<Content[]>([])
   const [categories, setCategories] = useState<ContentCategory[]>([])
   const [loading, setLoading] = useState(true)
@@ -29,6 +31,18 @@ export default function AdminContentPage() {
     faqs: 0,
     published: 0
   })
+  const [page, setPage] = useState(1)
+  const [limit] = useState(12)
+  const [pagination, setPagination] = useState<{ total: number; current_page: number; last_page: number; from: number; to: number } | null>(null)
+  const [viewMode, setViewMode] = useState<'list' | 'grid'>(() => {
+    if (typeof window !== 'undefined') return (localStorage.getItem('admin_content_view') as 'list' | 'grid') || 'list'
+    return 'list'
+  })
+
+  const setViewModeAndStore = (mode: 'list' | 'grid') => {
+    setViewMode(mode)
+    if (typeof window !== 'undefined') localStorage.setItem('admin_content_view', mode)
+  }
 
   // Fetch stats
   const fetchStats = async () => {
@@ -70,19 +84,30 @@ export default function AdminContentPage() {
         return
       }
       
-      const response = await fetch('/api/backend/v1/content', {
+      const params = new URLSearchParams()
+      params.set('page', String(page))
+      params.set('limit', String(limit))
+      if (searchTerm) params.set('search', searchTerm)
+      if (typeFilter) params.set('content_type', typeFilter)
+      const response = await fetch(`/api/backend/v1/content?${params.toString()}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       })
-      
       const data = await response.json()
-      
       if (data.success) {
-        // Handle paginated response (items) or direct array
         const contentsList = data.data?.items || data.data || []
         setContents(Array.isArray(contentsList) ? contentsList : [])
+        if (data.data?.pagination) {
+          setPagination({
+            total: data.data.pagination.total,
+            current_page: data.data.pagination.current_page,
+            last_page: data.data.pagination.last_page,
+            from: data.data.pagination.from ?? (page - 1) * limit + 1,
+            to: data.data.pagination.to ?? Math.min(page * limit, data.data.pagination.total)
+          })
+        } else setPagination(null)
       } else {
         // Still set empty array to avoid errors
         setContents([])
@@ -123,7 +148,14 @@ export default function AdminContentPage() {
   }
 
   useEffect(() => {
+    setPage(1)
+  }, [searchTerm, typeFilter])
+
+  useEffect(() => {
     fetchContents()
+  }, [page, searchTerm, typeFilter])
+
+  useEffect(() => {
     fetchStats()
     fetchCategories()
   }, [])
@@ -399,142 +431,136 @@ export default function AdminContentPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-6">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 p-6">
       <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-slate-900 mb-2">Content Management</h1>
-          <p className="text-slate-600">Manage your website content and pages</p>
+        <div className="mb-8 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-slate-800 via-blue-800 to-indigo-800 bg-clip-text text-transparent mb-2">Content Management</h1>
+            <p className="text-slate-600">Manage your website content and pages</p>
+          </div>
+          <div className="flex items-center gap-2 shrink-0 flex-nowrap">
+            <div className="flex rounded-lg border border-slate-200 bg-white/80 overflow-hidden">
+              <Button variant="ghost" size="sm" onClick={() => setViewModeAndStore('list')} className={`rounded-none ${viewMode === 'list' ? 'bg-slate-100' : ''}`} title={t('viewList')}>
+                <LayoutList className="h-4 w-4" />
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => setViewModeAndStore('grid')} className={`rounded-none ${viewMode === 'grid' ? 'bg-slate-100' : ''}`} title={t('viewGrid')}>
+                <LayoutGrid className="h-4 w-4" />
+              </Button>
+            </div>
+            <Button variant="outline" onClick={fetchContents} disabled={loading} className="flex items-center gap-2 bg-white/80 backdrop-blur-sm border-slate-200 hover:bg-white">
+              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
+            <Button className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white" onClick={handleCreateContent}>
+              <Plus className="h-4 w-4" />
+              Create Content
+            </Button>
+            <Button variant="outline" className="flex items-center gap-2 bg-white/80 backdrop-blur-sm border-slate-200 hover:bg-white" onClick={handleCreateCategory}>
+              <Plus className="h-4 w-4" />
+              Manage Categories
+            </Button>
+          </div>
         </div>
 
-        {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
-          <Card className="bg-white shadow-sm">
+          <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-slate-600">Total Content</p>
-                  <p className="text-2xl font-bold text-slate-900">{stats.total}</p>
+                  <p className="text-sm font-medium text-slate-600 mb-1">Total Content</p>
+                  <p className="text-3xl font-bold text-slate-900">{stats.total}</p>
                 </div>
-                <div className="h-12 w-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                  <FileText className="h-6 w-6 text-blue-600" />
+                <div className="h-12 w-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg">
+                  <FileText className="h-6 w-6 text-white" />
                 </div>
               </div>
             </CardContent>
           </Card>
-
-          <Card className="bg-white shadow-sm">
+          <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-slate-600">Pages</p>
-                  <p className="text-2xl font-bold text-slate-900">{stats.pages}</p>
+                  <p className="text-sm font-medium text-slate-600 mb-1">Pages</p>
+                  <p className="text-3xl font-bold text-slate-900">{stats.pages}</p>
                 </div>
-                <div className="h-12 w-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                  <span className="text-blue-600 text-xl">📄</span>
+                <div className="h-12 w-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
+                  <FileText className="h-6 w-6 text-white" />
                 </div>
               </div>
             </CardContent>
           </Card>
-
-          <Card className="bg-white shadow-sm">
+          <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-slate-600">Blog Posts</p>
-                  <p className="text-2xl font-bold text-slate-900">{stats.blogs}</p>
+                  <p className="text-sm font-medium text-slate-600 mb-1">Blog Posts</p>
+                  <p className="text-3xl font-bold text-slate-900">{stats.blogs}</p>
                 </div>
-                <div className="h-12 w-12 bg-green-100 rounded-lg flex items-center justify-center">
-                  <span className="text-green-600 text-xl">📝</span>
+                <div className="h-12 w-12 bg-gradient-to-br from-emerald-500 to-green-600 rounded-xl flex items-center justify-center shadow-lg">
+                  <FileText className="h-6 w-6 text-white" />
                 </div>
               </div>
             </CardContent>
           </Card>
-
-          <Card className="bg-white shadow-sm">
+          <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-slate-600">FAQs</p>
-                  <p className="text-2xl font-bold text-slate-900">{stats.faqs}</p>
+                  <p className="text-sm font-medium text-slate-600 mb-1">FAQs</p>
+                  <p className="text-3xl font-bold text-slate-900">{stats.faqs}</p>
                 </div>
-                <div className="h-12 w-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                  <span className="text-purple-600 text-xl">❓</span>
+                <div className="h-12 w-12 bg-gradient-to-br from-purple-500 to-violet-600 rounded-xl flex items-center justify-center shadow-lg">
+                  <FileText className="h-6 w-6 text-white" />
                 </div>
               </div>
             </CardContent>
           </Card>
-
-          <Card className="bg-white shadow-sm">
+          <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-slate-600">Published</p>
-                  <p className="text-2xl font-bold text-slate-900">{stats.published}</p>
+                  <p className="text-sm font-medium text-slate-600 mb-1">Published</p>
+                  <p className="text-3xl font-bold text-slate-900">{stats.published}</p>
                 </div>
-                <div className="h-12 w-12 bg-green-100 rounded-lg flex items-center justify-center">
-                  <span className="text-green-600 text-xl">✅</span>
+                <div className="h-12 w-12 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl flex items-center justify-center shadow-lg">
+                  <FileText className="h-6 w-6 text-white" />
                 </div>
               </div>
             </CardContent>
           </Card>
         </div>
 
-        {/* Controls */}
-        <Card className="bg-white shadow-sm mb-6">
+        <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg mb-6">
           <CardContent className="p-6">
-            <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
-              <div className="flex flex-col sm:flex-row gap-4 flex-1">
-                {/* Search */}
-                <div className="relative flex-1 max-w-md">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 h-4 w-4" />
-                  <Input
-                    placeholder="Search content by title or content..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10"
-                  />
+            <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-end justify-between">
+              <div className="flex flex-col sm:flex-row gap-4 flex-1 w-full">
+                <div className="flex flex-col flex-1 max-w-md">
+                  <label className="text-xs font-medium text-slate-600 mb-1">Search</label>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 h-4 w-4" />
+                    <Input
+                      placeholder="Search content by title or content..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="pl-10 bg-white/50 border-slate-200 focus:bg-white focus:border-blue-500 transition-all duration-200"
+                    />
+                  </div>
                 </div>
 
-                {/* Type Filter */}
-                <select
-                  value={typeFilter}
-                  onChange={(e) => setTypeFilter(e.target.value)}
-                  className="px-3 py-2 border border-slate-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  <option value="">All Types</option>
-                  <option value="page">Pages</option>
-                  <option value="blog">Blog Posts</option>
-                  <option value="faq">FAQs</option>
-                  <option value="policy">Policies</option>
-                </select>
-              </div>
-
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  onClick={fetchContents}
-                  disabled={loading}
-                  className="flex items-center gap-2"
-                >
-                  <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-                  Refresh
-                </Button>
-                <Button
-                  className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700"
-                  onClick={handleCreateContent}
-                >
-                  <Plus className="h-4 w-4" />
-                  Create Content
-                </Button>
-                <Button
-                  variant="outline"
-                  className="flex items-center gap-2"
-                  onClick={handleCreateCategory}
-                >
-                  <Plus className="h-4 w-4" />
-                  Manage Categories
-                </Button>
+                <div className="flex flex-col">
+                  <label className="text-xs font-medium text-slate-600 mb-1">Type</label>
+                  <select
+                    value={typeFilter}
+                    onChange={(e) => setTypeFilter(e.target.value)}
+                    className="px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white/50 focus:bg-white min-w-[140px]"
+                  >
+                    <option value="">All Types</option>
+                    <option value="page">Pages</option>
+                    <option value="blog">Blog Posts</option>
+                    <option value="faq">FAQs</option>
+                    <option value="policy">Policies</option>
+                  </select>
+                </div>
               </div>
             </div>
           </CardContent>
@@ -556,17 +582,59 @@ export default function AdminContentPage() {
             ))}
           </div>
         ) : filteredContents.length === 0 ? (
-          <Card className="bg-white shadow-sm">
+          <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg">
             <CardContent className="p-12 text-center">
-              <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No content found</h3>
-              <p className="text-gray-500">No content matches your search criteria.</p>
+              <FileText className="h-12 w-12 text-slate-400 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-slate-900 mb-2">No content found</h3>
+              <p className="text-slate-500">No content matches your search criteria.</p>
+            </CardContent>
+          </Card>
+        ) : viewMode === 'list' ? (
+          <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg">
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-slate-200 bg-slate-50/80">
+                      <th className="text-left py-3 px-4 font-medium text-slate-900">Title</th>
+                      <th className="text-left py-3 px-4 font-medium text-slate-900">Type</th>
+                      <th className="text-left py-3 px-4 font-medium text-slate-900">Status</th>
+                      <th className="text-left py-3 px-4 font-medium text-slate-900">Created</th>
+                      <th className="text-right py-3 px-4 font-medium text-slate-900">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredContents.map((content) => (
+                      <tr key={content.content_id} className="border-b border-slate-100 hover:bg-slate-50/80">
+                        <td className="py-4 px-4">
+                          <div className="font-medium text-slate-900 line-clamp-1">{content.title}</div>
+                          <div className="text-xs text-slate-500 line-clamp-1">{truncateContent(content.excerpt || content.content)}</div>
+                        </td>
+                        <td className="py-4 px-4">
+                          <Badge variant="outline" className={getTypeColor(content.content_type)}>{content.content_type}</Badge>
+                        </td>
+                        <td className="py-4 px-4">
+                          <Badge variant="outline" className={getStatusColor(content.status)}>{content.status}</Badge>
+                        </td>
+                        <td className="py-4 px-4 text-sm text-slate-600">{formatDate(content.created_at)}</td>
+                        <td className="py-4 px-4 text-right">
+                          <div className="flex justify-end gap-2">
+                            <Button size="sm" variant="outline" onClick={() => handleEditContent(content)} className="bg-white/80 border-slate-200 hover:bg-white"><Edit className="h-4 w-4" /></Button>
+                            <Button size="sm" variant="outline" onClick={() => handleViewContent(content)} className="bg-white/80 border-slate-200 hover:bg-white"><Eye className="h-4 w-4" /></Button>
+                            <Button size="sm" variant="outline" onClick={() => handleDeleteContent(content.content_id)} className="text-red-600 border-red-200 hover:bg-red-50"><Trash2 className="h-4 w-4" /></Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </CardContent>
           </Card>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredContents.map((content) => (
-              <Card key={content.content_id} className="bg-white shadow-sm hover:shadow-md transition-shadow duration-200">
+              <Card key={content.content_id} className="bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300">
                 <CardContent className="p-6">
                   <div className="space-y-4">
                     {/* Header */}
@@ -668,6 +736,28 @@ export default function AdminContentPage() {
               </Card>
             ))}
           </div>
+        )}
+
+        {/* Pagination */}
+        {!loading && filteredContents.length > 0 && pagination && pagination.last_page > 1 && (
+          <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg mt-6">
+            <CardContent className="py-4 px-6">
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                <p className="text-sm text-slate-600">
+                  {t('showingXOfY', { from: String(pagination.from), to: String(pagination.to), total: String(pagination.total) })}
+                </p>
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" size="sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={pagination.current_page <= 1} className="bg-white/80 border-slate-200">
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <span className="text-sm text-slate-600 px-2">{t('pageOf', { current: String(pagination.current_page), total: String(pagination.last_page) })}</span>
+                  <Button variant="outline" size="sm" onClick={() => setPage(p => Math.min(pagination.last_page, p + 1))} disabled={pagination.current_page >= pagination.last_page} className="bg-white/80 border-slate-200">
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         )}
 
         {/* Modals */}

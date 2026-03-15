@@ -194,7 +194,7 @@ function AdminLayoutContent({
           <div className="fixed inset-0 bg-gray-600 bg-opacity-75" onClick={() => setSidebarOpen(false)} />
           <div className="fixed inset-y-0 left-0 flex w-64 flex-col bg-white">
             <div className="flex h-16 items-center justify-between px-4 border-b">
-              <h1 className="text-xl font-bold text-gray-900">Admin Panel</h1>
+              <h1 className="text-xl font-bold text-gray-900">{t('adminPanel')}</h1>
               <Button variant="ghost" size="sm" onClick={() => setSidebarOpen(false)}>
                 <X className="h-6 w-6" />
               </Button>
@@ -220,47 +220,50 @@ function AdminLayoutContent({
         </div>
       )}
 
-      {/* Desktop sidebar */}
-      <div className="hidden lg:fixed lg:inset-y-0 lg:flex lg:w-64 lg:flex-col">
-        <div className="flex flex-col flex-grow bg-white border-r border-gray-200">
-          <div className="flex h-16 items-center px-4 border-b">
-            <h1 className="text-xl font-bold text-gray-900">Admin Panel</h1>
+      {/* Desktop sidebar - luôn hiện; thu hẹp (chỉ icon) khi sidebarOpen false */}
+      <div className={`hidden lg:flex fixed inset-y-0 left-0 z-40 flex-col bg-white border-r border-gray-200 transition-[width] duration-200 ease-in-out ${sidebarOpen ? 'w-64' : 'w-16'}`}>
+        <div className="flex flex-col flex-grow w-full overflow-hidden">
+          <div className={`flex h-16 items-center border-b shrink-0 ${sidebarOpen ? 'px-4 justify-start' : 'px-0 justify-center'}`}>
+            {sidebarOpen && <h1 className="text-xl font-bold text-gray-900 whitespace-nowrap">{t('adminPanel')}</h1>}
           </div>
-          <nav className="flex-1 space-y-1 px-2 py-4">
+          <nav className="flex-1 space-y-1 px-2 py-4 overflow-x-hidden">
             {menuItems.map((item) => (
               <Link
                 key={item.name}
                 href={item.href}
-                className={`flex items-center px-2 py-2 text-sm font-medium rounded-md transition-colors ${
+                title={!sidebarOpen ? item.name : undefined}
+                className={`flex items-center rounded-md transition-colors ${
+                  sidebarOpen ? 'px-2 py-2 text-sm font-medium' : 'px-0 py-2.5 justify-center'
+                } ${
                   pathname === item.href
                     ? 'bg-blue-50 text-blue-700'
                     : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                 }`}
               >
-                <item.icon className="mr-3 h-5 w-5" />
-                {item.name}
+                <item.icon className={`h-5 w-5 shrink-0 ${sidebarOpen ? 'mr-3' : ''}`} />
+                {sidebarOpen && <span className="truncate">{item.name}</span>}
               </Link>
             ))}
           </nav>
-          {/* Logout removed */}
         </div>
       </div>
 
       {/* Main content */}
-      <div className="lg:pl-64">
-        {/* Top bar */}
+      <div className={sidebarOpen ? 'lg:pl-64' : 'lg:pl-16'}>
+        {/* Top bar: nút menu (3 gạch) + tiêu đề Admin Panel đã dịch */}
         <div className="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 border-b border-gray-200 bg-white px-4 shadow-sm sm:gap-x-6 sm:px-6 lg:px-8">
           <Button
             variant="ghost"
             size="sm"
-            className="lg:hidden"
-            onClick={() => setSidebarOpen(true)}
+            onClick={() => setSidebarOpen(prev => !prev)}
+            className="shrink-0"
+            title={sidebarOpen ? t('closeMenu') : t('openMenu')}
           >
             <Menu className="h-6 w-6" />
           </Button>
 
           <div className="flex flex-1 gap-x-4 self-stretch lg:gap-x-6">
-            <div className="flex flex-1"></div>
+            <div className="flex flex-1" />
             <div className="flex items-center gap-x-4 lg:gap-x-6">
               {/* Language Selector */}
               <Select value={language} onValueChange={(value: 'en' | 'vi') => setLanguage(value)}>

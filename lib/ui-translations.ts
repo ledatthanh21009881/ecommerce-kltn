@@ -1,6 +1,7 @@
 export const UI_TRANSLATIONS = {
   en: {
     // Navigation
+    adminPanel: 'Admin Panel',
     dashboard: 'Dashboard',
     products: 'Products',
     categories: 'Categories',
@@ -155,6 +156,13 @@ export const UI_TRANSLATIONS = {
     failedToLoadReceiptDetails: 'Failed to load receipt details',
     failedToFetchReceiptDetails: 'Failed to fetch receipt details',
 
+    viewList: 'List',
+    viewGrid: 'Grid',
+    pageOf: 'Page {current} of {total}',
+    showingXOfY: 'Showing {from}-{to} of {total}',
+    inCatalog: 'In catalog',
+    onThisPage: 'On this page',
+
     contentManagement: 'Content Management',
     contentManagementDesc: 'Manage website content and pages',
     messengerManagement: 'Messenger Management',
@@ -200,6 +208,8 @@ export const UI_TRANSLATIONS = {
 
     // Language
     language: 'Language',
+    openMenu: 'Open menu',
+    closeMenu: 'Close menu',
     english: 'English',
     vietnamese: 'Vietnamese',
 
@@ -464,6 +474,8 @@ export const UI_TRANSLATIONS = {
     categoryNameRequired: 'Category name is required',
     requestFailed: 'Request failed',
     failedToSaveCategory: 'Failed to save category',
+    noCategoriesFound: 'No categories found',
+    getStartedByCreatingFirstCategory: 'Get started by creating your first category.',
 
     // Inventory Management - Additional keys
     totalVariants: 'Total Variants',
@@ -629,6 +641,7 @@ export const UI_TRANSLATIONS = {
   },
   vi: {
     // Navigation
+    adminPanel: 'Bảng quản trị',
     dashboard: 'Bảng điều khiển',
     products: 'Sản phẩm',
     categories: 'Danh mục',
@@ -780,6 +793,13 @@ export const UI_TRANSLATIONS = {
     failedToLoadReceiptDetails: 'Tải chi tiết phiếu thất bại',
     failedToFetchReceiptDetails: 'Tải chi tiết phiếu thất bại',
 
+    viewList: 'Danh sách',
+    viewGrid: 'Lưới',
+    pageOf: 'Trang {current} / {total}',
+    showingXOfY: 'Hiển thị {from}-{to} / {total}',
+    inCatalog: 'Trong danh mục',
+    onThisPage: 'Trang hiện tại',
+
     contentManagement: 'Quản lý nội dung',
     contentManagementDesc: 'Quản lý nội dung và trang web',
     messengerManagement: 'Quản lý tin nhắn',
@@ -825,6 +845,8 @@ export const UI_TRANSLATIONS = {
 
     // Language
     language: 'Ngôn ngữ',
+    openMenu: 'Mở menu',
+    closeMenu: 'Đóng menu',
     english: 'Tiếng Anh',
     vietnamese: 'Tiếng Việt',
 
@@ -1089,6 +1111,8 @@ export const UI_TRANSLATIONS = {
     categoryNameRequired: 'Tên danh mục là bắt buộc',
     requestFailed: 'Yêu cầu thất bại',
     failedToSaveCategory: 'Lưu danh mục thất bại',
+    noCategoriesFound: 'Không tìm thấy danh mục',
+    getStartedByCreatingFirstCategory: 'Bắt đầu bằng cách tạo danh mục đầu tiên.',
 
     // Inventory Management - Additional keys
     totalVariants: 'Tổng biến thể',

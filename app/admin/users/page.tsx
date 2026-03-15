@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Search, RefreshCw, Users, UserPlus, Mail, Phone, Calendar, Shield, X, Truck } from 'lucide-react'
+import { Search, RefreshCw, Users, UserPlus, Mail, Phone, Calendar, Shield, X, Truck, LayoutList, LayoutGrid, ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
@@ -77,6 +77,17 @@ export default function AdminUsersPage() {
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
   const [deletingUserId, setDeletingUserId] = useState<number | null>(null)
   const [roles, setRoles] = useState<Array<{role_id: number, role_name: string}>>([])
+  const [page, setPage] = useState(1)
+  const [limit] = useState(12)
+  const [viewMode, setViewMode] = useState<'list' | 'grid'>(() => {
+    if (typeof window !== 'undefined') return (localStorage.getItem('admin_users_view') as 'list' | 'grid') || 'list'
+    return 'list'
+  })
+
+  const setViewModeAndStore = (mode: 'list' | 'grid') => {
+    setViewMode(mode)
+    if (typeof window !== 'undefined') localStorage.setItem('admin_users_view', mode)
+  }
 
   // Check authentication using admin auth system
   useEffect(() => {
@@ -152,8 +163,8 @@ export default function AdminUsersPage() {
       console.log('📊 Response data:', data)
       
       if (data.success) {
-        console.log('✅ Users data:', data.data?.items || [])
-        setUsers(data.data?.items || [])
+        const list = data.data?.items ?? data.data
+        setUsers(Array.isArray(list) ? list : [])
       } else {
         console.error('❌ Failed to fetch users:', data.message)
         toast.error('Failed to fetch users')
@@ -221,6 +232,15 @@ export default function AdminUsersPage() {
     const matchesRole = !roleFilter || (Array.isArray(user.roles) ? user.roles.includes(roleFilter) : user.roles === roleFilter)
     return matchesSearch && matchesRole
   })
+
+  const totalPages = Math.max(1, Math.ceil(filteredUsers.length / limit))
+  const from = (page - 1) * limit + 1
+  const to = Math.min(page * limit, filteredUsers.length)
+  const paginatedUsers = filteredUsers.slice((page - 1) * limit, page * limit)
+
+  useEffect(() => {
+    setPage(1)
+  }, [searchTerm, roleFilter])
 
   const getRoleColor = (role: string) => {
     switch (role) {
@@ -365,7 +385,7 @@ export default function AdminUsersPage() {
   // Show loading while checking authentication
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-6">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 p-6">
         <div className="max-w-7xl mx-auto">
           <div className="text-center">
             <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto"></div>
@@ -377,148 +397,146 @@ export default function AdminUsersPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-6">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 p-6">
       <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-slate-900 mb-2">{t('userManagement')}</h1>
-          <p className="text-slate-600">{t('manageSystemUsersAndPermissions')}</p>
-        </div>
-
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-6 mb-8">
-          <Card className="bg-white shadow-sm">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-slate-600">{t('totalUsers')}</p>
-                  <p className="text-2xl font-bold text-slate-900">{stats.total_users}</p>
-                </div>
-                <div className="h-12 w-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                  <Users className="h-6 w-6 text-blue-600" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-white shadow-sm">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-slate-600">{t('activeUsers')}</p>
-                  <p className="text-2xl font-bold text-slate-900">{stats.active_users}</p>
-                </div>
-                <div className="h-12 w-12 bg-green-100 rounded-lg flex items-center justify-center">
-                  <span className="text-green-600 text-xl">✅</span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-white shadow-sm">
-            <CardContent className="p-6">
-      <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-slate-600">{t('admins')}</p>
-                  <p className="text-2xl font-bold text-slate-900">{stats.admins}</p>
-                </div>
-                <div className="h-12 w-12 bg-red-100 rounded-lg flex items-center justify-center">
-                  <Shield className="h-6 w-6 text-red-600" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-white shadow-sm">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-slate-600">{t('managers')}</p>
-                  <p className="text-2xl font-bold text-slate-900">{stats.managers}</p>
-                </div>
-                <div className="h-12 w-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                  <Users className="h-6 w-6 text-purple-600" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-white shadow-sm">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-slate-600">{t('staff')}</p>
-                  <p className="text-2xl font-bold text-slate-900">{stats.staff}</p>
-                </div>
-                <div className="h-12 w-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                  <UserPlus className="h-6 w-6 text-blue-600" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-white shadow-sm">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-slate-600">{t('customers')}</p>
-                  <p className="text-2xl font-bold text-slate-900">{stats.customers}</p>
-              </div>
-                <div className="h-12 w-12 bg-green-100 rounded-lg flex items-center justify-center">
-                  <Users className="h-6 w-6 text-green-600" />
-              </div>
+        <div className="mb-8 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-slate-800 via-blue-800 to-indigo-800 bg-clip-text text-transparent mb-2">{t('userManagement')}</h1>
+            <p className="text-slate-600">{t('manageSystemUsersAndPermissions')}</p>
+          </div>
+          <div className="flex items-center gap-2 shrink-0 flex-nowrap">
+            <span className="text-sm font-medium text-slate-600 mr-1 hidden sm:inline">{t('view')}:</span>
+            <div className="flex rounded-lg border border-slate-200 bg-white/80 overflow-hidden">
+              <Button variant="ghost" size="sm" onClick={() => setViewModeAndStore('list')} className={`rounded-none ${viewMode === 'list' ? 'bg-slate-100' : ''}`} title={t('viewList')}>
+                <LayoutList className="h-4 w-4" />
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => setViewModeAndStore('grid')} className={`rounded-none ${viewMode === 'grid' ? 'bg-slate-100' : ''}`} title={t('viewGrid')}>
+                <LayoutGrid className="h-4 w-4" />
+              </Button>
             </div>
-            </CardContent>
-          </Card>
-      </div>
-
-        {/* Controls */}
-        <Card className="bg-white shadow-sm mb-6">
-          <CardContent className="p-6">
-            <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
-              <div className="flex flex-col sm:flex-row gap-4 flex-1">
-                {/* Search */}
-                <div className="relative flex-1 max-w-md">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 h-4 w-4" />
-          <Input
-                    placeholder={t('searchUsersByNameEmailOrUsername')}
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
-          />
+            <Button variant="outline" onClick={handleRefresh} disabled={loading} className="flex items-center gap-2 bg-white/80 backdrop-blur-sm border-slate-200 hover:bg-white">
+              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+              {t('refresh')}
+            </Button>
+            <Button className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white" onClick={() => setShowAddModal(true)}>
+              <UserPlus className="h-4 w-4" />
+              {t('addUser')}
+            </Button>
+          </div>
         </div>
 
-                {/* Role Filter */}
-                <select
-                  value={roleFilter}
-                  onChange={(e) => setRoleFilter(e.target.value)}
-                  className="px-3 py-2 border border-slate-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-6 mb-8">
+          <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-slate-600 mb-1">{t('totalUsers')}</p>
+                  <p className="text-3xl font-bold text-slate-900">{stats.total_users}</p>
+                </div>
+                <div className="h-12 w-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg">
+                  <Users className="h-6 w-6 text-white" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-slate-600 mb-1">{t('activeUsers')}</p>
+                  <p className="text-3xl font-bold text-slate-900">{stats.active_users}</p>
+                </div>
+                <div className="h-12 w-12 bg-gradient-to-br from-emerald-500 to-green-600 rounded-xl flex items-center justify-center shadow-lg">
+                  <Users className="h-6 w-6 text-white" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-slate-600 mb-1">{t('admins')}</p>
+                  <p className="text-3xl font-bold text-slate-900">{stats.admins}</p>
+                </div>
+                <div className="h-12 w-12 bg-gradient-to-br from-red-500 to-red-600 rounded-xl flex items-center justify-center shadow-lg">
+                  <Shield className="h-6 w-6 text-white" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-slate-600 mb-1">{t('managers')}</p>
+                  <p className="text-3xl font-bold text-slate-900">{stats.managers}</p>
+                </div>
+                <div className="h-12 w-12 bg-gradient-to-br from-purple-500 to-violet-600 rounded-xl flex items-center justify-center shadow-lg">
+                  <Users className="h-6 w-6 text-white" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-slate-600 mb-1">{t('staff')}</p>
+                  <p className="text-3xl font-bold text-slate-900">{stats.staff}</p>
+                </div>
+                <div className="h-12 w-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
+                  <UserPlus className="h-6 w-6 text-white" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-slate-600 mb-1">{t('customers')}</p>
+                  <p className="text-3xl font-bold text-slate-900">{stats.customers}</p>
+                </div>
+                <div className="h-12 w-12 bg-gradient-to-br from-emerald-500 to-green-600 rounded-xl flex items-center justify-center shadow-lg">
+                  <Users className="h-6 w-6 text-white" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg mb-6">
+          <CardContent className="p-6">
+            <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-end justify-between">
+              <div className="flex flex-col lg:flex-row gap-4 flex-1 w-full">
+                <div className="flex flex-col flex-1 max-w-md">
+                  <label className="text-xs font-medium text-slate-600 mb-1">{t('search')}</label>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 h-4 w-4" />
+                    <Input
+                      placeholder={t('searchUsersByNameEmailOrUsername')}
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="pl-10 bg-white/50 border-slate-200 focus:bg-white focus:border-blue-500 transition-all duration-200"
+                    />
+                  </div>
+                </div>
+                <div className="flex flex-col">
+                  <label className="text-xs font-medium text-slate-600 mb-1">{t('role')}</label>
+                  <select
+                    value={roleFilter}
+                    onChange={(e) => setRoleFilter(e.target.value)}
+                    className="px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white/50 focus:bg-white min-w-[140px]"
+                  >
                   <option value="">{t('allRoles')}</option>
                   <option value="admin">{t('admin')}</option>
                   <option value="manager">{t('manager')}</option>
                   <option value="staff">{t('staff')}</option>
                   <option value="customer">{t('customer')}</option>
-                </select>
-      </div>
-
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  onClick={handleRefresh}
-                  disabled={loading}
-                  className="flex items-center gap-2"
-                >
-                  <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-                  {t('refresh')}
-                </Button>
-                <Button
-                  className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700"
-                  onClick={() => setShowAddModal(true)}
-                >
-                  <UserPlus className="h-4 w-4" />
-                  {t('addUser')}
-                </Button>
+                  </select>
+                </div>
               </div>
             </div>
           </CardContent>
@@ -540,17 +558,58 @@ export default function AdminUsersPage() {
             ))}
           </div>
         ) : filteredUsers.length === 0 ? (
-          <Card className="bg-white shadow-sm">
+          <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg">
             <CardContent className="p-12 text-center">
-              <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No users found</h3>
-              <p className="text-gray-500">No users match your search criteria.</p>
+              <Users className="h-12 w-12 text-slate-400 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-slate-900 mb-2">No users found</h3>
+              <p className="text-slate-500">No users match your search criteria.</p>
+            </CardContent>
+          </Card>
+        ) : viewMode === 'list' ? (
+          <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg">
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-slate-200 bg-slate-50/80">
+                      <th className="text-left py-3 px-4 font-medium text-slate-900">Name</th>
+                      <th className="text-left py-3 px-4 font-medium text-slate-900">Email</th>
+                      <th className="text-left py-3 px-4 font-medium text-slate-900">Roles</th>
+                      <th className="text-left py-3 px-4 font-medium text-slate-900">Status</th>
+                      <th className="text-right py-3 px-4 font-medium text-slate-900">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {paginatedUsers.map((user) => (
+                      <tr key={user.user_id} className="border-b border-slate-100 hover:bg-slate-50/80">
+                        <td className="py-4 px-4">
+                          <div className="font-medium text-slate-900">{user.first_name} {user.last_name}</div>
+                          <div className="text-xs text-slate-500">@{user.account_name}</div>
+                        </td>
+                        <td className="py-4 px-4 text-sm text-slate-600">{user.email}</td>
+                        <td className="py-4 px-4">
+                          {Array.isArray(user.roles) ? user.roles.map((r, i) => <Badge key={i} variant="outline" className={`mr-1 ${getRoleColor(r)}`}>{r}</Badge>) : <Badge variant="outline" className={getRoleColor(user.roles)}>{user.roles}</Badge>}
+                        </td>
+                        <td className="py-4 px-4">
+                          <Badge variant={user.is_active ? 'default' : 'secondary'}>{user.is_active ? t('active') : t('inactive')}</Badge>
+                        </td>
+                        <td className="py-4 px-4 text-right">
+                          <div className="flex justify-end gap-2">
+                            <Button size="sm" variant="outline" onClick={() => handleEditUser(user)} className="bg-white/80 border-slate-200">{t('edit')}</Button>
+                            <Button size="sm" variant="outline" onClick={() => handleDeleteUser(user.user_id)} className="text-red-600 border-red-200 hover:bg-red-50">{t('delete')}</Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </CardContent>
           </Card>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredUsers.map((user) => (
-              <Card key={user.user_id} className="bg-white shadow-sm hover:shadow-md transition-shadow duration-200">
+            {paginatedUsers.map((user) => (
+              <Card key={user.user_id} className="bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300">
                 <CardContent className="p-6">
                   <div className="space-y-4">
                     {/* Header */}
@@ -639,6 +698,28 @@ export default function AdminUsersPage() {
               </Card>
             ))}
           </div>
+        )}
+
+        {/* Pagination */}
+        {!loading && filteredUsers.length > 0 && totalPages > 1 && (
+          <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg mt-6">
+            <CardContent className="py-4 px-6">
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                <p className="text-sm text-slate-600">
+                  {t('showingXOfY', { from: String(from), to: String(to), total: String(filteredUsers.length) })}
+                </p>
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" size="sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page <= 1} className="bg-white/80 border-slate-200">
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <span className="text-sm text-slate-600 px-2">{t('pageOf', { current: String(page), total: String(totalPages) })}</span>
+                  <Button variant="outline" size="sm" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page >= totalPages} className="bg-white/80 border-slate-200">
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         )}
 
         {/* Add User Modal */}

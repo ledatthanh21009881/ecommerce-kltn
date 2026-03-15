@@ -1,10 +1,10 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Plus, Edit, Trash2, Eye, Search, Filter, RefreshCw } from 'lucide-react'
+import { Plus, Edit, Trash2, Eye, Search, RefreshCw, Package, Star, LayoutList, LayoutGrid, ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
 import ProductModal from '@/components/admin/ProductModal'
@@ -21,6 +21,15 @@ export default function AdminProductsPage() {
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('')
+  const [page, setPage] = useState(1)
+  const [limit] = useState(20)
+  const [pagination, setPagination] = useState<{ total: number; per_page: number; current_page: number; last_page: number; from: number; to: number } | null>(null)
+  const [viewMode, setViewMode] = useState<'list' | 'grid'>(() => {
+    if (typeof window !== 'undefined') {
+      return (localStorage.getItem('admin_products_view') as 'list' | 'grid') || 'grid'
+    }
+    return 'grid'
+  })
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false)
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
@@ -29,27 +38,42 @@ export default function AdminProductsPage() {
   const [deletingProductId, setDeletingProductId] = useState<number | null>(null)
   const [categories, setCategories] = useState([])
 
+  const setViewModeAndStore = (mode: 'list' | 'grid') => {
+    setViewMode(mode)
+    if (typeof window !== 'undefined') localStorage.setItem('admin_products_view', mode)
+  }
+
   // Fetch products
   const fetchProducts = async () => {
     try {
       setLoading(true)
-      console.log('Fetching products...')
-      // Lấy tất cả sản phẩm bằng cách set limit lớn
-      const response = await fetch('/api/backend/v1/products?limit=1000')
-      console.log('Products response status:', response.status)
+      const params = new URLSearchParams()
+      params.set('page', String(page))
+      params.set('limit', String(limit))
+      if (selectedCategory) params.set('category_id', selectedCategory)
+      if (searchTerm) params.set('search', searchTerm)
+      const response = await fetch(`/api/backend/v1/products?${params.toString()}`)
       const data = await response.json()
-      console.log('Products data:', data)
       
       if (data.success) {
-        setProducts(data.data.items || [])
-        console.log('Products set:', data.data.items?.length || 0, 'items')
-              } else {
-          console.error('Failed to fetch products:', data)
-          toast.error(t('failedToFetch'))
+        setProducts(data.data.items || data.data || [])
+        if (data.data.pagination) {
+          setPagination({
+            total: data.data.pagination.total,
+            per_page: data.data.pagination.per_page,
+            current_page: data.data.pagination.current_page,
+            last_page: data.data.pagination.last_page,
+            from: data.data.pagination.from ?? (page - 1) * limit + 1,
+            to: data.data.pagination.to ?? Math.min(page * limit, data.data.pagination.total)
+          })
+        } else {
+          setPagination(null)
+        }
+      } else {
+        toast.error(t('failedToFetch'))
       }
     } catch (error) {
-        console.error('Error fetching products:', error)
-        toast.error(t('errorFetching'))
+      toast.error(t('errorFetching'))
     } finally {
       setLoading(false)
     }
@@ -69,18 +93,18 @@ export default function AdminProductsPage() {
   }
 
   useEffect(() => {
-    console.log('AdminProductsPage mounted, fetching data...')
+    setPage(1)
+  }, [selectedCategory, searchTerm])
+
+  useEffect(() => {
     fetchProducts()
+  }, [page, selectedCategory, searchTerm])
+
+  useEffect(() => {
     fetchCategories()
   }, [])
 
-  // Filter products
-  const filteredProducts = products.filter(product => {
-    const matchesSearch = product.product_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         product.description?.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesCategory = !selectedCategory || product.category_id.toString() === selectedCategory
-    return matchesSearch && matchesCategory
-  })
+  const filteredProducts = products
 
   // Handle product operations
   const handleCreateProduct = () => {
@@ -179,139 +203,222 @@ export default function AdminProductsPage() {
     handleModalClose()
   }
     
-    return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-6">
+const formatPrice = (price: string | number) => {
+    const num = typeof price === 'string' ? parseFloat(price) : price
+    return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(num)
+  }
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'active': return 'bg-green-50 text-green-700 border-green-200'
+      case 'inactive': return 'bg-gray-50 text-gray-700 border-gray-200'
+      case 'draft': return 'bg-yellow-50 text-yellow-700 border-yellow-200'
+      default: return 'bg-gray-50 text-gray-700 border-gray-200'
+    }
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 p-6">
       <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-                      <h1 className="text-3xl font-bold text-slate-900 mb-2">{t('productManagement')}</h1>
+        {/* Header: tiêu đề và View + Làm mới + Thêm sản phẩm cùng một hàng */}
+        <div className="mb-8 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-slate-800 via-blue-800 to-indigo-800 bg-clip-text text-transparent mb-2">{t('productManagement')}</h1>
             <p className="text-slate-600">{t('manageYourCatalog')}</p>
-      </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0 flex-nowrap">
+            <span className="text-sm font-medium text-slate-600 mr-1 hidden sm:inline">{t('view')}:</span>
+            <div className="flex rounded-lg border border-slate-200 bg-white/80 overflow-hidden">
+              <Button variant="ghost" size="sm" onClick={() => setViewModeAndStore('list')} className={`rounded-none ${viewMode === 'list' ? 'bg-slate-100' : ''}`} title={t('viewList')}><LayoutList className="h-4 w-4" /></Button>
+              <Button variant="ghost" size="sm" onClick={() => setViewModeAndStore('grid')} className={`rounded-none ${viewMode === 'grid' ? 'bg-slate-100' : ''}`} title={t('viewGrid')}><LayoutGrid className="h-4 w-4" /></Button>
+            </div>
+            <Button variant="outline" onClick={fetchProducts} disabled={loading} className="flex items-center gap-2 bg-white/80 backdrop-blur-sm border-slate-200 hover:bg-white">
+              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+              {t('refresh')}
+            </Button>
+            <Button onClick={handleCreateProduct} className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white">
+              <Plus className="h-4 w-4" />
+              {t('addProduct')}
+            </Button>
+          </div>
+        </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <Card className="bg-white shadow-sm">
-            <CardContent className="p-6">
-      <div className="flex items-center justify-between">
-                <div>
-                                      <p className="text-sm font-medium text-slate-600">{t('totalProducts')}</p>
-                    <p className="text-2xl font-bold text-slate-900">{products.length}</p>
-                </div>
-                <div className="h-12 w-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                  <span className="text-blue-600 text-xl">📦</span>
-                </div>
-        </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-white shadow-sm">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                                      <p className="text-sm font-medium text-slate-600">{t('activeProducts')}</p>
-                    <p className="text-2xl font-bold text-slate-900">
-                      {products.filter(p => p.status === 'active').length}
-                    </p>
-        </div>
-                <div className="h-12 w-12 bg-green-100 rounded-lg flex items-center justify-center">
-                  <span className="text-green-600 text-xl">✅</span>
+                  <p className="text-sm font-medium text-slate-600 mb-1">{t('totalProducts')}</p>
+                  <p className="text-3xl font-bold text-slate-900">{pagination?.total ?? products.length}</p>
+                  <p className="text-xs text-slate-500 mt-1">{t('inCatalog')}</p>
                 </div>
-                  </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-white shadow-sm">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                                      <p className="text-sm font-medium text-slate-600">{t('featuredProducts')}</p>
-                    <p className="text-2xl font-bold text-slate-900">
-                      {products.filter(p => p.is_featured).length}
-                    </p>
+                <div className="h-12 w-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg">
+                  <Package className="h-6 w-6 text-white" />
                 </div>
-                <div className="h-12 w-12 bg-yellow-100 rounded-lg flex items-center justify-center">
-                  <span className="text-yellow-600 text-xl">⭐</span>
-                </div>
-                </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-white shadow-sm">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-            <div>
-                                      <p className="text-sm font-medium text-slate-600">{t('categories')}</p>
-                    <p className="text-2xl font-bold text-slate-900">{categories.length}</p>
-            </div>
-                <div className="h-12 w-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                  <span className="text-purple-600 text-xl">🏷️</span>
-            </div>
               </div>
             </CardContent>
           </Card>
-            </div>
+          <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-slate-600 mb-1">{t('activeProducts')}</p>
+                  <p className="text-3xl font-bold text-slate-900">{products.filter(p => p.status === 'active').length}</p>
+                  <p className="text-xs text-slate-500 mt-1">{t('onThisPage')}</p>
+                </div>
+                <div className="h-12 w-12 bg-gradient-to-br from-emerald-500 to-green-600 rounded-xl flex items-center justify-center shadow-lg">
+                  <Package className="h-6 w-6 text-white" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-slate-600 mb-1">{t('featuredProducts')}</p>
+                  <p className="text-3xl font-bold text-slate-900">{products.filter(p => p.is_featured).length}</p>
+                  <p className="text-xs text-slate-500 mt-1">{t('onThisPage')}</p>
+                </div>
+                <div className="h-12 w-12 bg-gradient-to-br from-amber-500 to-orange-500 rounded-xl flex items-center justify-center shadow-lg">
+                  <Star className="h-6 w-6 text-white" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-slate-600 mb-1">{t('categories')}</p>
+                  <p className="text-3xl font-bold text-slate-900">{categories.length}</p>
+                  <p className="text-xs text-slate-500 mt-1">{t('total')}</p>
+                </div>
+                <div className="h-12 w-12 bg-gradient-to-br from-purple-500 to-violet-600 rounded-xl flex items-center justify-center shadow-lg">
+                  <Package className="h-6 w-6 text-white" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
 
         {/* Controls */}
-        <Card className="bg-white shadow-sm mb-6">
+        <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg mb-6">
           <CardContent className="p-6">
-            <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
-              <div className="flex flex-col sm:flex-row gap-4 flex-1">
-                {/* Search */}
-                <div className="relative flex-1 max-w-md">
-                                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 h-4 w-4" />
+            <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-end justify-between">
+              <div className="flex flex-col lg:flex-row gap-4 flex-1 w-full">
+                <div className="flex flex-col flex-1 max-w-md">
+                  <label className="text-xs font-medium text-slate-600 mb-1">{t('search')}</label>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 h-4 w-4" />
                     <Input
                       placeholder={t('searchProducts')}
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-10"
+                      className="pl-10 bg-white/50 border-slate-200 focus:bg-white focus:border-blue-500 transition-all duration-200"
                     />
+                  </div>
+                </div>
+                <div className="flex flex-col">
+                  <label className="text-xs font-medium text-slate-600 mb-1">{t('selectCategory')}</label>
+                  <select
+                    value={selectedCategory}
+                    onChange={(e) => setSelectedCategory(e.target.value)}
+                    className="px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white/50 focus:bg-white min-w-[160px]"
+                  >
+                    <option value="">{t('allCategories')}</option>
+                    {categories.map((category: any) => (
+                      <option key={category.category_id} value={category.category_id}>{category.category_name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
             </div>
-            
-                {/* Category Filter */}
-                <select
-                  value={selectedCategory}
-                  onChange={(e) => setSelectedCategory(e.target.value)}
-                  className="px-3 py-2 border border-slate-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  <option value="">{t('allCategories')}</option>
-                  {categories.map((category: any) => (
-                    <option key={category.category_id} value={category.category_id}>
-                      {category.category_name}
-                    </option>
-                  ))}
-                </select>
-            </div>
-
-              <div className="flex gap-2">
-              <Button 
-                variant="outline" 
-                  onClick={fetchProducts}
-                  disabled={loading}
-                  className="flex items-center gap-2"
-                >
-                                      <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-                    {t('refresh')}
-              </Button>
-              <Button 
-                  onClick={handleCreateProduct}
-                  className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700"
-                >
-                                      <Plus className="h-4 w-4" />
-                    {t('addProduct')}
-              </Button>
-            </div>
-          </div>
           </CardContent>
         </Card>
 
-        {/* Products Grid */}
-                    <ProductGrid
-              products={filteredProducts}
-              loading={loading}
-              onEdit={handleEditProduct}
-              onDelete={handleDeleteProduct}
-              onView={handleViewProduct}
-            />
+        {/* Products: List or Grid */}
+        {viewMode === 'list' ? (
+          loading ? (
+            <div className="space-y-4">
+              {[...Array(5)].map((_, i) => (
+                <Card key={i} className="bg-white/80 backdrop-blur-sm border-0 shadow-lg animate-pulse">
+                  <CardContent className="p-6"><div className="h-4 bg-gray-200 rounded w-1/3" /></CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : filteredProducts.length === 0 ? (
+            <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg">
+              <CardContent className="p-12 text-center">
+                <p className="text-slate-600">{t('noProductsFound')}</p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-4">
+              {filteredProducts.map((product) => (
+                <Card key={product.product_id} className="bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300">
+                  <CardContent className="p-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                      <div className="flex items-center gap-4 min-w-0">
+                        <div className="h-14 w-14 rounded-lg bg-slate-100 shrink-0 overflow-hidden">
+                          {product.main_image ? (
+                            <img src={product.main_image} alt="" className="h-full w-full object-cover" />
+                          ) : (
+                            <div className="h-full w-full flex items-center justify-center text-slate-400"><Package className="h-6 w-6" /></div>
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <h3 className="font-semibold text-slate-900 truncate">{product.product_name}</h3>
+                          <p className="text-sm text-slate-500 truncate">{product.description || '—'}</p>
+                          <Badge variant="outline" className={`mt-1 ${getStatusColor(product.status || '')}`}>{t(product.status === 'active' ? 'productStatusActive' : product.status === 'inactive' ? 'productStatusInactive' : 'productStatusDraft')}</Badge>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-4 shrink-0">
+                        <p className="font-semibold text-emerald-600">{formatPrice(product.list_price)}</p>
+                        <div className="flex gap-2">
+                          <Button variant="outline" size="sm" onClick={() => handleViewProduct(product)} className="bg-white/80 border-slate-200 hover:bg-white"><Eye className="h-4 w-4" /></Button>
+                          <Button variant="outline" size="sm" onClick={() => handleEditProduct(product)} className="bg-white/80 border-slate-200 hover:bg-white"><Edit className="h-4 w-4" /></Button>
+                          <Button variant="outline" size="sm" onClick={() => handleDeleteProduct(product.product_id)} className="bg-white/80 border-slate-200 hover:bg-white text-red-600"><Trash2 className="h-4 w-4" /></Button>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )
+        ) : (
+          <ProductGrid
+            products={filteredProducts}
+            loading={loading}
+            onEdit={handleEditProduct}
+            onDelete={handleDeleteProduct}
+            onView={handleViewProduct}
+          />
+        )}
+
+        {/* Pagination */}
+        {!loading && pagination && pagination.last_page > 1 && (
+          <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg mt-4">
+            <CardContent className="p-4 flex flex-wrap items-center justify-between gap-4">
+              <p className="text-sm text-slate-600">
+                {t('showingXOfY', { from: String(pagination.from), to: String(pagination.to), total: String(pagination.total) })}
+              </p>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={pagination.current_page <= 1} className="bg-white/80 border-slate-200 hover:bg-white">
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <span className="text-sm font-medium text-slate-700 min-w-[120px] text-center">
+                  {t('pageOf', { current: String(pagination.current_page), total: String(pagination.last_page) })}
+                </span>
+                <Button variant="outline" size="sm" onClick={() => setPage(p => Math.min(pagination.last_page, p + 1))} disabled={pagination.current_page >= pagination.last_page} className="bg-white/80 border-slate-200 hover:bg-white">
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Product Modal */}
         <ProductModal
