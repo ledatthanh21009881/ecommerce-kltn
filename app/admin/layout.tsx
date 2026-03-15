@@ -134,7 +134,7 @@ function AdminLayoutContent({
       href: '/admin/suppliers'
     },
     {
-      name: 'Purchase Receipts',
+      name: t('purchaseReceipts'),
       icon: FileText,
       href: '/admin/purchase-receipts'
     },

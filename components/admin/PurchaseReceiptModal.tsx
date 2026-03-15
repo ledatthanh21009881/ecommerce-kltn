@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { toast } from 'sonner'
 import { getAuthData } from '@/lib/admin-auth'
+import { useLanguage } from '@/contexts/LanguageContext'
 
 interface ProductVariant {
   variant_id: number
@@ -60,6 +61,7 @@ interface ReceiptItem {
 }
 
 export default function PurchaseReceiptModal({ isOpen, onClose, receipt, onSaved }: PurchaseReceiptModalProps) {
+  const { t } = useLanguage()
   const [loading, setLoading] = useState(false)
   const [variants, setVariants] = useState<ProductVariant[]>([])
   const [suppliers, setSuppliers] = useState<Supplier[]>([])
@@ -131,12 +133,12 @@ export default function PurchaseReceiptModal({ isOpen, onClose, receipt, onSaved
       } else {
         console.error('Failed to fetch variants:', data.message)
         setVariants([])
-        toast.error('Failed to fetch product variants')
+        toast.error(t('failedToFetchVariants'))
       }
     } catch (error) {
       console.error('Error fetching variants:', error)
       setVariants([])
-      toast.error('Error fetching product variants')
+      toast.error(t('failedToFetchVariants'))
     }
   }
 
@@ -159,12 +161,12 @@ export default function PurchaseReceiptModal({ isOpen, onClose, receipt, onSaved
       } else {
         console.error('Failed to fetch suppliers:', data.message)
         setSuppliers([])
-        toast.error('Failed to fetch suppliers')
+        toast.error(t('failedToFetchSuppliers'))
       }
     } catch (error) {
       console.error('Error fetching suppliers:', error)
       setSuppliers([])
-      toast.error('Error fetching suppliers')
+      toast.error(t('failedToFetchSuppliers'))
     }
   }
 
@@ -205,30 +207,29 @@ export default function PurchaseReceiptModal({ isOpen, onClose, receipt, onSaved
     const newErrors: Record<string, string> = {}
 
     if (formData.supplier_id <= 0) {
-      newErrors.supplier_id = 'Please select a supplier'
+      newErrors.supplier_id = t('pleaseSelectSupplier')
     }
 
     if (formData.items.length === 0) {
-      newErrors.items = 'At least one item is required'
+      newErrors.items = t('atLeastOneItemRequired')
     }
 
     formData.items.forEach((item, index) => {
       if (item.variant_id <= 0) {
-        newErrors[`item_${index}_variant`] = 'Please select a product'
+        newErrors[`item_${index}_variant`] = t('pleaseSelectProduct')
       }
       if (item.quantity <= 0) {
-        newErrors[`item_${index}_quantity`] = 'Quantity must be greater than 0'
+        newErrors[`item_${index}_quantity`] = t('quantityMustBePositive')
       }
       if (item.unit_price <= 0) {
-        newErrors[`item_${index}_price`] = 'Unit price must be greater than 0'
+        newErrors[`item_${index}_price`] = t('unitPriceMustBePositive')
       }
     })
 
-    // Check for duplicate variants
     const variantIds = formData.items.map(item => item.variant_id).filter(id => id > 0)
     const uniqueVariantIds = new Set(variantIds)
     if (variantIds.length !== uniqueVariantIds.size) {
-      newErrors.items = 'Duplicate products are not allowed'
+      newErrors.items = t('duplicateProductsNotAllowed')
     }
 
     setErrors(newErrors)
@@ -270,14 +271,14 @@ export default function PurchaseReceiptModal({ isOpen, onClose, receipt, onSaved
       const data = await response.json()
 
       if (data.success) {
-        toast.success(receipt ? 'Receipt updated successfully' : 'Receipt created successfully')
+        toast.success(receipt ? t('receiptUpdatedSuccessfully') : t('receiptCreatedSuccessfully'))
         onSaved()
       } else {
-        toast.error(data.message || 'Failed to save receipt')
+        toast.error(data.message || t('failedToSaveReceipt'))
       }
     } catch (error) {
       console.error('Error saving receipt:', error)
-      toast.error('Error saving receipt')
+      toast.error(t('failedToSaveReceipt'))
     } finally {
       setLoading(false)
     }
@@ -291,7 +292,7 @@ export default function PurchaseReceiptModal({ isOpen, onClose, receipt, onSaved
         <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
           <div className="flex items-center justify-center p-12">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-            <span className="ml-3 text-gray-600">Loading...</span>
+            <span className="ml-3 text-gray-600">{t('loading')}</span>
           </div>
         </div>
       </div>
@@ -303,7 +304,7 @@ export default function PurchaseReceiptModal({ isOpen, onClose, receipt, onSaved
       <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between p-6 border-b">
           <h2 className="text-xl font-semibold">
-            {receipt ? 'Edit Purchase Receipt' : 'Create Purchase Receipt'}
+            {receipt ? t('editPurchaseReceipt') : t('createPurchaseReceipt')}
           </h2>
           <Button variant="ghost" size="sm" onClick={onClose}>
             <X className="h-4 w-4" />
@@ -313,13 +314,13 @@ export default function PurchaseReceiptModal({ isOpen, onClose, receipt, onSaved
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
           {/* Supplier Selection */}
           <div className="space-y-2">
-            <Label htmlFor="supplier">Supplier *</Label>
+            <Label htmlFor="supplier">{t('receiptSupplierLabel')} *</Label>
             <Select
               value={formData.supplier_id.toString()}
               onValueChange={(value) => setFormData(prev => ({ ...prev, supplier_id: parseInt(value) }))}
             >
               <SelectTrigger>
-                <SelectValue placeholder="Select a supplier" />
+                <SelectValue placeholder={t('selectSupplier')} />
               </SelectTrigger>
               <SelectContent>
                 {Array.isArray(suppliers) && suppliers.length > 0 ? (
@@ -330,7 +331,7 @@ export default function PurchaseReceiptModal({ isOpen, onClose, receipt, onSaved
                   ))
                 ) : (
                   <SelectItem value="0" disabled>
-                    {dataLoading ? 'Loading suppliers...' : 'No suppliers available'}
+                    {dataLoading ? t('loadingSuppliers') : t('noSuppliersAvailable')}
                   </SelectItem>
                 )}
               </SelectContent>
@@ -343,10 +344,10 @@ export default function PurchaseReceiptModal({ isOpen, onClose, receipt, onSaved
           {/* Items Section */}
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <Label className="text-base font-medium">Items *</Label>
+              <Label className="text-base font-medium">{t('receiptItemsLabel')} *</Label>
               <Button type="button" onClick={addItem} size="sm" variant="outline">
                 <Plus className="h-4 w-4 mr-2" />
-                Add Item
+                {t('addItem')}
               </Button>
             </div>
             
@@ -361,13 +362,13 @@ export default function PurchaseReceiptModal({ isOpen, onClose, receipt, onSaved
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                       {/* Product Selection */}
                       <div className="space-y-2">
-                        <Label>Product *</Label>
+                        <Label>{t('productLabel')} *</Label>
                         <Select
                           value={item.variant_id.toString()}
                           onValueChange={(value) => updateItem(index, 'variant_id', parseInt(value))}
                         >
                           <SelectTrigger>
-                            <SelectValue placeholder="Select product" />
+                            <SelectValue placeholder={t('selectProduct')} />
                           </SelectTrigger>
                           <SelectContent>
                             {Array.isArray(variants) && variants.length > 0 ? (
@@ -378,7 +379,7 @@ export default function PurchaseReceiptModal({ isOpen, onClose, receipt, onSaved
                               ))
                             ) : (
                               <SelectItem value="0" disabled>
-                                {dataLoading ? 'Loading variants...' : 'No variants available'}
+                                {dataLoading ? t('loadingVariants') : t('noVariantsAvailable')}
                               </SelectItem>
                             )}
                           </SelectContent>
@@ -390,7 +391,7 @@ export default function PurchaseReceiptModal({ isOpen, onClose, receipt, onSaved
 
                       {/* Quantity */}
                       <div className="space-y-2">
-                        <Label>Quantity *</Label>
+                        <Label>{t('quantityLabel')} *</Label>
                         <Input
                           type="number"
                           min="1"
@@ -404,7 +405,7 @@ export default function PurchaseReceiptModal({ isOpen, onClose, receipt, onSaved
 
                       {/* Unit Price */}
                       <div className="space-y-2">
-                        <Label>Unit Price (₫) *</Label>
+                        <Label>{t('unitPriceVnd')} *</Label>
                         <Input
                           type="number"
                           min="0"
@@ -419,7 +420,7 @@ export default function PurchaseReceiptModal({ isOpen, onClose, receipt, onSaved
 
                       {/* Subtotal & Actions */}
                       <div className="space-y-2">
-                        <Label>Subtotal</Label>
+                        <Label>{t('subtotalLabel')}</Label>
                         <div className="flex items-center space-x-2">
                           <div className="flex-1 p-2 bg-gray-50 rounded text-sm font-medium">
                             {calculateSubtotal(item).toLocaleString('vi-VN')} ₫
@@ -458,7 +459,7 @@ export default function PurchaseReceiptModal({ isOpen, onClose, receipt, onSaved
           <Card className="bg-blue-50">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
-                <span className="text-lg font-semibold">Total Amount:</span>
+                <span className="text-lg font-semibold">{t('totalAmountLabel')}</span>
                 <span className="text-xl font-bold text-blue-600">
                   {calculateTotal().toLocaleString('vi-VN')} ₫
                 </span>
@@ -481,10 +482,10 @@ export default function PurchaseReceiptModal({ isOpen, onClose, receipt, onSaved
           {/* Actions */}
           <div className="flex justify-end space-x-3 pt-4 border-t">
             <Button type="button" variant="outline" onClick={onClose}>
-              Cancel
+              {t('cancel')}
             </Button>
             <Button type="submit" disabled={loading} className="bg-blue-600 hover:bg-blue-700">
-              {loading ? 'Saving...' : (receipt ? 'Update Receipt' : 'Create Receipt')}
+              {loading ? t('saving') : (receipt ? t('updateReceiptButton') : t('createReceipt'))}
             </Button>
           </div>
         </form>

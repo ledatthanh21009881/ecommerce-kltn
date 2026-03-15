@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { toast } from 'sonner'
 import { getAuthData } from '@/lib/admin-auth'
+import { useLanguage } from '@/contexts/LanguageContext'
 
 interface Supplier {
   supplier_id: number
@@ -28,6 +29,7 @@ interface SupplierModalProps {
 }
 
 export default function SupplierModal({ isOpen, onClose, supplier, onSaved }: SupplierModalProps) {
+  const { t } = useLanguage()
   const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState({
     supplier_name: '',
@@ -84,17 +86,17 @@ export default function SupplierModal({ isOpen, onClose, supplier, onSaved }: Su
 
     // Required fields
     if (!formData.supplier_name.trim()) {
-      newErrors.supplier_name = 'Supplier name is required'
+      newErrors.supplier_name = t('supplierNameRequired')
     }
 
     // Email validation
     if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = 'Invalid email format'
+      newErrors.email = t('invalidEmailFormat')
     }
 
     // Phone validation (basic)
     if (formData.phone && !/^[0-9+\-\s()]+$/.test(formData.phone)) {
-      newErrors.phone = 'Invalid phone format'
+      newErrors.phone = t('invalidPhoneFormat')
     }
 
     setErrors(newErrors)
@@ -131,19 +133,18 @@ export default function SupplierModal({ isOpen, onClose, supplier, onSaved }: Su
       const data = await response.json()
       
       if (data.success) {
-        toast.success(supplier ? 'Supplier updated successfully' : 'Supplier created successfully')
+        toast.success(supplier ? t('supplierUpdatedSuccessfully') : t('supplierCreatedSuccessfully'))
         onSaved()
       } else {
-        // Handle validation errors from backend
         if (data.errors) {
           setErrors(data.errors)
         } else {
-          toast.error(data.message || 'Failed to save supplier')
+          toast.error(data.message || t('failedToSaveSupplier'))
         }
       }
     } catch (error) {
       console.error('Error saving supplier:', error)
-      toast.error('Error saving supplier')
+      toast.error(t('failedToSaveSupplier'))
     } finally {
       setLoading(false)
     }
@@ -169,10 +170,10 @@ export default function SupplierModal({ isOpen, onClose, supplier, onSaved }: Su
             </div>
             <div>
               <h3 className="text-lg font-semibold text-gray-900">
-                {supplier ? 'Edit Supplier' : 'Add New Supplier'}
+                {supplier ? t('modalEditSupplier') : t('modalAddSupplier')}
               </h3>
               <p className="text-sm text-gray-600">
-                {supplier ? 'Update supplier information' : 'Enter supplier details'}
+                {supplier ? t('updateSupplierInfo') : t('enterSupplierDetails')}
               </p>
             </div>
           </div>
@@ -190,14 +191,14 @@ export default function SupplierModal({ isOpen, onClose, supplier, onSaved }: Su
             {/* Supplier Name - Required */}
             <div className="space-y-2">
               <Label htmlFor="supplier_name" className="text-sm font-medium text-gray-700">
-                Supplier Name *
+                {t('supplierNameLabel')} *
               </Label>
               <Input
                 id="supplier_name"
                 type="text"
                 value={formData.supplier_name}
                 onChange={(e) => handleInputChange('supplier_name', e.target.value)}
-                placeholder="Enter supplier name"
+                placeholder={t('enterSupplierName')}
                 className={errors.supplier_name ? 'border-red-500 focus:border-red-500' : ''}
               />
               {errors.supplier_name && (
@@ -208,28 +209,28 @@ export default function SupplierModal({ isOpen, onClose, supplier, onSaved }: Su
             {/* Contact Name */}
             <div className="space-y-2">
               <Label htmlFor="contact_name" className="text-sm font-medium text-gray-700">
-                Contact Person
+                {t('contactPerson')}
               </Label>
               <Input
                 id="contact_name"
                 type="text"
                 value={formData.contact_name}
                 onChange={(e) => handleInputChange('contact_name', e.target.value)}
-                placeholder="Enter contact person name"
+                placeholder={t('enterContactPersonName')}
               />
             </div>
 
             {/* Phone */}
             <div className="space-y-2">
               <Label htmlFor="phone" className="text-sm font-medium text-gray-700">
-                Phone
+                {t('phoneLabel')}
               </Label>
               <Input
                 id="phone"
                 type="tel"
                 value={formData.phone}
                 onChange={(e) => handleInputChange('phone', e.target.value)}
-                placeholder="Enter phone number"
+                placeholder={t('enterPhoneNumber')}
                 className={errors.phone ? 'border-red-500 focus:border-red-500' : ''}
               />
               {errors.phone && (
@@ -240,14 +241,14 @@ export default function SupplierModal({ isOpen, onClose, supplier, onSaved }: Su
             {/* Email */}
             <div className="space-y-2">
               <Label htmlFor="email" className="text-sm font-medium text-gray-700">
-                Email
+                {t('emailLabel')}
               </Label>
               <Input
                 id="email"
                 type="email"
                 value={formData.email}
                 onChange={(e) => handleInputChange('email', e.target.value)}
-                placeholder="Enter email address"
+                placeholder={t('enterEmailAddress')}
                 className={errors.email ? 'border-red-500 focus:border-red-500' : ''}
               />
               {errors.email && (
@@ -258,7 +259,7 @@ export default function SupplierModal({ isOpen, onClose, supplier, onSaved }: Su
             {/* Status */}
             <div className="space-y-2">
               <Label htmlFor="status" className="text-sm font-medium text-gray-700">
-                Status
+                {t('status')}
               </Label>
               <select
                 id="status"
@@ -266,9 +267,9 @@ export default function SupplierModal({ isOpen, onClose, supplier, onSaved }: Su
                 onChange={(e) => handleInputChange('status', e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
-                <option value="suspended">Suspended</option>
+                <option value="active">{t('supplierStatusActive')}</option>
+                <option value="inactive">{t('supplierStatusInactive')}</option>
+                <option value="suspended">{t('supplierStatusSuspended')}</option>
               </select>
             </div>
           </div>
@@ -276,13 +277,13 @@ export default function SupplierModal({ isOpen, onClose, supplier, onSaved }: Su
           {/* Address - Full width */}
           <div className="space-y-2">
             <Label htmlFor="address" className="text-sm font-medium text-gray-700">
-              Address
+              {t('addressLabel')}
             </Label>
             <textarea
               id="address"
               value={formData.address}
               onChange={(e) => handleInputChange('address', e.target.value)}
-              placeholder="Enter supplier address"
+              placeholder={t('enterSupplierAddress')}
               rows={3}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
             />
@@ -296,7 +297,7 @@ export default function SupplierModal({ isOpen, onClose, supplier, onSaved }: Su
               onClick={onClose}
               disabled={loading}
             >
-              Cancel
+              {t('cancel')}
             </Button>
             <Button
               type="submit"
@@ -306,12 +307,12 @@ export default function SupplierModal({ isOpen, onClose, supplier, onSaved }: Su
               {loading ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  {supplier ? 'Updating...' : 'Creating...'}
+                  {supplier ? t('supplierUpdating') : t('supplierCreating')}
                 </>
               ) : (
                 <>
                   <Save className="h-4 w-4 mr-2" />
-                  {supplier ? 'Update Supplier' : 'Create Supplier'}
+                  {supplier ? t('updateSupplier') : t('createSupplier')}
                 </>
               )}
             </Button>

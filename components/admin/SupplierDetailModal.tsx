@@ -7,6 +7,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
 import { getAuthData } from '@/lib/admin-auth'
+import { useLanguage } from '@/contexts/LanguageContext'
 
 interface Supplier {
   supplier_id: number
@@ -47,6 +48,7 @@ interface SupplierDetailModalProps {
 }
 
 export default function SupplierDetailModal({ isOpen, onClose, supplier }: SupplierDetailModalProps) {
+  const { t } = useLanguage()
   const [supplierData, setSupplierData] = useState<Supplier | null>(null)
   const [stats, setStats] = useState<SupplierStats | null>(null)
   const [receipts, setReceipts] = useState<PurchaseReceipt[]>([])
@@ -74,11 +76,11 @@ export default function SupplierDetailModal({ isOpen, onClose, supplier }: Suppl
       if (data.success) {
         setSupplierData(data.data)
       } else {
-        toast.error(data.message || 'Failed to fetch supplier details')
+        toast.error(data.message || t('failedToFetchSupplierDetails'))
       }
     } catch (error) {
       console.error('Error fetching supplier details:', error)
-      toast.error('Error fetching supplier details')
+      toast.error(t('failedToFetchSupplierDetails'))
     } finally {
       setLoading(false)
     }
@@ -104,11 +106,11 @@ export default function SupplierDetailModal({ isOpen, onClose, supplier }: Suppl
       if (data.success) {
         setStats(data.data)
       } else {
-        toast.error(data.message || 'Failed to fetch supplier stats')
+        toast.error(data.message || t('failedToFetchSupplierStats'))
       }
     } catch (error) {
       console.error('Error fetching supplier stats:', error)
-      toast.error('Error fetching supplier stats')
+      toast.error(t('failedToFetchSupplierStats'))
     } finally {
       setStatsLoading(false)
     }
@@ -135,11 +137,11 @@ export default function SupplierDetailModal({ isOpen, onClose, supplier }: Suppl
         const receiptsList = data.data?.items || data.data || []
         setReceipts(receiptsList)
       } else {
-        toast.error(data.message || 'Failed to fetch purchase receipts')
+        toast.error(data.message || t('failedToFetchPurchaseReceipts'))
       }
     } catch (error) {
       console.error('Error fetching purchase receipts:', error)
-      toast.error('Error fetching purchase receipts')
+      toast.error(t('failedToFetchPurchaseReceipts'))
     } finally {
       setReceiptsLoading(false)
     }
@@ -221,7 +223,7 @@ export default function SupplierDetailModal({ isOpen, onClose, supplier }: Suppl
               <Building2 className="h-5 w-5 text-blue-600" />
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-gray-900">Supplier Details</h3>
+              <h3 className="text-lg font-semibold text-gray-900">{t('supplierDetails')}</h3>
               <p className="text-sm text-gray-600">
                 {supplierData?.supplier_name || supplier.supplier_name}
               </p>
@@ -238,7 +240,7 @@ export default function SupplierDetailModal({ isOpen, onClose, supplier }: Suppl
         <div className="p-6 space-y-6">
           {/* Basic Information */}
           <div className="space-y-4">
-            <h4 className="text-lg font-medium text-gray-900">Basic Information</h4>
+            <h4 className="text-lg font-medium text-gray-900">{t('basicInformation')}</h4>
             {loading ? (
               <div className="animate-pulse space-y-3">
                 <div className="h-4 bg-gray-200 rounded w-3/4"></div>
@@ -250,50 +252,50 @@ export default function SupplierDetailModal({ isOpen, onClose, supplier }: Suppl
                 <div className="space-y-3">
                   <div className="flex items-center gap-2">
                     <Building2 className="h-4 w-4 text-gray-400" />
-                    <span className="font-medium">Name:</span>
+                    <span className="font-medium">{t('nameLabel')}:</span>
                     <span>{supplierData.supplier_name}</span>
                   </div>
                   {supplierData.contact_name && (
                     <div className="flex items-center gap-2">
-                      <span className="font-medium">Contact:</span>
+                      <span className="font-medium">{t('contactLabel')}:</span>
                       <span>{supplierData.contact_name}</span>
                     </div>
                   )}
                   {supplierData.email && (
                     <div className="flex items-center gap-2">
                       <Mail className="h-4 w-4 text-gray-400" />
-                      <span className="font-medium">Email:</span>
+                      <span className="font-medium">{t('emailLabel')}:</span>
                       <span>{supplierData.email}</span>
                     </div>
                   )}
                   {supplierData.phone && (
                     <div className="flex items-center gap-2">
                       <Phone className="h-4 w-4 text-gray-400" />
-                      <span className="font-medium">Phone:</span>
+                      <span className="font-medium">{t('phoneLabel')}:</span>
                       <span>{supplierData.phone}</span>
                     </div>
                   )}
                 </div>
                 <div className="space-y-3">
                   <div className="flex items-center gap-2">
-                    <span className="font-medium">Status:</span>
+                    <span className="font-medium">{t('status')}:</span>
                     <Badge 
                       variant="outline" 
                       className={`${getStatusColor(supplierData.status)}`}
                     >
-                      {supplierData.status.charAt(0).toUpperCase() + supplierData.status.slice(1)}
+                      {supplierData.status === 'active' ? t('supplierStatusActive') : supplierData.status === 'inactive' ? t('supplierStatusInactive') : t('supplierStatusSuspended')}
                     </Badge>
                   </div>
                   <div className="flex items-center gap-2">
                     <Calendar className="h-4 w-4 text-gray-400" />
-                    <span className="font-medium">Created:</span>
+                    <span className="font-medium">{t('createdLabel')}:</span>
                     <span>{formatDate(supplierData.created_at)}</span>
                   </div>
                   {supplierData.address && (
                     <div className="flex items-start gap-2">
                       <MapPin className="h-4 w-4 text-gray-400 mt-0.5" />
                       <div>
-                        <span className="font-medium">Address:</span>
+                        <span className="font-medium">{t('addressLabel')}:</span>
                         <p className="text-sm text-gray-600 mt-1">{supplierData.address}</p>
                       </div>
                     </div>
@@ -305,7 +307,7 @@ export default function SupplierDetailModal({ isOpen, onClose, supplier }: Suppl
 
           {/* Statistics Cards */}
           <div className="space-y-4">
-            <h4 className="text-lg font-medium text-gray-900">Statistics</h4>
+            <h4 className="text-lg font-medium text-gray-900">{t('statisticsTitle')}</h4>
             {statsLoading ? (
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {[...Array(3)].map((_, i) => (
@@ -323,7 +325,7 @@ export default function SupplierDetailModal({ isOpen, onClose, supplier }: Suppl
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm font-medium text-gray-600">Total Receipts</p>
+                        <p className="text-sm font-medium text-gray-600">{t('supplierTotalReceipts')}</p>
                         <p className="text-2xl font-bold text-gray-900">{stats.total_receipts}</p>
                       </div>
                       <div className="h-10 w-10 bg-blue-100 rounded-lg flex items-center justify-center">
@@ -337,7 +339,7 @@ export default function SupplierDetailModal({ isOpen, onClose, supplier }: Suppl
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm font-medium text-gray-600">Total Amount</p>
+                        <p className="text-sm font-medium text-gray-600">{t('supplierTotalAmount')}</p>
                         <p className="text-2xl font-bold text-gray-900">{formatCurrency(stats.total_amount)}</p>
                       </div>
                       <div className="h-10 w-10 bg-green-100 rounded-lg flex items-center justify-center">
@@ -351,7 +353,7 @@ export default function SupplierDetailModal({ isOpen, onClose, supplier }: Suppl
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm font-medium text-gray-600">Products</p>
+                        <p className="text-sm font-medium text-gray-600">{t('productsCount')}</p>
                         <p className="text-2xl font-bold text-gray-900">{stats.total_products}</p>
                       </div>
                       <div className="h-10 w-10 bg-purple-100 rounded-lg flex items-center justify-center">
@@ -416,7 +418,7 @@ export default function SupplierDetailModal({ isOpen, onClose, supplier }: Suppl
               <Card className="bg-gray-50">
                 <CardContent className="p-8 text-center">
                   <FileText className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-                  <p className="text-gray-600">No purchase receipts found</p>
+                  <p className="text-gray-600">{t('noPurchaseReceiptsFound')}</p>
                 </CardContent>
               </Card>
             )}

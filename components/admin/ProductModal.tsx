@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
 import { Product, ProductFormData, ProductVariant, ProductImage } from '@/lib/types'
 import { authUtils } from '@/lib/auth'
+import { useLanguage } from '@/contexts/LanguageContext'
 
 interface ProductModalProps {
   isOpen: boolean
@@ -21,6 +22,7 @@ interface ProductModalProps {
 }
 
 export default function ProductModal({ isOpen, onClose, product, categories, onSaved }: ProductModalProps) {
+  const { t } = useLanguage()
   const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState<ProductFormData>({
     product_name: '',
@@ -343,7 +345,7 @@ export default function ProductModal({ isOpen, onClose, product, categories, onS
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b">
           <h2 className="text-xl font-semibold">
-            {product ? 'Edit Product' : 'Add New Product'}
+            {product ? t('modalEditProduct') : t('modalAddProduct')}
           </h2>
           <Button variant="ghost" size="sm" onClick={onClose}>
             <X className="h-4 w-4" />
@@ -355,21 +357,21 @@ export default function ProductModal({ isOpen, onClose, product, categories, onS
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Basic Information */}
             <div className="space-y-4">
-              <h3 className="text-lg font-medium">Basic Information</h3>
+              <h3 className="text-lg font-medium">{t('basicInformation')}</h3>
               
               <div>
-                <Label htmlFor="product_name">Product Name *</Label>
+                <Label htmlFor="product_name">{t('productName')} *</Label>
                 <Input
                   id="product_name"
                   value={formData.product_name}
                   onChange={(e) => handleInputChange('product_name', e.target.value)}
-                  placeholder="Enter product name"
+                  placeholder={t('enterProductName')}
                   required
                 />
               </div>
 
               <div>
-                <Label htmlFor="category">Category *</Label>
+                <Label htmlFor="category">{t('productCategory')} *</Label>
                 <select
                   id="category"
                   value={formData.category_id}
@@ -377,7 +379,7 @@ export default function ProductModal({ isOpen, onClose, product, categories, onS
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   required
                 >
-                  <option value="">Select category</option>
+                  <option value="">{t('selectCategory')}</option>
                   {categories.map((category) => (
                     <option key={category.category_id} value={category.category_id}>
                       {category.category_name}
@@ -387,45 +389,45 @@ export default function ProductModal({ isOpen, onClose, product, categories, onS
               </div>
 
               <div>
-                <Label htmlFor="short_description">Short Description</Label>
+                <Label htmlFor="short_description">{t('shortDescription')}</Label>
                 <Textarea
                   id="short_description"
                   value={formData.short_description}
                   onChange={(e) => handleInputChange('short_description', e.target.value)}
-                  placeholder="Brief description"
+                  placeholder={t('briefDescription')}
                   rows={2}
                 />
               </div>
 
               <div>
-                <Label htmlFor="description">Full Description</Label>
+                <Label htmlFor="description">{t('fullDescription')}</Label>
                 <Textarea
                   id="description"
                   value={formData.description}
                   onChange={(e) => handleInputChange('description', e.target.value)}
-                  placeholder="Detailed description"
+                  placeholder={t('detailedDescription')}
                   rows={4}
                 />
               </div>
 
               <div>
-                <Label htmlFor="material">Material</Label>
+                <Label htmlFor="material">{t('productMaterial')}</Label>
                 <Input
                   id="material"
                   value={formData.material}
                   onChange={(e) => handleInputChange('material', e.target.value)}
-                  placeholder="e.g., 100% Cotton"
+                  placeholder={t('materialPlaceholder')}
                 />
               </div>
             </div>
 
             {/* Pricing & Status */}
             <div className="space-y-4">
-              <h3 className="text-lg font-medium">Pricing & Status</h3>
+              <h3 className="text-lg font-medium">{t('pricingAndStatus')}</h3>
               
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="list_price">List Price *</Label>
+                  <Label htmlFor="list_price">{t('listPrice')} *</Label>
                   <Input
                     id="list_price"
                     type="number"
@@ -438,7 +440,7 @@ export default function ProductModal({ isOpen, onClose, product, categories, onS
                   />
                 </div>
                 <div>
-                  <Label htmlFor="compare_at_price">Compare Price</Label>
+                  <Label htmlFor="compare_at_price">{t('comparePrice')}</Label>
                   <Input
                     id="compare_at_price"
                     type="number"
@@ -452,7 +454,7 @@ export default function ProductModal({ isOpen, onClose, product, categories, onS
               </div>
 
               <div>
-                <Label htmlFor="cost_price">Cost Price</Label>
+                <Label htmlFor="cost_price">{t('costPrice')}</Label>
                 <Input
                   id="cost_price"
                   type="number"
@@ -465,7 +467,7 @@ export default function ProductModal({ isOpen, onClose, product, categories, onS
               </div>
 
               <div>
-                <Label htmlFor="stock">Stock Quantity</Label>
+                <Label htmlFor="stock">{t('stockQuantity')}</Label>
                 <Input
                   id="stock"
                   type="number"
@@ -477,16 +479,16 @@ export default function ProductModal({ isOpen, onClose, product, categories, onS
               </div>
 
               <div>
-                <Label htmlFor="status">Status</Label>
+                <Label htmlFor="status">{t('status')}</Label>
                 <select
                   id="status"
                   value={formData.status}
                   onChange={(e) => handleInputChange('status', e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
-                  <option value="active">Active</option>
-                  <option value="inactive">Inactive</option>
-                  <option value="draft">Draft</option>
+                  <option value="active">{t('productStatusActive')}</option>
+                  <option value="inactive">{t('productStatusInactive')}</option>
+                  <option value="draft">{t('productStatusDraft')}</option>
                 </select>
               </div>
 
@@ -496,7 +498,7 @@ export default function ProductModal({ isOpen, onClose, product, categories, onS
                   checked={formData.is_featured}
                   onCheckedChange={(checked) => handleInputChange('is_featured', checked)}
                 />
-                <Label htmlFor="is_featured">Featured Product</Label>
+                <Label htmlFor="is_featured">{t('featuredProductLabel')}</Label>
               </div>
             </div>
           </div>
@@ -504,17 +506,17 @@ export default function ProductModal({ isOpen, onClose, product, categories, onS
           {/* Variants */}
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-lg font-medium">Product Variants</h3>
+              <h3 className="text-lg font-medium">{t('productVariantsTitle')}</h3>
               <Button type="button" variant="outline" size="sm" onClick={addVariant}>
                 <Plus className="h-4 w-4 mr-2" />
-                Add Variant
+                {t('addVariant')}
               </Button>
             </div>
 
             {formData.variants.map((variant, index) => (
               <div key={index} className="border rounded-lg p-4 space-y-4">
                 <div className="flex items-center justify-between">
-                  <h4 className="font-medium">Variant {index + 1}</h4>
+                  <h4 className="font-medium">{t('variantNumber', { n: String(index + 1) })}</h4>
                   {formData.variants.length > 1 && (
                     <Button
                       type="button"
@@ -530,7 +532,7 @@ export default function ProductModal({ isOpen, onClose, product, categories, onS
 
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                   <div>
-                    <Label>Size</Label>
+                    <Label>{t('size')}</Label>
                     <select
                       value={variant.size_id}
                       onChange={(e) => handleVariantChange(index, 'size_id', parseInt(e.target.value))}
@@ -543,15 +545,15 @@ export default function ProductModal({ isOpen, onClose, product, categories, onS
                     </select>
                   </div>
                   <div>
-                    <Label>SKU</Label>
+                    <Label>{t('sku')}</Label>
                     <Input
                       value={variant.sku}
                       onChange={(e) => handleVariantChange(index, 'sku', e.target.value)}
-                      placeholder="e.g., PROD-S-001"
+                      placeholder={t('skuPlaceholder')}
                     />
                   </div>
                   <div>
-                    <Label>Stock</Label>
+                    <Label>{t('productStockLabel')}</Label>
                     <Input
                       type="number"
                       value={variant.stock_quantity}
@@ -561,15 +563,15 @@ export default function ProductModal({ isOpen, onClose, product, categories, onS
                     />
                   </div>
                   <div>
-                    <Label>Status</Label>
+                    <Label>{t('status')}</Label>
                     <select
                       value={variant.status}
                       onChange={(e) => handleVariantChange(index, 'status', e.target.value)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     >
-                      <option value="in_stock">In Stock</option>
-                      <option value="out_of_stock">Out of Stock</option>
-                      <option value="low_stock">Low Stock</option>
+                      <option value="in_stock">{t('inStock')}</option>
+                      <option value="out_of_stock">{t('productStatusOutOfStock')}</option>
+                      <option value="low_stock">{t('lowStock')}</option>
                     </select>
                   </div>
                 </div>
@@ -579,11 +581,11 @@ export default function ProductModal({ isOpen, onClose, product, categories, onS
 
           {/* Images */}
           <div className="space-y-4">
-            <h3 className="text-lg font-medium">Product Images</h3>
+            <h3 className="text-lg font-medium">{t('productImagesTitle')}</h3>
             
                          <div className="space-y-4">
                <div>
-                 <Label htmlFor="images">Upload Images</Label>
+                 <Label htmlFor="images">{t('uploadImages')}</Label>
                  <Input
                    id="images"
                    type="file"
@@ -595,12 +597,12 @@ export default function ProductModal({ isOpen, onClose, product, categories, onS
                </div>
                
                <div>
-                 <Label htmlFor="imageUrl">Add Image URL</Label>
+                 <Label htmlFor="imageUrl">{t('addImageUrl')}</Label>
                  <div className="flex gap-2">
                    <Input
                      id="imageUrl"
                      type="url"
-                     placeholder="https://example.com/image.jpg"
+                     placeholder={t('imageUrlPlaceholder')}
                      onKeyPress={(e) => {
                        if (e.key === 'Enter') {
                          e.preventDefault()
@@ -623,7 +625,7 @@ export default function ProductModal({ isOpen, onClose, product, categories, onS
                        }
                      }}
                    >
-                     Add
+                     {t('add')}
                    </Button>
                  </div>
                </div>
@@ -632,7 +634,7 @@ export default function ProductModal({ isOpen, onClose, product, categories, onS
                          {/* All Images Preview */}
              {(selectedFiles.length > 0 || imageUrls.length > 0) && (
                <div className="space-y-4">
-                 <Label>Image Preview:</Label>
+                 <Label>{t('imagePreview')}</Label>
                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                    {/* Selected Files */}
                    {selectedFiles.map((file, index) => {
@@ -657,7 +659,7 @@ export default function ProductModal({ isOpen, onClose, product, categories, onS
                              onClick={() => setMainImageIndex(imageIndex)}
                              className="h-6 px-2 text-xs"
                            >
-                             {isMain ? "Main" : "Set Main"}
+                             {isMain ? t('mainImage') : t('setMain')}
                            </Button>
                            <Button
                              type="button"
@@ -700,7 +702,7 @@ export default function ProductModal({ isOpen, onClose, product, categories, onS
                              onClick={() => setMainImageIndex(imageIndex)}
                              className="h-6 px-2 text-xs"
                            >
-                             {isMain ? "Main" : "Set Main"}
+                             {isMain ? t('mainImage') : t('setMain')}
                            </Button>
                            <Button
                              type="button"
@@ -726,18 +728,18 @@ export default function ProductModal({ isOpen, onClose, product, categories, onS
           {/* Actions */}
           <div className="flex justify-end gap-3 pt-6 border-t">
             <Button type="button" variant="outline" onClick={onClose}>
-              Cancel
+              {t('cancel')}
             </Button>
             <Button type="submit" disabled={loading}>
               {loading ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Saving...
+                  {t('saving')}
                 </>
               ) : (
                 <>
                   <Save className="h-4 w-4 mr-2" />
-                  {product ? 'Update Product' : 'Create Product'}
+                  {product ? t('updateProduct') : t('createProduct')}
                 </>
               )}
             </Button>

@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { toast } from 'sonner'
 import { getAuthData } from '@/lib/admin-auth'
+import { useLanguage } from '@/contexts/LanguageContext'
 
 interface PurchaseReceipt {
   receipt_id: number
@@ -41,6 +42,7 @@ interface PurchaseReceiptDetailModalProps {
 }
 
 export default function PurchaseReceiptDetailModal({ isOpen, onClose, receipt, onConfirmed }: PurchaseReceiptDetailModalProps) {
+  const { t } = useLanguage()
   const [loading, setLoading] = useState(false)
   const [confirming, setConfirming] = useState(false)
   const [receiptDetails, setReceiptDetails] = useState<{
@@ -85,11 +87,11 @@ export default function PurchaseReceiptDetailModal({ isOpen, onClose, receipt, o
       if (data.success) {
         setReceiptDetails(data.data)
       } else {
-        toast.error(data.message || 'Failed to fetch receipt details')
+        toast.error(data.message || t('failedToFetchReceiptDetails'))
       }
     } catch (error) {
       console.error('Error fetching receipt details:', error)
-      toast.error('Error fetching receipt details')
+      toast.error(t('failedToFetchReceiptDetails'))
     } finally {
       setLoading(false)
     }
@@ -113,14 +115,14 @@ export default function PurchaseReceiptDetailModal({ isOpen, onClose, receipt, o
       const data = await response.json()
       
       if (data.success) {
-        toast.success('Receipt confirmed and stock updated')
+        toast.success(t('receiptConfirmedAndStockUpdated'))
         onConfirmed()
       } else {
         toast.error(data.message || 'Failed to confirm receipt')
       }
     } catch (error) {
       console.error('Error confirming receipt:', error)
-      toast.error('Error confirming receipt')
+      toast.error(t('failedToConfirmReceipt'))
     } finally {
       setConfirming(false)
     }
@@ -188,7 +190,7 @@ export default function PurchaseReceiptDetailModal({ isOpen, onClose, receipt, o
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Building2 className="h-5 w-5" />
-                    Receipt Information
+                    {t('receiptInformation')}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -198,7 +200,7 @@ export default function PurchaseReceiptDetailModal({ isOpen, onClose, receipt, o
                       <p className="text-lg font-semibold">{receiptDetails?.supplier_name || 'N/A'}</p>
                     </div>
                     <div>
-                      <label className="text-sm font-medium text-gray-600">Status</label>
+                      <label className="text-sm font-medium text-gray-600">{t('receiptStatusHeader')}</label>
                       <div className="mt-1">
                         <Badge className={`${getStatusColor(receiptDetails?.status || 'pending')} flex items-center gap-1 w-fit`}>
                           {getStatusIcon(receiptDetails?.status || 'pending')}
@@ -207,7 +209,7 @@ export default function PurchaseReceiptDetailModal({ isOpen, onClose, receipt, o
                       </div>
                     </div>
                     <div>
-                      <label className="text-sm font-medium text-gray-600">Created</label>
+                      <label className="text-sm font-medium text-gray-600">{t('receiptCreatedHeader')}</label>
                       <p className="flex items-center gap-1">
                         <Calendar className="h-4 w-4" />
                         {formatDate(receiptDetails?.created_at || '')}
@@ -215,7 +217,7 @@ export default function PurchaseReceiptDetailModal({ isOpen, onClose, receipt, o
                     </div>
                     {receiptDetails?.updated_at && (
                       <div>
-                        <label className="text-sm font-medium text-gray-600">Last Updated</label>
+                        <label className="text-sm font-medium text-gray-600">{t('lastUpdatedLabel')}</label>
                         <p className="flex items-center gap-1">
                           <Calendar className="h-4 w-4" />
                           {formatDate(receiptDetails.updated_at)}
@@ -238,7 +240,7 @@ export default function PurchaseReceiptDetailModal({ isOpen, onClose, receipt, o
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Package className="h-5 w-5" />
-                    Items Breakdown
+                    {t('itemsBreakdown')}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -259,7 +261,7 @@ export default function PurchaseReceiptDetailModal({ isOpen, onClose, receipt, o
                           <TableCell>
                             <div>
                               <p className="font-medium">{item.product_name}</p>
-                              <p className="text-sm text-gray-600">Size: {item.size_name}</p>
+                              <p className="text-sm text-gray-600">{t('size')}: {item.size_name}</p>
                             </div>
                           </TableCell>
                           <TableCell className="font-mono text-sm">{item.sku}</TableCell>
@@ -287,7 +289,7 @@ export default function PurchaseReceiptDetailModal({ isOpen, onClose, receipt, o
                     <div className="text-center">
                       <div className="flex items-center justify-center gap-2 mb-2">
                         <Package className="h-5 w-5 text-blue-600" />
-                        <span className="text-sm font-medium text-gray-600">Total Items</span>
+                        <span className="text-sm font-medium text-gray-600">{t('totalItemsLabel')}</span>
                       </div>
                       <p className="text-2xl font-bold text-blue-600">
                         {receiptDetails?.items?.length || 0}
@@ -296,7 +298,7 @@ export default function PurchaseReceiptDetailModal({ isOpen, onClose, receipt, o
                     <div className="text-center">
                       <div className="flex items-center justify-center gap-2 mb-2">
                         <DollarSign className="h-5 w-5 text-green-600" />
-                        <span className="text-sm font-medium text-gray-600">Total Amount</span>
+                        <span className="text-sm font-medium text-gray-600">{t('receiptTotalAmountHeader')}</span>
                       </div>
                       <p className="text-2xl font-bold text-green-600">
                         {(receiptDetails?.total_amount || 0).toLocaleString('vi-VN')} ₫
@@ -305,10 +307,10 @@ export default function PurchaseReceiptDetailModal({ isOpen, onClose, receipt, o
                     <div className="text-center">
                       <div className="flex items-center justify-center gap-2 mb-2">
                         <CheckCircle className="h-5 w-5 text-purple-600" />
-                        <span className="text-sm font-medium text-gray-600">Status</span>
+                        <span className="text-sm font-medium text-gray-600">{t('receiptStatusHeader')}</span>
                       </div>
                       <Badge className={`${getStatusColor(receiptDetails?.status || 'pending')} text-lg px-3 py-1`}>
-                        {(receiptDetails?.status || 'pending').charAt(0).toUpperCase() + (receiptDetails?.status || 'pending').slice(1)}
+                        {receiptDetails?.status === 'pending' ? t('pending') : receiptDetails?.status === 'confirmed' ? t('confirmed') : t('cancelled')}
                       </Badge>
                     </div>
                   </div>
@@ -317,14 +319,14 @@ export default function PurchaseReceiptDetailModal({ isOpen, onClose, receipt, o
             </>
           ) : (
             <div className="text-center py-8">
-              <p className="text-gray-500">Failed to load receipt details</p>
+              <p className="text-gray-500">{t('failedToLoadReceiptDetails')}</p>
             </div>
           )}
 
           {/* Actions */}
           <div className="flex justify-end space-x-3 pt-4 border-t">
             <Button variant="outline" onClick={onClose}>
-              Close
+              {t('close')}
             </Button>
             {receiptDetails?.status === 'pending' && (
               <Button 
@@ -332,7 +334,7 @@ export default function PurchaseReceiptDetailModal({ isOpen, onClose, receipt, o
                 disabled={confirming}
                 className="bg-green-600 hover:bg-green-700"
               >
-                {confirming ? 'Confirming...' : 'Confirm Receipt'}
+                {confirming ? t('confirming') : t('confirmReceipt')}
               </Button>
             )}
           </div>

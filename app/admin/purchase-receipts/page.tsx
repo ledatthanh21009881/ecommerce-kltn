@@ -8,6 +8,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
 import { getAuthData } from '@/lib/admin-auth'
+import { useLanguage } from '@/contexts/LanguageContext'
 import PurchaseReceiptModal from '@/components/admin/PurchaseReceiptModal'
 import PurchaseReceiptDetailModal from '@/components/admin/PurchaseReceiptDetailModal'
 import ConfirmModal from '@/components/ui/confirm-modal'
@@ -25,6 +26,7 @@ interface PurchaseReceipt {
 }
 
 export default function AdminPurchaseReceiptsPage() {
+  const { t } = useLanguage()
   const [receipts, setReceipts] = useState<PurchaseReceipt[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
@@ -63,11 +65,11 @@ export default function AdminPurchaseReceiptsPage() {
         const receiptsList = data.data?.items || data.data || []
         setReceipts(receiptsList)
       } else {
-        toast.error(data.message || 'Failed to fetch purchase receipts')
+        toast.error(data.message || t('failedToFetchPurchaseReceipts'))
       }
     } catch (error) {
       console.error('Error fetching purchase receipts:', error)
-      toast.error('Error fetching purchase receipts')
+      toast.error(t('failedToFetchPurchaseReceipts'))
     } finally {
       setLoading(false)
     }
@@ -156,14 +158,14 @@ export default function AdminPurchaseReceiptsPage() {
       const data = await response.json()
       
       if (data.success) {
-        toast.success('Purchase receipt confirmed and stock updated')
+        toast.success(t('receiptConfirmedAndStockUpdated'))
         fetchReceipts()
       } else {
-        toast.error(data.message || 'Failed to confirm receipt')
+        toast.error(data.message || t('failedToConfirmReceipt'))
       }
     } catch (error) {
       console.error('Error confirming receipt:', error)
-      toast.error('Error confirming receipt')
+      toast.error(t('failedToConfirmReceipt'))
     }
   }
 
@@ -176,7 +178,7 @@ export default function AdminPurchaseReceiptsPage() {
   // Edit Receipt (chỉ pending)
   const handleEditClick = (receipt: PurchaseReceipt) => {
     if (receipt.status !== 'pending') {
-      toast.error('Can only edit pending receipts')
+      toast.error(t('canOnlyEditPendingReceipts'))
       return
     }
     setSelectedReceipt(receipt)
@@ -192,7 +194,7 @@ export default function AdminPurchaseReceiptsPage() {
   // Delete Receipt
   const handleDeleteClick = (receipt: PurchaseReceipt) => {
     if (receipt.status === 'confirmed') {
-      toast.error('Cannot delete confirmed receipts')
+      toast.error(t('cannotDeleteConfirmedReceipts'))
       return
     }
     setDeletingReceipt(receipt)
@@ -216,16 +218,16 @@ export default function AdminPurchaseReceiptsPage() {
       const data = await response.json()
       
       if (data.success) {
-        toast.success('Purchase receipt deleted')
+        toast.success(t('receiptDeleted'))
         fetchReceipts()
         setIsDeleteModalOpen(false)
         setDeletingReceipt(null)
       } else {
-        toast.error(data.message || 'Failed to delete receipt')
+        toast.error(data.message || t('failedToDeleteReceipt'))
       }
     } catch (error) {
       console.error('Error deleting receipt:', error)
-      toast.error('Error deleting receipt')
+      toast.error(t('failedToDeleteReceipt'))
     }
   }
 
@@ -234,8 +236,8 @@ export default function AdminPurchaseReceiptsPage() {
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-slate-900 mb-2">Purchase Receipt Management</h1>
-          <p className="text-slate-600">Track and manage purchase receipts from suppliers</p>
+          <h1 className="text-3xl font-bold text-slate-900 mb-2">{t('purchaseReceiptManagement')}</h1>
+          <p className="text-slate-600">{t('purchaseReceiptManagementDesc')}</p>
         </div>
 
         {/* Stats Cards */}
@@ -244,7 +246,7 @@ export default function AdminPurchaseReceiptsPage() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-slate-600">Total Receipts</p>
+                  <p className="text-sm font-medium text-slate-600">{t('receiptTotalReceipts')}</p>
                   <p className="text-2xl font-bold text-slate-900">{stats.total}</p>
                 </div>
                 <div className="h-12 w-12 bg-blue-100 rounded-lg flex items-center justify-center">
@@ -258,7 +260,7 @@ export default function AdminPurchaseReceiptsPage() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-slate-600">Pending</p>
+                  <p className="text-sm font-medium text-slate-600">{t('pending')}</p>
                   <p className="text-2xl font-bold text-slate-900">{stats.pending}</p>
                 </div>
                 <div className="h-12 w-12 bg-yellow-100 rounded-lg flex items-center justify-center">
@@ -272,7 +274,7 @@ export default function AdminPurchaseReceiptsPage() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-slate-600">Confirmed</p>
+                  <p className="text-sm font-medium text-slate-600">{t('confirmed')}</p>
                   <p className="text-2xl font-bold text-slate-900">{stats.confirmed}</p>
                 </div>
                 <div className="h-12 w-12 bg-green-100 rounded-lg flex items-center justify-center">
@@ -286,7 +288,7 @@ export default function AdminPurchaseReceiptsPage() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-slate-600">Cancelled</p>
+                  <p className="text-sm font-medium text-slate-600">{t('cancelled')}</p>
                   <p className="text-2xl font-bold text-slate-900">{stats.cancelled}</p>
                 </div>
                 <div className="h-12 w-12 bg-red-100 rounded-lg flex items-center justify-center">
@@ -300,7 +302,7 @@ export default function AdminPurchaseReceiptsPage() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-slate-600">Total Revenue</p>
+                  <p className="text-sm font-medium text-slate-600">{t('receiptTotalRevenue')}</p>
                   <p className="text-2xl font-bold text-slate-900">{formatCurrency(stats.total_amount)}</p>
                 </div>
                 <div className="h-12 w-12 bg-green-100 rounded-lg flex items-center justify-center">
@@ -320,7 +322,7 @@ export default function AdminPurchaseReceiptsPage() {
                 <div className="relative flex-1 max-w-md">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 h-4 w-4" />
                   <Input
-                    placeholder="Search by supplier name or receipt ID..."
+                    placeholder={t('searchReceiptsPlaceholder')}
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="pl-10"
@@ -333,10 +335,10 @@ export default function AdminPurchaseReceiptsPage() {
                   onChange={(e) => setStatusFilter(e.target.value)}
                   className="px-3 py-2 border border-slate-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
-                  <option value="">All Status</option>
-                  <option value="pending">Pending</option>
-                  <option value="confirmed">Confirmed</option>
-                  <option value="cancelled">Cancelled</option>
+                  <option value="">{t('allStatus')}</option>
+                  <option value="pending">{t('pending')}</option>
+                  <option value="confirmed">{t('confirmed')}</option>
+                  <option value="cancelled">{t('cancelled')}</option>
                 </select>
               </div>
 
@@ -348,14 +350,14 @@ export default function AdminPurchaseReceiptsPage() {
                   className="flex items-center gap-2"
                 >
                   <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-                  Refresh
+                  {t('refresh')}
                 </Button>
                 <Button
                   onClick={handleAddClick}
                   className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700"
                 >
                   <Plus className="h-4 w-4" />
-                  Create Receipt
+                  {t('createReceipt')}
                 </Button>
               </div>
             </div>
@@ -367,15 +369,15 @@ export default function AdminPurchaseReceiptsPage() {
           <Card className="bg-white shadow-sm">
             <CardContent className="p-12 text-center">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-              <p className="text-gray-600">Loading purchase receipts...</p>
+              <p className="text-gray-600">{t('loadingPurchaseReceipts')}</p>
             </CardContent>
           </Card>
         ) : filteredReceipts.length === 0 ? (
           <Card className="bg-white shadow-sm">
             <CardContent className="p-12 text-center">
               <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No purchase receipts found</h3>
-              <p className="text-gray-500">No purchase receipts match your search criteria.</p>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">{t('noPurchaseReceiptsFound')}</h3>
+              <p className="text-gray-500">{t('noPurchaseReceiptsMatch')}</p>
             </CardContent>
           </Card>
         ) : (
@@ -385,13 +387,13 @@ export default function AdminPurchaseReceiptsPage() {
                 <table className="w-full">
                   <thead className="bg-slate-50 border-b border-slate-200">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">Receipt ID</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">Supplier</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">Items</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">Total Amount</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">Status</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">Created</th>
-                      <th className="px-6 py-3 text-right text-xs font-medium text-slate-600 uppercase tracking-wider">Actions</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">{t('receiptIdHeader')}</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">{t('receiptSupplierHeader')}</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">{t('receiptItemsHeader')}</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">{t('receiptTotalAmountHeader')}</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">{t('receiptStatusHeader')}</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">{t('receiptCreatedHeader')}</th>
+                      <th className="px-6 py-3 text-right text-xs font-medium text-slate-600 uppercase tracking-wider">{t('actions')}</th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-slate-200">
@@ -407,7 +409,7 @@ export default function AdminPurchaseReceiptsPage() {
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
-                          {receipt.item_count} item(s)
+                          {t('itemsCountSuffix', { count: String(receipt.item_count) })}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">
                           {formatCurrency(receipt.total_amount)}
@@ -418,7 +420,7 @@ export default function AdminPurchaseReceiptsPage() {
                             className={`flex items-center gap-1 w-fit ${getStatusColor(receipt.status)}`}
                           >
                             {getStatusIcon(receipt.status)}
-                            {receipt.status.charAt(0).toUpperCase() + receipt.status.slice(1)}
+                            {receipt.status === 'pending' ? t('pending') : receipt.status === 'confirmed' ? t('confirmed') : t('cancelled')}
                           </Badge>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
@@ -495,9 +497,9 @@ export default function AdminPurchaseReceiptsPage() {
           isOpen={isDeleteModalOpen}
           onClose={() => setIsDeleteModalOpen(false)}
           onConfirm={handleDeleteConfirm}
-          title="Delete Purchase Receipt"
-          description={`Are you sure you want to delete receipt #${deletingReceipt?.receipt_id}? This action cannot be undone.`}
-          confirmText="Delete"
+          title={t('deletePurchaseReceipt')}
+          description={t('deletePurchaseReceiptConfirm', { id: String(deletingReceipt?.receipt_id ?? '') })}
+          confirmText={t('delete')}
         />
       </div>
     </div>

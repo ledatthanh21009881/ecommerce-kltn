@@ -8,6 +8,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
 import { getAuthData } from '@/lib/admin-auth'
+import { useLanguage } from '@/contexts/LanguageContext'
 import SupplierModal from '@/components/admin/SupplierModal'
 import SupplierDetailModal from '@/components/admin/SupplierDetailModal'
 import ConfirmModal from '@/components/ui/confirm-modal'
@@ -25,6 +26,7 @@ interface Supplier {
 }
 
 export default function AdminSuppliersPage() {
+  const { t } = useLanguage()
   const [suppliers, setSuppliers] = useState<Supplier[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
@@ -61,11 +63,11 @@ export default function AdminSuppliersPage() {
         const suppliersList = data.data?.items || data.data || []
         setSuppliers(suppliersList)
       } else {
-        toast.error(data.message || 'Failed to fetch suppliers')
+        toast.error(data.message || t('failedToFetchSuppliers'))
       }
     } catch (error) {
       console.error('Error fetching suppliers:', error)
-      toast.error('Error fetching suppliers')
+      toast.error(t('errorFetchingSuppliers'))
     } finally {
       setLoading(false)
     }
@@ -151,15 +153,14 @@ export default function AdminSuppliersPage() {
       const data = await response.json()
       
       if (data.success) {
-        toast.success('Supplier deleted successfully')
+        toast.success(t('supplierDeletedSuccessfully'))
         fetchSuppliers()
       } else {
-        // Backend trả về lỗi nếu supplier có receipts
-        toast.error(data.message || 'Failed to delete supplier')
+        toast.error(data.message || t('failedToDeleteSupplier'))
       }
     } catch (error) {
       console.error('Error deleting supplier:', error)
-      toast.error('Error deleting supplier')
+      toast.error(t('failedToDeleteSupplier'))
     } finally {
       setIsDeleteModalOpen(false)
       setDeletingSupplier(null)
@@ -171,8 +172,8 @@ export default function AdminSuppliersPage() {
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-slate-900 mb-2">Supplier Management</h1>
-          <p className="text-slate-600">Manage your product suppliers and vendors</p>
+          <h1 className="text-3xl font-bold text-slate-900 mb-2">{t('supplierManagement')}</h1>
+          <p className="text-slate-600">{t('suppliersPageDesc')}</p>
         </div>
 
         {/* Stats Cards */}
@@ -181,7 +182,7 @@ export default function AdminSuppliersPage() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-slate-600">Total Suppliers</p>
+                  <p className="text-sm font-medium text-slate-600">{t('totalSuppliers')}</p>
                   <p className="text-2xl font-bold text-slate-900">{stats.total}</p>
                 </div>
                 <div className="h-12 w-12 bg-blue-100 rounded-lg flex items-center justify-center">
@@ -195,7 +196,7 @@ export default function AdminSuppliersPage() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-slate-600">Active</p>
+                  <p className="text-sm font-medium text-slate-600">{t('supplierStatusActive')}</p>
                   <p className="text-2xl font-bold text-slate-900">{stats.active}</p>
                 </div>
                 <div className="h-12 w-12 bg-green-100 rounded-lg flex items-center justify-center">
@@ -209,7 +210,7 @@ export default function AdminSuppliersPage() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-slate-600">Inactive</p>
+                  <p className="text-sm font-medium text-slate-600">{t('supplierStatusInactive')}</p>
                   <p className="text-2xl font-bold text-slate-900">{stats.inactive}</p>
                 </div>
                 <div className="h-12 w-12 bg-gray-100 rounded-lg flex items-center justify-center">
@@ -223,7 +224,7 @@ export default function AdminSuppliersPage() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-slate-600">Suspended</p>
+                  <p className="text-sm font-medium text-slate-600">{t('supplierStatusSuspended')}</p>
                   <p className="text-2xl font-bold text-slate-900">{stats.suspended}</p>
                 </div>
                 <div className="h-12 w-12 bg-red-100 rounded-lg flex items-center justify-center">
@@ -243,7 +244,7 @@ export default function AdminSuppliersPage() {
                 <div className="relative flex-1 max-w-md">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 h-4 w-4" />
                   <Input
-                    placeholder="Search suppliers by name, contact person or email..."
+                    placeholder={t('searchSuppliersPlaceholder')}
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="pl-10"
@@ -256,10 +257,10 @@ export default function AdminSuppliersPage() {
                   onChange={(e) => setStatusFilter(e.target.value)}
                   className="px-3 py-2 border border-slate-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
-                  <option value="">All Status</option>
-                  <option value="active">Active</option>
-                  <option value="inactive">Inactive</option>
-                  <option value="suspended">Suspended</option>
+                  <option value="">{t('allStatus')}</option>
+                  <option value="active">{t('supplierStatusActive')}</option>
+                  <option value="inactive">{t('supplierStatusInactive')}</option>
+                  <option value="suspended">{t('supplierStatusSuspended')}</option>
                 </select>
               </div>
 
@@ -271,14 +272,14 @@ export default function AdminSuppliersPage() {
                   className="flex items-center gap-2"
                 >
                   <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-                  Refresh
+                  {t('refresh')}
                 </Button>
                 <Button
                   onClick={handleAddClick}
                   className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700"
                 >
                   <Plus className="h-4 w-4" />
-                  Add Supplier
+                  {t('addSupplier')}
                 </Button>
               </div>
             </div>
@@ -304,8 +305,8 @@ export default function AdminSuppliersPage() {
           <Card className="bg-white shadow-sm">
             <CardContent className="p-12 text-center">
               <Building2 className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No suppliers found</h3>
-              <p className="text-gray-500">No suppliers match your search criteria.</p>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">{t('noSuppliersFound')}</h3>
+              <p className="text-gray-500">{t('noSuppliersMatch')}</p>
             </CardContent>
           </Card>
         ) : (
@@ -321,14 +322,14 @@ export default function AdminSuppliersPage() {
                           {supplier.supplier_name}
                         </h3>
                         {supplier.contact_name && (
-                          <p className="text-sm text-gray-600">Contact: {supplier.contact_name}</p>
+                          <p className="text-sm text-gray-600">{t('contactLabel')}: {supplier.contact_name}</p>
                         )}
                       </div>
                       <Badge 
                         variant="outline" 
                         className={`flex items-center gap-1 ${getStatusColor(supplier.status)}`}
                       >
-                        {supplier.status.charAt(0).toUpperCase() + supplier.status.slice(1)}
+                        {supplier.status === 'active' ? t('supplierStatusActive') : supplier.status === 'inactive' ? t('supplierStatusInactive') : t('supplierStatusSuspended')}
                       </Badge>
                     </div>
 
@@ -358,13 +359,13 @@ export default function AdminSuppliersPage() {
                     <div className="flex items-center justify-between text-sm">
                       <div className="flex items-center gap-2 text-gray-600">
                         <Building2 className="h-4 w-4" />
-                        <span>ID: {supplier.supplier_id}</span>
+                        <span>{t('idLabel')}: {supplier.supplier_id}</span>
                       </div>
                     </div>
 
                     {/* Timestamps */}
                     <div className="text-xs text-gray-400">
-                      Added: {formatDate(supplier.created_at)}
+                      {t('addedLabel')}: {formatDate(supplier.created_at)}
                     </div>
 
                     {/* Actions */}
@@ -376,7 +377,7 @@ export default function AdminSuppliersPage() {
                         className="flex-1"
                       >
                         <Edit className="h-4 w-4 mr-1" />
-                        Edit
+                        {t('edit')}
                       </Button>
                       <Button
                         variant="outline"
@@ -385,7 +386,7 @@ export default function AdminSuppliersPage() {
                         className="flex-1"
                       >
                         <Eye className="h-4 w-4 mr-1" />
-                        View
+                        {t('view')}
                       </Button>
                       <Button
                         variant="outline"
@@ -424,9 +425,9 @@ export default function AdminSuppliersPage() {
           isOpen={isDeleteModalOpen}
           onClose={() => setIsDeleteModalOpen(false)}
           onConfirm={handleDeleteConfirm}
-          title="Delete Supplier"
-          description={`Are you sure you want to delete "${deletingSupplier?.supplier_name}"? This action cannot be undone.`}
-          confirmText="Delete"
+          title={t('deleteSupplier')}
+          description={t('deleteSupplierConfirm', { name: deletingSupplier?.supplier_name || '' })}
+          confirmText={t('delete')}
         />
       </div>
     </div>

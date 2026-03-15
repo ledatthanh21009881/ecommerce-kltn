@@ -6,6 +6,11 @@ import Link from "next/link"
 import { Minus, Plus, ChevronDown } from "lucide-react"
 import { getProductById, type Product } from "@/lib/products"
 import { toast } from "sonner"
+import {
+  Sheet,
+  SheetContent,
+  SheetTitle,
+} from "@/components/ui/sheet"
 
 // Helper function to format price
 const formatPrice = (price: number): string => {
@@ -84,6 +89,15 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
   const [selectedSize, setSelectedSize] = useState<string>("")
   const [quantity, setQuantity] = useState(1)
   const [cartItems, setCartItems] = useState<any[]>([])
+  const [cartSidebarOpen, setCartSidebarOpen] = useState(false)
+  const [cartSidebarItem, setCartSidebarItem] = useState<{
+    productName: string
+    imageUrl: string
+    quantity: number
+    unitPrice: number
+    total: number
+    size?: string
+  } | null>(null)
 
   // Unwrap params
   const resolvedParams = use(params)
@@ -426,8 +440,17 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
               })()}
             </div>
 
-            {/* Add to Cart Button */}
+            {/* Add to Cart / View Cart Button */}
             <div className="relative overflow-hidden border border-black">
+              {getCurrentCartQuantity() > 0 ? (
+                <Link
+                  href="/cart"
+                  className="relative flex h-10 w-full items-center justify-center text-sm font-normal uppercase tracking-wider transition-all duration-300 ease-in-out group bg-black text-white hover:bg-white hover:text-black"
+                >
+                  <span className="relative z-10 font-sans font-bold uppercase tracking-wider">XEM GIỎ HÀNG</span>
+                  <div className="absolute inset-0 bg-white transform translate-x-full transition-transform duration-300 ease-in-out group-hover:translate-x-0" />
+                </Link>
+              ) : (
               <button 
                 className={`relative h-10 w-full text-sm font-normal uppercase tracking-wider transition-all duration-300 ease-in-out group ${
                   isVariantOutOfStock() || availableSizes.length === 0 || !selectedSize || !canAddToCart()
@@ -511,12 +534,17 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
                     const result = await response.json()
 
                     if (result.success) {
-                      // Show toast notification (like image 2)
-                      toast.success(`Đã thêm ${quantity} ${product.product_name} (${selectedSize}) vào giỏ hàng`, {
-                        icon: '✓',
-                        duration: 3000,
+                      const unitPrice = parseFloat(product.list_price || '0')
+                      const total = unitPrice * quantity
+                      setCartSidebarItem({
+                        productName: product.product_name,
+                        imageUrl: productImages[0],
+                        quantity,
+                        unitPrice,
+                        total,
+                        size: selectedSize,
                       })
-                      
+                      setCartSidebarOpen(true)
                       // Trigger cart update event
                       window.dispatchEvent(new Event('cartUpdated'))
                     } else {
@@ -537,10 +565,11 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
                 }}
               >
                 <span className="relative z-10 font-sans font-bold uppercase tracking-wider">
-                  {availableSizes.length === 0 ? "HẾT HÀNG" : (isVariantOutOfStock() ? "Hết Hàng" : "THÊM VÀO GIỎ")}
+                  {availableSizes.length === 0 ? "HẾT HÀNG" : isVariantOutOfStock() ? "Hết Hàng" : "THÊM VÀO GIỎ"}
                 </span>
                 <div className="absolute inset-0 bg-white transform translate-x-full transition-transform duration-300 ease-in-out group-hover:translate-x-0"></div>
               </button>
+              )}
             </div>
 
             {/* Product Details */}
@@ -578,6 +607,66 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
         </div>
         </div>
       </div>
+
+      {/* Cart sidebar (slide from right, like hình 2) */}
+      <Sheet open={cartSidebarOpen} onOpenChange={setCartSidebarOpen}>
+        <SheetContent side="right" className="w-full sm:max-w-md flex flex-col">
+          <SheetTitle className="sr-only">Giỏ hàng</SheetTitle>
+          {cartSidebarItem && (
+            <div className="flex flex-col flex-1 pt-8">
+              <h2 className="text-sm font-bold uppercase tracking-wider text-gray-900 mb-4">
+                Giỏ hàng
+              </h2>
+              <div className="flex gap-4">
+                <div className="relative h-24 w-24 shrink-0 overflow-hidden bg-gray-100">
+                  <Image
+                    src={cartSidebarItem.imageUrl}
+                    alt={cartSidebarItem.productName}
+                    fill
+                    className="object-cover"
+                  />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-sans text-sm font-bold uppercase tracking-wider text-gray-900">
+                    {cartSidebarItem.productName}
+                    {cartSidebarItem.size && ` (${cartSidebarItem.size})`}
+                  </p>
+                  <div className="mt-2 flex items-center gap-3">
+                    <span className="inline-flex h-7 min-w-[28px] items-center justify-center rounded border border-gray-200 bg-gray-50 px-2 text-sm text-gray-700">
+                      {cartSidebarItem.quantity}
+                    </span>
+                    <span className="text-sm text-gray-600">
+                      {formatPrice(cartSidebarItem.unitPrice)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <div className="mt-4 flex items-center justify-between border-t border-gray-100 pt-4">
+                <span className="text-sm text-gray-500">TỔNG CỘNG:</span>
+                <span className="text-base font-semibold text-red-600">
+                  {formatPrice(cartSidebarItem.total)}
+                </span>
+              </div>
+              <div className="mt-6 grid grid-cols-2 gap-3">
+                <Link
+                  href="/cart"
+                  className="flex h-11 items-center justify-center rounded border border-black bg-black text-sm font-medium uppercase tracking-wider text-white transition-colors hover:bg-white hover:text-black"
+                  onClick={() => setCartSidebarOpen(false)}
+                >
+                  Xem giỏ hàng
+                </Link>
+                <Link
+                  href="/checkout"
+                  className="flex h-11 items-center justify-center rounded border border-black bg-black text-sm font-medium uppercase tracking-wider text-white transition-colors hover:bg-white hover:text-black"
+                  onClick={() => setCartSidebarOpen(false)}
+                >
+                  Thanh toán
+                </Link>
+              </div>
+            </div>
+          )}
+        </SheetContent>
+      </Sheet>
     </main>
   )
 }

@@ -13,6 +13,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Product } from '@/lib/types'
+import { useLanguage } from '@/contexts/LanguageContext'
 
 interface ProductGridProps {
   products: Product[]
@@ -22,7 +23,15 @@ interface ProductGridProps {
   onView: (product: Product) => void
 }
 
+const STATUS_KEYS: Record<string, string> = {
+  active: 'productStatusActive',
+  inactive: 'productStatusInactive',
+  draft: 'productStatusDraft',
+  out_of_stock: 'productStatusOutOfStock',
+}
+
 export default function ProductGrid({ products, loading, onEdit, onDelete, onView }: ProductGridProps) {
+  const { t } = useLanguage()
   const [hoveredProduct, setHoveredProduct] = useState<number | null>(null)
 
   const formatPrice = (price: string | number) => {
@@ -72,8 +81,8 @@ export default function ProductGrid({ products, loading, onEdit, onDelete, onVie
       <Card className="bg-white shadow-sm">
         <CardContent className="p-12 text-center">
           <Package className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">No products found</h3>
-          <p className="text-gray-500">Get started by adding your first product.</p>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">{t('noProductsFound')}</h3>
+          <p className="text-gray-500">{t('noProductsGetStarted')}</p>
         </CardContent>
       </Card>
     )
@@ -141,7 +150,7 @@ export default function ProductGrid({ products, loading, onEdit, onDelete, onVie
                   variant="outline" 
                   className={`text-xs ${getStatusColor(product.status)}`}
                 >
-                  {product.status}
+                  {STATUS_KEYS[product.status] ? t(STATUS_KEYS[product.status] as any) : product.status}
                 </Badge>
               </div>
 
@@ -150,7 +159,7 @@ export default function ProductGrid({ products, loading, onEdit, onDelete, onVie
                 <div className="absolute top-2 right-2">
                   <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
                     <Star className="h-3 w-3 mr-1" />
-                    Featured
+                    {t('productFeatured')}
                   </Badge>
                 </div>
               )}
@@ -170,18 +179,18 @@ export default function ProductGrid({ products, loading, onEdit, onDelete, onVie
                   <DropdownMenuContent align="end">
                     <DropdownMenuItem onClick={() => onView(product)}>
                       <Eye className="h-4 w-4 mr-2" />
-                      View Details
+                      {t('viewDetails')}
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => onEdit(product)}>
                       <Edit className="h-4 w-4 mr-2" />
-                      Edit
+                      {t('edit')}
                     </DropdownMenuItem>
                     <DropdownMenuItem 
                       onClick={() => onDelete(product.product_id)}
                       className="text-red-600"
                     >
                       <Trash2 className="h-4 w-4 mr-2" />
-                      Delete
+                      {t('delete')}
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -223,9 +232,9 @@ export default function ProductGrid({ products, loading, onEdit, onDelete, onVie
 
               {/* Stock & Variants */}
               <div className="flex items-center justify-between text-xs text-gray-500">
-                <span>Stock: {product.stock || 0}</span>
+                <span>{t('productStockLabel')}: {product.stock || 0}</span>
                 {product.variant_count && product.variant_count > 0 && (
-                  <span>{product.variant_count} variants</span>
+                  <span>{t('productVariantsCount', { count: String(product.variant_count) })}</span>
                 )}
               </div>
 
