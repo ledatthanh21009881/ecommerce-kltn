@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { Suspense, useState, useEffect, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { CheckCircle2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -19,7 +19,7 @@ interface OrderData {
   }>
 }
 
-export default function PaymentSuccessPage() {
+function PaymentSuccessContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const orderId = searchParams.get('order_id')
@@ -34,11 +34,10 @@ export default function PaymentSuccessPage() {
     }
   }, [orderId])
 
-  // Xóa giỏ hàng sau khi thanh toán thành công
   const clearCart = async () => {
     if (cartCleared.current) return
     cartCleared.current = true
-    
+
     try {
       const token = await tokenStore.getValidToken()
       if (!token) return
@@ -46,11 +45,10 @@ export default function PaymentSuccessPage() {
       await fetch('/api/backend/v1/cart/clear', {
         method: 'DELETE',
         headers: {
-          'Authorization': `Bearer ${token}`
-        }
+          Authorization: `Bearer ${token}`,
+        },
       })
-      
-      // Dispatch event để cập nhật cart icon trên header
+
       window.dispatchEvent(new CustomEvent('cart-updated'))
       console.log('Cart cleared successfully')
     } catch (error) {
@@ -68,11 +66,11 @@ export default function PaymentSuccessPage() {
         return
       }
       const { token } = getAuthData()
-      
+
       const response = await fetch(`/api/backend/v1/orders/${orderId}`, {
         headers: {
-          'Authorization': `Bearer ${token}`
-        }
+          Authorization: `Bearer ${token}`,
+        },
       })
 
       const data = await response.json()
@@ -139,9 +137,7 @@ export default function PaymentSuccessPage() {
           )}
 
           <div className="flex gap-4 justify-center pt-4">
-            <Button onClick={() => router.push(`/account`)}>
-              Xem đơn hàng của tôi
-            </Button>
+            <Button onClick={() => router.push(`/account`)}>Xem đơn hàng của tôi</Button>
             <Button variant="outline" onClick={() => router.push('/')}>
               Tiếp tục mua sắm
             </Button>
@@ -152,3 +148,16 @@ export default function PaymentSuccessPage() {
   )
 }
 
+export default function PaymentSuccessPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="container mx-auto px-4 py-12">
+          <div className="text-center">Đang tải...</div>
+        </div>
+      }
+    >
+      <PaymentSuccessContent />
+    </Suspense>
+  )
+}
