@@ -92,8 +92,10 @@ export async function getProducts(filters: ProductsFilters = {}): Promise<Produc
       }
     })
     
-    // Use the correct endpoint based on Postman test
-    const endpoint = `/api/products${queryParams.toString() ? `?${queryParams.toString()}` : ''}`
+    // IMPORTANT:
+    // Use Next.js proxy route so it forwards to the real PHP backend on VPS.
+    // Calling `/api/products` is rewritten to `localhost:8000` and fails on production.
+    const endpoint = `/api/backend/v1/products${queryParams.toString() ? `?${queryParams.toString()}` : ''}`
     
     // Use fetch directly since this is a public endpoint
     const response = await fetch(endpoint)
@@ -176,7 +178,8 @@ export interface CategoriesResponse {
 // Get all categories
 export async function getCategories(): Promise<CategoriesResponse> {
   try {
-    const response = await fetch('/api/v1/categories')
+    // Use Next.js proxy route to hit the real backend (not localhost rewrite)
+    const response = await fetch('/api/backend/v1/categories')
     
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`)
