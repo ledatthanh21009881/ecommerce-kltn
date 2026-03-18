@@ -1,11 +1,11 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { Suspense, useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { toast } from 'sonner'
 
-export default function ResetPasswordPage() {
+function ResetPasswordForm() {
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [isLoading, setIsLoading] = useState(false)
@@ -18,7 +18,6 @@ export default function ResetPasswordPage() {
     const tokenFromUrl = searchParams.get('token')
     if (tokenFromUrl) {
       setToken(tokenFromUrl)
-      // Validate token
       validateToken(tokenFromUrl)
     } else {
       toast.error('Invalid reset link')
@@ -53,7 +52,7 @@ export default function ResetPasswordPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     if (!password || !confirmPassword) {
       toast.error('Please fill in all fields')
       return
@@ -80,7 +79,7 @@ export default function ResetPasswordPage() {
         body: JSON.stringify({
           token: token,
           password: password,
-          confirm_password: confirmPassword
+          confirm_password: confirmPassword,
         }),
       })
 
@@ -185,10 +184,7 @@ export default function ResetPasswordPage() {
           </div>
 
           <div className="text-center">
-            <Link 
-              href="/login" 
-              className="text-indigo-600 hover:text-indigo-500 text-sm"
-            >
+            <Link href="/login" className="text-indigo-600 hover:text-indigo-500 text-sm">
               Back to Login
             </Link>
           </div>
@@ -198,3 +194,19 @@ export default function ResetPasswordPage() {
   )
 }
 
+export default function ResetPasswordPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4">
+          <div className="text-center">
+            <h2 className="text-xl font-semibold text-gray-900">Loading...</h2>
+            <p className="mt-2 text-sm text-gray-600">Please wait.</p>
+          </div>
+        </div>
+      }
+    >
+      <ResetPasswordForm />
+    </Suspense>
+  )
+}
