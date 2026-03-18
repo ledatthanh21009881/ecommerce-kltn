@@ -1,5 +1,6 @@
 // Products API Service
 import { apiClient } from './api-client'
+import { getBackendBaseUrl } from './backend-base-url'
 
 export interface Product {
   product_id: number
@@ -130,7 +131,8 @@ export async function searchProducts(query: string, limit: number = 20): Promise
 // Get single product by ID
 export async function getProductById(productId: number): Promise<Product> {
   try {
-    const response = await fetch(`/api/products/${productId}`)
+    // Always call through Next proxy route so it works on VPS.
+    const response = await fetch(`/api/backend/v1/products/${productId}`)
     
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`)
