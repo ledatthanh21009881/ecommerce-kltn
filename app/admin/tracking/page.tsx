@@ -363,11 +363,20 @@ export default function OrderTrackingPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-4 2xl:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-[auto_1fr_1fr_1fr_1fr_1fr_1fr_1fr] gap-4">
+        <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg order-first w-fit max-w-full col-span-2 md:col-span-1 lg:col-span-1">
+          <CardContent className="p-4 flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-2xl font-bold text-emerald-600 whitespace-nowrap">{formatCurrency(stats.total_revenue_today)}</p>
+              <p className="text-sm text-gray-600">Revenue</p>
+            </div>
+            <DollarSign className="h-8 w-8 text-green-600 shrink-0" />
+          </CardContent>
+        </Card>
         <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg">
           <CardContent className="p-4">
             <div className="flex items-center space-x-2">
-              <div className="h-10 w-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center">
+              <div className="h-10 w-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center shrink-0">
                 <Package className="h-5 w-5 text-white" />
               </div>
               <div>
@@ -377,7 +386,6 @@ export default function OrderTrackingPage() {
             </div>
           </CardContent>
         </Card>
-
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center space-x-2">
@@ -389,7 +397,6 @@ export default function OrderTrackingPage() {
             </div>
           </CardContent>
         </Card>
-
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center space-x-2">
@@ -401,7 +408,6 @@ export default function OrderTrackingPage() {
             </div>
           </CardContent>
         </Card>
-
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center space-x-2">
@@ -413,7 +419,6 @@ export default function OrderTrackingPage() {
             </div>
           </CardContent>
         </Card>
-
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center space-x-2">
@@ -425,7 +430,6 @@ export default function OrderTrackingPage() {
             </div>
           </CardContent>
         </Card>
-
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center space-x-2">
@@ -437,19 +441,6 @@ export default function OrderTrackingPage() {
             </div>
           </CardContent>
         </Card>
-
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-2">
-              <DollarSign className="h-5 w-5 text-green-600" />
-              <div>
-                <p className="text-2xl font-bold">{formatCurrency(stats.total_revenue_today)}</p>
-                <p className="text-sm text-gray-600">Revenue</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center space-x-2">

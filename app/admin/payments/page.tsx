@@ -1,13 +1,15 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Search, RefreshCw, CreditCard, DollarSign, CheckCircle, XCircle, Clock, AlertCircle, LayoutList, LayoutGrid, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Search, RefreshCw, CreditCard, DollarSign, CheckCircle, XCircle, Clock, AlertCircle, LayoutList, LayoutGrid, ChevronLeft, ChevronRight, Eye } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { Label } from '@/components/ui/label'
+import { Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle } from '@/components/ui/dialog'
 import { toast } from 'sonner'
-import { getAuthData } from '@/lib/admin-auth'
+import { getAuthData, checkAndRefreshAuth } from '@/lib/admin-auth'
 import { useLanguage } from '@/contexts/LanguageContext'
 
 interface Payment {
@@ -20,7 +22,33 @@ interface Payment {
   transaction_id?: string
   created_at: string
   processed_at?: string
+  expires_at?: string | null
   gateway_response?: string
+}
+
+/** True if payment can be approved (pending and not expired). */
+function canApprove(payment: Payment): boolean {
+  if (payment.status !== 'pending') return false
+  if (!payment.expires_at) return true
+  return new Date(payment.expires_at).getTime() > Date.now()
+}
+
+/** Normalize API row to Payment so backend can use different key names */
+function normalizePayment(row: Record<string, unknown>): Payment {
+  const r = row as Record<string, unknown>
+  return {
+    payment_id: Number(r.payment_id ?? 0),
+    order_id: Number(r.order_id ?? 0),
+    customer_name: String(r.customer_name ?? r.customerName ?? ''),
+    amount: Number(r.amount ?? r.paid_amount ?? 0),
+    payment_method: String(r.payment_method ?? r.method ?? 'unknown'),
+    status: String(r.status ?? 'pending'),
+    transaction_id: r.transaction_id != null ? String(r.transaction_id) : undefined,
+    created_at: String(r.created_at ?? ''),
+    processed_at: (r.processed_at ?? r.confirmed_at) != null ? String(r.processed_at ?? r.confirmed_at) : undefined,
+    expires_at: (r.expires_at ?? null) != null ? String(r.expires_at) : undefined,
+    gateway_response: r.gateway_response != null ? String(r.gateway_response) : undefined,
+  }
 }
 
 export default function AdminPaymentsPage() {
@@ -36,6 +64,11 @@ export default function AdminPaymentsPage() {
     if (typeof window !== 'undefined') return (localStorage.getItem('admin_payments_view') as 'list' | 'grid') || 'list'
     return 'list'
   })
+  const [isProcessModalOpen, setIsProcessModalOpen] = useState(false)
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false)
+  const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null)
+  const [processForm, setProcessForm] = useState({ order_id: '', method: 'cod', amount: '' })
+  const [submitting, setSubmitting] = useState(false)
 
   const setViewModeAndStore = (mode: 'list' | 'grid') => {
     setViewMode(mode)
@@ -46,13 +79,23 @@ export default function AdminPaymentsPage() {
   const fetchPayments = async () => {
     try {
       setLoading(true)
-      const response = await fetch('/api/backend/v1/payments')
+      const ok = await checkAndRefreshAuth()
+      if (!ok) {
+        if (typeof window !== 'undefined') window.location.href = '/admin-login'
+        return
+      }
+      const { token } = getAuthData()
+      const response = await fetch('/api/backend/v1/payments', {
+        headers: token ? { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' } : {},
+      })
       const data = await response.json()
       
       if (data.success) {
-        setPayments(data.data || [])
+        const raw = data.data
+        const list = Array.isArray(raw) ? raw : []
+        setPayments(list.map((row: Record<string, unknown>) => normalizePayment(row)))
       } else {
-        toast.error('Failed to fetch payments')
+        toast.error(t('failedToFetchPayments'))
       }
     } catch (error) {
       console.error('Error fetching payments:', error)
@@ -65,6 +108,80 @@ export default function AdminPaymentsPage() {
   useEffect(() => {
     fetchPayments()
   }, [])
+
+  const handleProcessSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    const orderId = parseInt(processForm.order_id, 10)
+    const amount = parseFloat(processForm.amount)
+    if (!orderId || orderId < 1 || !amount || amount <= 0) {
+      toast.error(t('pleaseEnterValidOrderIdAndAmount'))
+      return
+    }
+    try {
+      setSubmitting(true)
+      const ok = await checkAndRefreshAuth()
+      if (!ok) {
+        if (typeof window !== 'undefined') window.location.href = '/admin-login'
+        return
+      }
+      const { token } = getAuthData()
+      const res = await fetch('/api/backend/v1/payments/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify({ order_id: orderId, method: processForm.method, amount }),
+      })
+      const data = await res.json()
+      if (data.success) {
+        toast.success(t('paymentCreatedSuccessfully'))
+        setIsProcessModalOpen(false)
+        setProcessForm({ order_id: '', method: 'cod', amount: '' })
+        fetchPayments()
+      } else {
+        toast.error(data.message || t('failedToCreatePayment'))
+      }
+    } catch (err) {
+      console.error(err)
+      toast.error(t('failedToCreatePayment'))
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const handleApprove = async (payment: Payment) => {
+    try {
+      const ok = await checkAndRefreshAuth()
+      if (!ok) {
+        if (typeof window !== 'undefined') window.location.href = '/admin-login'
+        return
+      }
+      const { token } = getAuthData()
+      const res = await fetch(`/api/backend/v1/payments/${payment.payment_id}/approve`, {
+        method: 'POST',
+        headers: token
+          ? { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }
+          : { 'Content-Type': 'application/json' },
+      })
+      const data = await res.json()
+      if (data.success) {
+        toast.success(t('paymentApprovedSuccessfully'))
+        fetchPayments()
+      } else {
+        const errMsg =
+          (data.errors && typeof data.errors === 'object' && (data.errors.payment ?? Object.values(data.errors)[0])) ||
+          data.message ||
+          t('failedToApprovePayment')
+        toast.error(typeof errMsg === 'string' ? errMsg : t('failedToApprovePayment'))
+      }
+    } catch (err) {
+      console.error(err)
+      toast.error(t('failedToApprovePayment'))
+    }
+  }
+
+  const handleViewDetails = (payment: Payment) => {
+    setSelectedPayment(payment)
+    setIsDetailModalOpen(true)
+  }
 
   // Filter payments
   const filteredPayments = payments.filter(payment => {
@@ -165,13 +282,25 @@ export default function AdminPaymentsPage() {
     })
   }
 
+  const getStatusLabel = (status: string) => {
+    const map: Record<string, string> = {
+      pending: t('pending'),
+      completed: t('completed'),
+      failed: t('failedStatus'),
+      processing: t('processingStatus'),
+      refunded: t('refunded'),
+      confirmed: t('confirmed'),
+    }
+    return map[status] ?? status
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 p-6">
       <div className="max-w-7xl mx-auto">
         <div className="mb-8 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-slate-800 via-blue-800 to-indigo-800 bg-clip-text text-transparent mb-2">Payment Management</h1>
-            <p className="text-slate-600">Track and manage payment transactions</p>
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-slate-800 via-blue-800 to-indigo-800 bg-clip-text text-transparent mb-2">{t('paymentManagement')}</h1>
+            <p className="text-slate-600">{t('paymentManagementDesc')}</p>
           </div>
           <div className="flex items-center gap-2 shrink-0 flex-nowrap">
             <span className="text-sm font-medium text-slate-600 mr-1 hidden sm:inline">{t('view')}:</span>
@@ -185,24 +314,36 @@ export default function AdminPaymentsPage() {
             </div>
             <Button variant="outline" onClick={fetchPayments} disabled={loading} className="flex items-center gap-2 bg-white/80 backdrop-blur-sm border-slate-200 hover:bg-white">
               <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-              Refresh
+              {t('refresh')}
             </Button>
-            <Button className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white">
+            <Button onClick={() => setIsProcessModalOpen(true)} className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white">
               <CreditCard className="h-4 w-4" />
-              Process Payment
+              {t('processPayment')}
             </Button>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-[auto_1fr_1fr_1fr_1fr] gap-6 mb-8">
+          {/* Total Revenue: first, width auto theo số tiền */}
+          <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300 order-first w-fit max-w-full">
+            <CardContent className="p-6 flex items-center justify-between gap-4">
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-slate-600 mb-1">{t('totalRevenue')}</p>
+                <p className="text-2xl sm:text-3xl font-bold text-emerald-600 whitespace-nowrap">{formatCurrency(stats.total_amount)}</p>
+              </div>
+              <div className="h-12 w-12 shrink-0 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl flex items-center justify-center shadow-lg">
+                <DollarSign className="h-6 w-6 text-white" />
+              </div>
+            </CardContent>
+          </Card>
           <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-slate-600 mb-1">Total Payments</p>
+                  <p className="text-sm font-medium text-slate-600 mb-1">{t('totalPayments')}</p>
                   <p className="text-3xl font-bold text-slate-900">{stats.total}</p>
                 </div>
-                <div className="h-12 w-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg">
+                <div className="h-12 w-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg shrink-0">
                   <CreditCard className="h-6 w-6 text-white" />
                 </div>
               </div>
@@ -212,10 +353,10 @@ export default function AdminPaymentsPage() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-slate-600 mb-1">Completed</p>
+                  <p className="text-sm font-medium text-slate-600 mb-1">{t('completed')}</p>
                   <p className="text-3xl font-bold text-slate-900">{stats.completed}</p>
                 </div>
-                <div className="h-12 w-12 bg-gradient-to-br from-emerald-500 to-green-600 rounded-xl flex items-center justify-center shadow-lg">
+                <div className="h-12 w-12 bg-gradient-to-br from-emerald-500 to-green-600 rounded-xl flex items-center justify-center shadow-lg shrink-0">
                   <CheckCircle className="h-6 w-6 text-white" />
                 </div>
               </div>
@@ -225,10 +366,10 @@ export default function AdminPaymentsPage() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-slate-600 mb-1">Pending</p>
+                  <p className="text-sm font-medium text-slate-600 mb-1">{t('pending')}</p>
                   <p className="text-3xl font-bold text-slate-900">{stats.pending}</p>
                 </div>
-                <div className="h-12 w-12 bg-gradient-to-br from-amber-500 to-yellow-500 rounded-xl flex items-center justify-center shadow-lg">
+                <div className="h-12 w-12 bg-gradient-to-br from-amber-500 to-yellow-500 rounded-xl flex items-center justify-center shadow-lg shrink-0">
                   <Clock className="h-6 w-6 text-white" />
                 </div>
               </div>
@@ -238,24 +379,11 @@ export default function AdminPaymentsPage() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-slate-600 mb-1">Failed</p>
+                  <p className="text-sm font-medium text-slate-600 mb-1">{t('failedStatus')}</p>
                   <p className="text-3xl font-bold text-slate-900">{stats.failed}</p>
                 </div>
-                <div className="h-12 w-12 bg-gradient-to-br from-red-500 to-red-600 rounded-xl flex items-center justify-center shadow-lg">
+                <div className="h-12 w-12 bg-gradient-to-br from-red-500 to-red-600 rounded-xl flex items-center justify-center shadow-lg shrink-0">
                   <XCircle className="h-6 w-6 text-white" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-slate-600 mb-1">Total Revenue</p>
-                  <p className="text-3xl font-bold text-emerald-600">{formatCurrency(stats.total_amount)}</p>
-                </div>
-                <div className="h-12 w-12 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl flex items-center justify-center shadow-lg">
-                  <DollarSign className="h-6 w-6 text-white" />
                 </div>
               </div>
             </CardContent>
@@ -267,11 +395,11 @@ export default function AdminPaymentsPage() {
             <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-end justify-between">
               <div className="flex flex-col lg:flex-row gap-4 flex-1 w-full">
                 <div className="flex flex-col flex-1 max-w-md">
-                  <label className="text-xs font-medium text-slate-600 mb-1">Search</label>
+                  <label className="text-xs font-medium text-slate-600 mb-1">{t('search')}</label>
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 h-4 w-4" />
                     <Input
-                      placeholder="Search by customer name, transaction ID or order ID..."
+                      placeholder={t('searchPaymentsPlaceholder')}
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
                       className="pl-10 bg-white/50 border-slate-200 focus:bg-white focus:border-blue-500 transition-all duration-200"
@@ -279,32 +407,32 @@ export default function AdminPaymentsPage() {
                   </div>
                 </div>
                 <div className="flex flex-col">
-                  <label className="text-xs font-medium text-slate-600 mb-1">Status</label>
+                  <label className="text-xs font-medium text-slate-600 mb-1">{t('status')}</label>
                   <select
                     value={statusFilter}
                     onChange={(e) => setStatusFilter(e.target.value)}
                     className="px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white/50 focus:bg-white min-w-[140px]"
                   >
-                    <option value="">All Status</option>
-                    <option value="completed">Completed</option>
-                    <option value="pending">Pending</option>
-                    <option value="failed">Failed</option>
-                    <option value="processing">Processing</option>
-                    <option value="refunded">Refunded</option>
+                    <option value="">{t('allStatus')}</option>
+                    <option value="completed">{t('completed')}</option>
+                    <option value="pending">{t('pending')}</option>
+                    <option value="failed">{t('failedStatus')}</option>
+                    <option value="processing">{t('processingStatus')}</option>
+                    <option value="refunded">{t('refunded')}</option>
                   </select>
                 </div>
                 <div className="flex flex-col">
-                  <label className="text-xs font-medium text-slate-600 mb-1">Method</label>
+                  <label className="text-xs font-medium text-slate-600 mb-1">{t('method')}</label>
                   <select
                     value={methodFilter}
                     onChange={(e) => setMethodFilter(e.target.value)}
                     className="px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white/50 focus:bg-white min-w-[140px]"
                   >
-                    <option value="">All Methods</option>
-                    <option value="credit_card">Credit Card</option>
-                    <option value="bank_transfer">Bank Transfer</option>
-                    <option value="cash_on_delivery">Cash on Delivery</option>
-                    <option value="digital_wallet">Digital Wallet</option>
+                    <option value="">{t('allMethods')}</option>
+                    <option value="credit_card">{t('credit_card')}</option>
+                    <option value="bank_transfer">{t('bank_transfer')}</option>
+                    <option value="cash_on_delivery">{t('cash_on_delivery')}</option>
+                    <option value="digital_wallet">{t('digital_wallet')}</option>
                   </select>
                 </div>
               </div>
@@ -331,8 +459,8 @@ export default function AdminPaymentsPage() {
           <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg">
             <CardContent className="p-12 text-center">
               <CreditCard className="h-12 w-12 text-slate-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-slate-900 mb-2">No payments found</h3>
-              <p className="text-slate-500">No payments match your search criteria.</p>
+              <h3 className="text-lg font-medium text-slate-900 mb-2">{t('noPaymentsFound')}</h3>
+              <p className="text-slate-500">{t('noPaymentsMatch')}</p>
             </CardContent>
           </Card>
         ) : viewMode === 'list' ? (
@@ -342,12 +470,13 @@ export default function AdminPaymentsPage() {
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-slate-200 bg-slate-50/80">
-                      <th className="text-left py-3 px-4 font-medium text-slate-900">Payment</th>
-                      <th className="text-left py-3 px-4 font-medium text-slate-900">Customer</th>
-                      <th className="text-left py-3 px-4 font-medium text-slate-900">Amount</th>
-                      <th className="text-left py-3 px-4 font-medium text-slate-900">Method</th>
-                      <th className="text-left py-3 px-4 font-medium text-slate-900">Status</th>
-                      <th className="text-left py-3 px-4 font-medium text-slate-900">Created</th>
+                      <th className="text-left py-3 px-4 font-medium text-slate-900">{t('paymentLabel')}</th>
+                      <th className="text-left py-3 px-4 font-medium text-slate-900">{t('customer')}</th>
+                      <th className="text-left py-3 px-4 font-medium text-slate-900">{t('amountLabel')}</th>
+                      <th className="text-left py-3 px-4 font-medium text-slate-900">{t('method')}</th>
+                      <th className="text-left py-3 px-4 font-medium text-slate-900">{t('status')}</th>
+                      <th className="text-left py-3 px-4 font-medium text-slate-900">{t('created')}</th>
+                      <th className="text-left py-3 px-4 font-medium text-slate-900">{t('actions')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -362,10 +491,22 @@ export default function AdminPaymentsPage() {
                         <td className="py-4 px-4">
                           <Badge variant="outline" className={`${getStatusColor(payment.status)} flex items-center gap-1 w-fit`}>
                             {getStatusIcon(payment.status)}
-                            {payment.status}
+                            {getStatusLabel(payment.status)}
                           </Badge>
                         </td>
                         <td className="py-4 px-4 text-sm text-slate-600">{formatDate(payment.created_at)}</td>
+                        <td className="py-4 px-4">
+                          <div className="flex items-center gap-2">
+                            {canApprove(payment) && (
+                              <Button variant="outline" size="sm" className="gap-1" onClick={() => handleApprove(payment)}>
+                                <CheckCircle className="h-3.5 w-3.5" /> {t('approvePayment')}
+                              </Button>
+                            )}
+                            <Button variant="outline" size="sm" className="gap-1" onClick={() => handleViewDetails(payment)}>
+                              <Eye className="h-3.5 w-3.5" /> {t('view')}
+                            </Button>
+                          </div>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -383,14 +524,14 @@ export default function AdminPaymentsPage() {
                     <div className="flex-1 space-y-3">
                       <div className="flex items-center gap-4">
                         <h3 className="font-semibold text-gray-900">
-                          Payment #{payment.payment_id}
+                          {t('paymentLabel')} #{payment.payment_id}
                         </h3>
                         <Badge 
                           variant="outline" 
                           className={`flex items-center gap-1 ${getStatusColor(payment.status)}`}
                         >
                           {getStatusIcon(payment.status)}
-                          {payment.status.charAt(0).toUpperCase() + payment.status.slice(1)}
+                          {getStatusLabel(payment.status)}
                         </Badge>
                         <Badge 
                           variant="outline" 
@@ -402,20 +543,20 @@ export default function AdminPaymentsPage() {
 
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
                         <div>
-                          <p className="text-gray-600">Customer</p>
+                          <p className="text-gray-600">{t('customer')}</p>
                           <p className="font-medium">{payment.customer_name}</p>
                         </div>
                         <div>
-                          <p className="text-gray-600">Order ID</p>
+                          <p className="text-gray-600">{t('orderId')}</p>
                           <p className="font-medium">#{payment.order_id}</p>
                         </div>
                         <div>
-                          <p className="text-gray-600">Amount</p>
+                          <p className="text-gray-600">{t('amountLabel')}</p>
                           <p className="font-bold text-lg text-green-600">{formatCurrency(payment.amount)}</p>
                         </div>
                         {payment.transaction_id && (
                           <div>
-                            <p className="text-gray-600">Transaction ID</p>
+                            <p className="text-gray-600">{t('transactionId')}</p>
                             <p className="font-mono text-sm">{payment.transaction_id}</p>
                           </div>
                         )}
@@ -423,48 +564,36 @@ export default function AdminPaymentsPage() {
 
                       {payment.gateway_response && (
                         <div>
-                          <p className="text-gray-600 text-sm">Gateway Response</p>
+                          <p className="text-gray-600 text-sm">{t('gatewayResponse')}</p>
                           <p className="text-sm">{payment.gateway_response}</p>
                         </div>
                       )}
 
                       <div className="flex flex-wrap gap-4 text-xs text-gray-400">
-                        <span>Created: {formatDate(payment.created_at)}</span>
+                        <span>{t('created')}: {formatDate(payment.created_at)}</span>
                         {payment.processed_at && (
-                          <span>Processed: {formatDate(payment.processed_at)}</span>
+                          <span>{t('processedAt')}: {formatDate(payment.processed_at)}</span>
                         )}
                       </div>
                     </div>
 
                     {/* Actions */}
                     <div className="flex gap-2 lg:flex-col">
-                      {payment.status === 'pending' && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="flex items-center gap-2"
-                        >
+                      {canApprove(payment) && (
+                        <Button variant="outline" size="sm" className="flex items-center gap-2" onClick={() => handleApprove(payment)}>
                           <CheckCircle className="h-4 w-4" />
-                          Approve
+                          {t('approvePayment')}
                         </Button>
                       )}
                       {payment.status === 'completed' && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="flex items-center gap-2"
-                        >
+                        <Button variant="outline" size="sm" className="flex items-center gap-2" onClick={() => toast.info(t('refundComingSoon'))}>
                           <DollarSign className="h-4 w-4" />
-                          Refund
+                          {t('refund')}
                         </Button>
                       )}
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="flex items-center gap-2"
-                      >
+                      <Button variant="outline" size="sm" className="flex items-center gap-2" onClick={() => handleViewDetails(payment)}>
                         <CreditCard className="h-4 w-4" />
-                        View Details
+                        {t('viewDetails')}
                       </Button>
                     </div>
                   </div>
@@ -495,6 +624,99 @@ export default function AdminPaymentsPage() {
             </CardContent>
           </Card>
         )}
+
+        {/* Process Payment Modal (Create) */}
+        <Dialog open={isProcessModalOpen} onOpenChange={setIsProcessModalOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>{t('processPaymentModal')}</DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleProcessSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="order_id">{t('orderId')}</Label>
+                <Input
+                  id="order_id"
+                  type="number"
+                  min={1}
+                  placeholder="e.g. 123"
+                  value={processForm.order_id}
+                  onChange={(e) => setProcessForm(f => ({ ...f, order_id: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="method">{t('paymentMethod')}</Label>
+                <select
+                  id="method"
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  value={processForm.method}
+                  onChange={(e) => setProcessForm(f => ({ ...f, method: e.target.value }))}
+                >
+                  <option value="cod">{t('cod')}</option>
+                  <option value="payos">PayOS</option>
+                  <option value="vnpay">VNPay</option>
+                  <option value="vietqr">VietQR</option>
+                  <option value="mock_qr">Mock QR</option>
+                </select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="amount">{t('amountVnd')}</Label>
+                <Input
+                  id="amount"
+                  type="number"
+                  min={1}
+                  placeholder="e.g. 100000"
+                  value={processForm.amount}
+                  onChange={(e) => setProcessForm(f => ({ ...f, amount: e.target.value }))}
+                />
+              </div>
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setIsProcessModalOpen(false)}>{t('cancel')}</Button>
+                <Button type="submit" disabled={submitting}>{submitting ? t('creatingPayment') : t('createPayment')}</Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
+
+        {/* View Details Modal (Read) */}
+        <Dialog open={isDetailModalOpen} onOpenChange={setIsDetailModalOpen}>
+          <DialogContent className="sm:max-w-lg">
+            <DialogHeader>
+              <DialogTitle>{t('paymentLabel')} #{selectedPayment?.payment_id}</DialogTitle>
+            </DialogHeader>
+            {selectedPayment && (
+              <div className="space-y-3 text-sm">
+                <div className="grid grid-cols-2 gap-2">
+                  <span className="text-slate-500">{t('orderId')}</span>
+                  <span className="font-medium">#{selectedPayment.order_id}</span>
+                  <span className="text-slate-500">{t('customer')}</span>
+                  <span className="font-medium">{selectedPayment.customer_name}</span>
+                  <span className="text-slate-500">{t('amountLabel')}</span>
+                  <span className="font-semibold text-green-600">{formatCurrency(selectedPayment.amount)}</span>
+                  <span className="text-slate-500">{t('method')}</span>
+                  <span>{selectedPayment.payment_method.replace('_', ' ')}</span>
+                  <span className="text-slate-500">{t('status')}</span>
+                  <Badge variant="outline" className={getStatusColor(selectedPayment.status)}>{getStatusLabel(selectedPayment.status)}</Badge>
+                  {selectedPayment.transaction_id && (
+                    <>
+                      <span className="text-slate-500">{t('transactionId')}</span>
+                      <span className="font-mono">{selectedPayment.transaction_id}</span>
+                    </>
+                  )}
+                </div>
+                <p className="text-slate-500 text-xs">{t('created')}: {formatDate(selectedPayment.created_at)}</p>
+                {selectedPayment.processed_at && (
+                  <p className="text-slate-500 text-xs">{t('processedAt')}: {formatDate(selectedPayment.processed_at)}</p>
+                )}
+                {selectedPayment.gateway_response && (
+                  <div>
+                    <p className="text-slate-500 mb-1">{t('gatewayResponse')}</p>
+                    <pre className="text-xs bg-slate-50 p-2 rounded overflow-auto max-h-24">{selectedPayment.gateway_response}</pre>
+                  </div>
+                )}
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   )

@@ -117,7 +117,8 @@ export default function AdminMessengerPage() {
   const getAdminToken = () => {
     return localStorage.getItem('adminToken')
   }
-  const API_BASE = 'http://localhost:8000/api/backend/v1'
+  // Use Next.js backend proxy to avoid hardcoding server IP/host
+  const API_BASE = '/api/backend/v1'
 
   useEffect(() => {
     fetchConversations()

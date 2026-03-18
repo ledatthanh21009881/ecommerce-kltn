@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, ReactNode } from 'react'
-import { tokenManager } from '@/lib/token-manager'
+import { tokenStore } from '@/lib/tokenStore'
 
 interface TokenRefreshProviderProps {
   children: ReactNode
@@ -12,19 +12,19 @@ export function TokenRefreshProvider({ children }: TokenRefreshProviderProps) {
     // Kiểm tra token mỗi 5 phút
     const checkTokenInterval = setInterval(async () => {
       try {
-        const token = tokenManager.getAccessToken()
+        const token = tokenStore.getAccessToken()
         if (token) {
           // Check if token is expired or will expire soon (within 5 minutes)
-          if (tokenManager.isTokenExpired()) {
+          if (tokenStore.isTokenExpired()) {
             console.log('Token expired or expiring soon, refreshing...')
             try {
-              await tokenManager.refreshToken()
+              await tokenStore.refreshToken()
               console.log('Token refreshed successfully')
             } catch (refreshError) {
               console.error('Failed to refresh token:', refreshError)
               // Nếu refresh thất bại, redirect về login
-              tokenManager.clearTokens()
-              // Only redirect if we're not already on login page
+              tokenStore.clearTokens()
+              // Only redirect nếu chưa ở trang login
               if (window.location.pathname !== '/login' && window.location.pathname !== '/admin-login') {
                 window.location.href = '/login'
               }
@@ -41,11 +41,11 @@ export function TokenRefreshProvider({ children }: TokenRefreshProviderProps) {
     // Check immediately on mount
     const checkToken = async () => {
       try {
-        const token = tokenManager.getAccessToken()
-        if (token && tokenManager.isTokenExpired()) {
+        const token = tokenStore.getAccessToken()
+        if (token && tokenStore.isTokenExpired()) {
           console.log('Token expired on mount, refreshing...')
           try {
-            await tokenManager.refreshToken()
+            await tokenStore.refreshToken()
             console.log('Token refreshed successfully on mount')
           } catch (refreshError) {
             console.error('Failed to refresh token on mount:', refreshError)

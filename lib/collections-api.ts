@@ -1,6 +1,6 @@
-const COLLECTIONS_API_BASE = typeof window !== 'undefined'
-  ? (process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000')
-  : (process.env.BACKEND_URL || process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000')
+import { getBackendBaseUrl } from './backend-base-url'
+
+const COLLECTIONS_API_BASE = getBackendBaseUrl()
 
 export interface Collection {
   collection_id: number

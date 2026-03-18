@@ -40,7 +40,7 @@ export default function PaymentSuccessPage() {
     cartCleared.current = true
     
     try {
-      const token = tokenStore.getAccessToken()
+      const token = await tokenStore.getValidToken()
       if (!token) return
 
       await fetch('/api/backend/v1/cart/clear', {
@@ -61,7 +61,13 @@ export default function PaymentSuccessPage() {
   const loadOrder = async () => {
     try {
       setLoading(true)
-      const { token } = await import('@/lib/admin-auth').then(m => m.getAuthData())
+      const { checkAndRefreshAuth, getAuthData } = await import('@/lib/admin-auth')
+      const ok = await checkAndRefreshAuth()
+      if (!ok) {
+        if (typeof window !== 'undefined') window.location.href = '/admin-login'
+        return
+      }
+      const { token } = getAuthData()
       
       const response = await fetch(`/api/backend/v1/orders/${orderId}`, {
         headers: {

@@ -10,7 +10,7 @@ import { toast } from 'sonner'
 import ConfirmModal from '@/components/ui/confirm-modal'
 import CategoryModal from '@/components/admin/CategoryModal'
 import { Category } from '@/lib/types'
-import { getAuthData } from '@/lib/admin-auth'
+import { getAuthData, checkAndRefreshAuth } from '@/lib/admin-auth'
 import { useLanguage } from '@/contexts/LanguageContext'
 
 export default function AdminCategoriesPage() {
@@ -96,6 +96,11 @@ export default function AdminCategoriesPage() {
     if (!deletingCategoryId) return
 
     try {
+      const ok = await checkAndRefreshAuth()
+      if (!ok) {
+        if (typeof window !== 'undefined') window.location.href = '/admin-login'
+        return
+      }
       const { token } = getAuthData()
       console.log('🗑️ Deleting category ID:', deletingCategoryId)
       

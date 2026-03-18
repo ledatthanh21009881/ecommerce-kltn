@@ -46,7 +46,8 @@ function AdminLayoutContent({
   const router = useRouter()
   const pathname = usePathname()
   const { language, setLanguage, t } = useLanguage()
-  const [sidebarOpen, setSidebarOpen] = useState(false)
+  // Mặc định sidebar mở full khi load lần đầu
+  const [sidebarOpen, setSidebarOpen] = useState(true)
   const [user, setUser] = useState<AdminUser | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 

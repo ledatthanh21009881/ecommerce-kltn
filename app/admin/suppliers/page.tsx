@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
-import { getAuthData } from '@/lib/admin-auth'
+import { getAuthData, checkAndRefreshAuth } from '@/lib/admin-auth'
 import { useLanguage } from '@/contexts/LanguageContext'
 import SupplierModal from '@/components/admin/SupplierModal'
 import SupplierDetailModal from '@/components/admin/SupplierDetailModal'
@@ -52,6 +52,11 @@ export default function AdminSuppliersPage() {
   const fetchSuppliers = async () => {
     try {
       setLoading(true)
+      const ok = await checkAndRefreshAuth()
+      if (!ok) {
+        if (typeof window !== 'undefined') window.location.href = '/admin-login'
+        return
+      }
       const { token } = getAuthData()
       const params = new URLSearchParams()
       params.set('page', String(page))
@@ -153,6 +158,11 @@ export default function AdminSuppliersPage() {
     if (!deletingSupplier) return
     
     try {
+      const ok = await checkAndRefreshAuth()
+      if (!ok) {
+        if (typeof window !== 'undefined') window.location.href = '/admin-login'
+        return
+      }
       const { token } = getAuthData()
       const response = await fetch(`/api/backend/v1/suppliers?id=${deletingSupplier.supplier_id}`, {
         method: 'DELETE',

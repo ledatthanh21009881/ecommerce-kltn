@@ -12,7 +12,7 @@ import ProductDetailModal from '@/components/admin/ProductDetailModal'
 import ProductGrid from '@/components/admin/ProductGrid'
 import ConfirmModal from '@/components/ui/confirm-modal'
 import { Product } from '@/lib/types'
-import { getAuthData } from '@/lib/admin-auth'
+import { getAuthData, checkAndRefreshAuth } from '@/lib/admin-auth'
 import { useLanguage } from '@/contexts/LanguageContext'
 
 export default function AdminProductsPage() {
@@ -169,6 +169,11 @@ export default function AdminProductsPage() {
     if (!deletingProductId) return
 
     try {
+      const ok = await checkAndRefreshAuth()
+      if (!ok) {
+        if (typeof window !== 'undefined') window.location.href = '/admin-login'
+        return
+      }
       const { token } = getAuthData()
       const response = await fetch(`/api/backend/v1/products/delete?id=${deletingProductId}`, {
         method: 'DELETE',

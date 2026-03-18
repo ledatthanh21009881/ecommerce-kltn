@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
-import { getAuthData } from '@/lib/admin-auth'
+import { getAuthData, checkAndRefreshAuth } from '@/lib/admin-auth'
 import { useLanguage } from '@/contexts/LanguageContext'
 import PurchaseReceiptModal from '@/components/admin/PurchaseReceiptModal'
 import PurchaseReceiptDetailModal from '@/components/admin/PurchaseReceiptDetailModal'
@@ -53,6 +53,11 @@ export default function AdminPurchaseReceiptsPage() {
   const fetchReceipts = async () => {
     try {
       setLoading(true)
+      const ok = await checkAndRefreshAuth()
+      if (!ok) {
+        if (typeof window !== 'undefined') window.location.href = '/admin-login'
+        return
+      }
       const { token } = getAuthData()
       const params = new URLSearchParams()
       params.set('page', String(page))
@@ -156,6 +161,11 @@ export default function AdminPurchaseReceiptsPage() {
 
   const handleConfirm = async (receiptId: number) => {
     try {
+      const ok = await checkAndRefreshAuth()
+      if (!ok) {
+        if (typeof window !== 'undefined') window.location.href = '/admin-login'
+        return
+      }
       const { token } = getAuthData()
       
       const response = await fetch(`/api/backend/v1/purchase-receipts/confirm?id=${receiptId}`, {
@@ -216,6 +226,11 @@ export default function AdminPurchaseReceiptsPage() {
     if (!deletingReceipt) return
     
     try {
+      const ok = await checkAndRefreshAuth()
+      if (!ok) {
+        if (typeof window !== 'undefined') window.location.href = '/admin-login'
+        return
+      }
       const { token } = getAuthData()
       
       const response = await fetch(`/api/backend/v1/purchase-receipts?id=${deletingReceipt.receipt_id}`, {
@@ -267,7 +282,18 @@ export default function AdminPurchaseReceiptsPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-[auto_1fr_1fr_1fr_1fr] gap-6 mb-8">
+          <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300 order-first w-fit max-w-full">
+            <CardContent className="p-6 flex items-center justify-between gap-4">
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-slate-600 mb-1">{t('receiptTotalRevenue')}</p>
+                <p className="text-2xl sm:text-3xl font-bold text-emerald-600 whitespace-nowrap">{formatCurrency(stats.total_amount)}</p>
+              </div>
+              <div className="h-12 w-12 shrink-0 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl flex items-center justify-center shadow-lg">
+                <FileText className="h-6 w-6 text-white" />
+              </div>
+            </CardContent>
+          </Card>
           <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
@@ -275,7 +301,7 @@ export default function AdminPurchaseReceiptsPage() {
                   <p className="text-sm font-medium text-slate-600 mb-1">{t('receiptTotalReceipts')}</p>
                   <p className="text-3xl font-bold text-slate-900">{stats.total}</p>
                 </div>
-                <div className="h-12 w-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg">
+                <div className="h-12 w-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg shrink-0">
                   <FileText className="h-6 w-6 text-white" />
                 </div>
               </div>
@@ -288,7 +314,7 @@ export default function AdminPurchaseReceiptsPage() {
                   <p className="text-sm font-medium text-slate-600 mb-1">{t('pending')}</p>
                   <p className="text-3xl font-bold text-slate-900">{stats.pending}</p>
                 </div>
-                <div className="h-12 w-12 bg-gradient-to-br from-amber-500 to-yellow-500 rounded-xl flex items-center justify-center shadow-lg">
+                <div className="h-12 w-12 bg-gradient-to-br from-amber-500 to-yellow-500 rounded-xl flex items-center justify-center shadow-lg shrink-0">
                   <Clock className="h-6 w-6 text-white" />
                 </div>
               </div>
@@ -301,7 +327,7 @@ export default function AdminPurchaseReceiptsPage() {
                   <p className="text-sm font-medium text-slate-600 mb-1">{t('confirmed')}</p>
                   <p className="text-3xl font-bold text-slate-900">{stats.confirmed}</p>
                 </div>
-                <div className="h-12 w-12 bg-gradient-to-br from-emerald-500 to-green-600 rounded-xl flex items-center justify-center shadow-lg">
+                <div className="h-12 w-12 bg-gradient-to-br from-emerald-500 to-green-600 rounded-xl flex items-center justify-center shadow-lg shrink-0">
                   <CheckCircle className="h-6 w-6 text-white" />
                 </div>
               </div>
@@ -314,21 +340,8 @@ export default function AdminPurchaseReceiptsPage() {
                   <p className="text-sm font-medium text-slate-600 mb-1">{t('cancelled')}</p>
                   <p className="text-3xl font-bold text-slate-900">{stats.cancelled}</p>
                 </div>
-                <div className="h-12 w-12 bg-gradient-to-br from-red-500 to-red-600 rounded-xl flex items-center justify-center shadow-lg">
+                <div className="h-12 w-12 bg-gradient-to-br from-red-500 to-red-600 rounded-xl flex items-center justify-center shadow-lg shrink-0">
                   <XCircle className="h-6 w-6 text-white" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-slate-600 mb-1">{t('receiptTotalRevenue')}</p>
-                  <p className="text-3xl font-bold text-emerald-600">{formatCurrency(stats.total_amount)}</p>
-                </div>
-                <div className="h-12 w-12 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl flex items-center justify-center shadow-lg">
-                  <FileText className="h-6 w-6 text-white" />
                 </div>
               </div>
             </CardContent>

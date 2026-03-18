@@ -403,8 +403,20 @@ export default function AdminOrdersPage() {
           </div>
         </div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        {/* Stats Cards - Revenue first, width auto theo số tiền */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-[auto_1fr_1fr_1fr] gap-6 mb-8">
+          <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300 order-first w-fit max-w-full">
+            <CardContent className="p-6 flex items-center justify-between gap-4">
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-slate-600 mb-1">{t('revenue')}</p>
+                <p className="text-2xl sm:text-3xl font-bold text-emerald-600 whitespace-nowrap">{formatPrice(statistics?.total_revenue || 0)}</p>
+                <p className="text-xs text-slate-500 mt-1">{t('fromCompletedOrders')}</p>
+              </div>
+              <div className="h-12 w-12 shrink-0 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl flex items-center justify-center shadow-lg">
+                <TrendingUp className="h-6 w-6 text-white" />
+              </div>
+            </CardContent>
+          </Card>
           <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
@@ -413,13 +425,12 @@ export default function AdminOrdersPage() {
                   <p className="text-3xl font-bold text-slate-900">{statistics?.total_orders || 0}</p>
                   <p className="text-xs text-slate-500 mt-1">{t('allTimeOrders')}</p>
                 </div>
-                <div className="h-12 w-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg">
+                <div className="h-12 w-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg shrink-0">
                   <ShoppingCart className="h-6 w-6 text-white" />
                 </div>
               </div>
             </CardContent>
           </Card>
-
           <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
@@ -430,13 +441,12 @@ export default function AdminOrdersPage() {
                   </p>
                   <p className="text-xs text-slate-500 mt-1">{t('pendingProcessingShipping')}</p>
                 </div>
-                <div className="h-12 w-12 bg-gradient-to-br from-amber-500 to-orange-500 rounded-xl flex items-center justify-center shadow-lg">
+                <div className="h-12 w-12 bg-gradient-to-br from-amber-500 to-orange-500 rounded-xl flex items-center justify-center shadow-lg shrink-0">
                   <Clock className="h-6 w-6 text-white" />
                 </div>
               </div>
             </CardContent>
           </Card>
-
           <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
@@ -445,25 +455,8 @@ export default function AdminOrdersPage() {
                   <p className="text-3xl font-bold text-slate-900">{statistics?.completed_orders || 0}</p>
                   <p className="text-xs text-slate-500 mt-1">{t('successfullyDelivered')}</p>
                 </div>
-                <div className="h-12 w-12 bg-gradient-to-br from-emerald-500 to-green-600 rounded-xl flex items-center justify-center shadow-lg">
+                <div className="h-12 w-12 bg-gradient-to-br from-emerald-500 to-green-600 rounded-xl flex items-center justify-center shadow-lg shrink-0">
                   <CheckCircle className="h-6 w-6 text-white" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-slate-600 mb-1">{t('revenue')}</p>
-                  <p className="text-3xl font-bold text-emerald-600">
-                    {formatPrice(statistics?.total_revenue || 0)}
-                  </p>
-                  <p className="text-xs text-slate-500 mt-1">{t('fromCompletedOrders')}</p>
-                </div>
-                <div className="h-12 w-12 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl flex items-center justify-center shadow-lg">
-                  <TrendingUp className="h-6 w-6 text-white" />
                 </div>
               </div>
             </CardContent>

@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react'
 import { apiClient } from '@/lib/api-client'
-import { tokenManager } from '@/lib/token-manager'
+import { tokenStore } from '@/lib/tokenStore'
 
 interface UseApiOptions {
   onError?: (error: Error) => void
@@ -53,7 +53,7 @@ export function useApi(options: UseApiOptions = {}) {
       
       // Nếu là lỗi authentication, redirect về login
       if (error.message.includes('Session expired') || error.message.includes('Unauthorized')) {
-        tokenManager.clearTokens()
+        tokenStore.clearTokens()
         window.location.href = '/login'
       }
       

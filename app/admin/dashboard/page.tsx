@@ -95,15 +95,15 @@ export default function AdminDashboardPage() {
           <p className="text-slate-600">Welcome back! Here's what's happening with your store today.</p>
         </div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <Card className="bg-white shadow-sm">
+        {/* Stats Cards - Revenue first, width auto theo số tiền */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-[auto_1fr_1fr_1fr] gap-6 mb-8">
+          <Card className="bg-white shadow-sm order-first w-fit max-w-full">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium text-slate-600">Total Revenue</CardTitle>
-              <DollarSign className="h-4 w-4 text-green-600" />
+              <DollarSign className="h-4 w-4 text-green-600 shrink-0" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-slate-900">{formatPrice(stats.total_revenue)}</div>
+              <div className="text-2xl font-bold text-slate-900 whitespace-nowrap">{formatPrice(stats.total_revenue)}</div>
               <div className="flex items-center text-xs text-slate-600 mt-1">
                 <TrendingUp className="h-3 w-3 mr-1 text-green-600" />
                 <span className="text-green-600">+12.5%</span>
