@@ -22,17 +22,23 @@ interface OrderData {
 function PaymentSuccessContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const orderId = searchParams.get('order_id')
+  /** PayOS có thể trả `orderCode` thay vì `order_id` */
+  const orderIdParam =
+    searchParams.get('order_id') || searchParams.get('orderCode') || null
+  const payosStatus = searchParams.get('status')
   const [order, setOrder] = useState<OrderData | null>(null)
   const [loading, setLoading] = useState(true)
   const cartCleared = useRef(false)
 
   useEffect(() => {
-    if (orderId) {
+    if (orderIdParam) {
       loadOrder()
       clearCart()
+    } else {
+      setLoading(false)
     }
-  }, [orderId])
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- load on id only
+  }, [orderIdParam])
 
   const clearCart = async () => {
     if (cartCleared.current) return
@@ -56,18 +62,32 @@ function PaymentSuccessContent() {
     }
   }
 
+  /** Dùng token khách (checkout), không dùng admin-auth — tránh redirect /admin-login sau PayOS */
   const loadOrder = async () => {
+    if (!orderIdParam) {
+      setLoading(false)
+      return
+    }
     try {
       setLoading(true)
-      const { checkAndRefreshAuth, getAuthData } = await import('@/lib/admin-auth')
-      const ok = await checkAndRefreshAuth()
-      if (!ok) {
-        if (typeof window !== 'undefined') window.location.href = '/admin-login'
+      let token = tokenStore.getAccessToken()
+
+      if (token && tokenStore.isTokenExpired()) {
+        try {
+          const newTokenData = await tokenStore.refreshToken()
+          token = newTokenData.token
+        } catch (refreshError) {
+          console.error('Token refresh failed on success page:', refreshError)
+          token = null
+        }
+      }
+
+      if (!token) {
+        setOrder(null)
         return
       }
-      const { token } = getAuthData()
 
-      const response = await fetch(`/api/backend/v1/orders/${orderId}`, {
+      const response = await fetch(`/api/backend/v1/orders/${orderIdParam}`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -104,35 +124,68 @@ function PaymentSuccessContent() {
           </div>
         </CardHeader>
         <CardContent className="space-y-6">
-          {order && (
+          {payosStatus === 'PAID' && (
+            <p className="text-center text-sm text-green-700">
+              Thanh toán đã được xác nhận.
+            </p>
+          )}
+
+          {!orderIdParam && (
+            <p className="text-center text-sm text-gray-600">
+              Cảm ơn bạn! Nếu bạn vừa thanh toán, vui lòng kiểm tra email hoặc đơn
+              hàng trong tài khoản.
+            </p>
+          )}
+
+          {(order || orderIdParam) && (
             <>
               <div className="text-center space-y-2">
                 <p className="text-lg font-semibold">Cảm ơn bạn đã đặt hàng!</p>
                 <p className="text-sm text-gray-500">
-                  Mã đơn hàng: <span className="font-semibold">#{order.order_id}</span>
+                  Mã đơn hàng:{' '}
+                  <span className="font-semibold">
+                    #{order?.order_id ?? orderIdParam}
+                  </span>
                 </p>
-                {order.invoice_number && (
+                {order?.invoice_number && (
                   <p className="text-sm text-gray-500">
-                    Số hóa đơn: <span className="font-semibold">{order.invoice_number}</span>
+                    Số hóa đơn:{' '}
+                    <span className="font-semibold">{order.invoice_number}</span>
+                  </p>
+                )}
+                {!order && orderIdParam && (
+                  <p className="text-sm text-gray-500">
+                    Đăng nhập để xem đầy đủ chi tiết đơn hàng trong mục Tài khoản.
                   </p>
                 )}
               </div>
 
-              <div className="border-t pt-4 space-y-2">
-                <h3 className="font-semibold mb-2">Chi tiết đơn hàng:</h3>
-                {order.items?.map((item, idx) => (
-                  <div key={idx} className="flex justify-between text-sm">
-                    <span>{item.product_name_snapshot} x{item.quantity}</span>
-                    <span>{(item.unit_price * item.quantity).toLocaleString('vi-VN')} ₫</span>
-                  </div>
-                ))}
-                <div className="border-t pt-2 mt-2">
-                  <div className="flex justify-between font-bold">
-                    <span>Tổng cộng:</span>
-                    <span>{order.total_amount.toLocaleString('vi-VN')} ₫</span>
+              {order && (
+                <div className="border-t pt-4 space-y-2">
+                  <h3 className="font-semibold mb-2">Chi tiết đơn hàng:</h3>
+                  {order.items?.map((item, idx) => (
+                    <div key={idx} className="flex justify-between text-sm">
+                      <span>
+                        {item.product_name_snapshot} x{item.quantity}
+                      </span>
+                      <span>
+                        {(
+                          Number(item.unit_price) * Number(item.quantity)
+                        ).toLocaleString('vi-VN')}{' '}
+                        ₫
+                      </span>
+                    </div>
+                  ))}
+                  <div className="border-t pt-2 mt-2">
+                    <div className="flex justify-between font-bold">
+                      <span>Tổng cộng:</span>
+                      <span>
+                        {Number(order.total_amount).toLocaleString('vi-VN')} ₫
+                      </span>
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
             </>
           )}
 
