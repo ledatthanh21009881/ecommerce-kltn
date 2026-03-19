@@ -35,26 +35,31 @@ const nextConfig = {
   },
   reactStrictMode: false,
   async rewrites() {
+    // IMPORTANT:
+    // Do NOT rewrite `/api/backend/*` to an external backend.
+    // We implement `/api/backend/*` via Next Route Handlers under `app/api/backend/*`.
+    // Rewriting it would bypass those handlers and break on VPS (previously hardcoded to localhost:8000).
+    const BACKEND =
+      process.env.BACKEND_URL ||
+      process.env.NEXT_PUBLIC_BACKEND_URL ||
+      'http://localhost:8000'
+
     return [
       {
-        source: '/api/backend/:path*',
-        destination: 'http://localhost:8000/api/:path*',
-      },
-      {
         source: '/api/v1/:path*',
-        destination: 'http://localhost:8000/api/v1/:path*',
+        destination: `${BACKEND}/api/v1/:path*`,
       },
       {
         source: '/api/user/:path*',
-        destination: 'http://localhost:8000/api/user/:path*',
+        destination: `${BACKEND}/api/user/:path*`,
       },
       {
         source: '/api/products/:path*',
-        destination: 'http://localhost:8000/api/products/:path*',
+        destination: `${BACKEND}/api/products/:path*`,
       },
       {
         source: '/api/products',
-        destination: 'http://localhost:8000/api/products',
+        destination: `${BACKEND}/api/products`,
       },
     ]
   },
