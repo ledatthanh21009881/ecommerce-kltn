@@ -124,7 +124,7 @@ export default function AdminMessengerPage() {
     process.env.NEXT_PUBLIC_BACKEND_URL
       ? `${process.env.NEXT_PUBLIC_BACKEND_URL.replace(/\/$/, '')}/api/backend/v1`
       : (typeof window !== 'undefined' && window.location.hostname !== 'localhost')
-      ? `${window.location.protocol}//${window.location.hostname}/api/backend/v1`
+      ? `${window.location.origin}/api/backend/v1`
       : 'http://localhost:8000/api/backend/v1'
 
   useEffect(() => {
