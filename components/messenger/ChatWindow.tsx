@@ -39,6 +39,8 @@ interface ChatWindowProps {
   contact: ChatContact;
   messages: ChatMessage[];
   onSendMessage: (message: string) => void;
+  onTypingStart?: () => void;
+  onTypingStop?: () => void;
   onUploadMedia?: (file: File) => void;
   onVoiceRecordingComplete?: (audioBlob: Blob) => void;
   isConnected?: boolean;
@@ -52,6 +54,8 @@ const ChatWindow = ({
   contact,
   messages,
   onSendMessage,
+  onTypingStart,
+  onTypingStop,
   onUploadMedia,
   onVoiceRecordingComplete,
   isConnected = true,
@@ -75,6 +79,8 @@ const ChatWindow = ({
   const emojiButtonRef = useRef<HTMLButtonElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const menuRefs = useRef<Map<string | number, HTMLDivElement>>(new Map());
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isTypingSentRef = useRef(false);
 
   // Extract media from messages
   const mediaGallery = useMemo(() => {
@@ -123,6 +129,14 @@ const ChatWindow = ({
   const handleSend = () => {
     const trimmed = inputMessage.trim();
     if (!trimmed || !isConnected || isRecording) return;
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+      typingTimeoutRef.current = null;
+    }
+    if (isTypingSentRef.current) {
+      onTypingStop?.();
+      isTypingSentRef.current = false;
+    }
     onSendMessage(trimmed);
     setInputMessage("");
     // Reset textarea height
@@ -225,6 +239,17 @@ const ChatWindow = ({
       textareaRef.current.style.height = `${Math.min(scrollHeight, maxHeight)}px`;
     }
   }, [inputMessage]);
+
+  useEffect(() => {
+    return () => {
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+      if (isTypingSentRef.current) {
+        onTypingStop?.();
+      }
+    };
+  }, [onTypingStop]);
 
   // Auto scroll to bottom when messages change
   useEffect(() => {
@@ -651,13 +676,50 @@ const ChatWindow = ({
             <textarea
               ref={textareaRef}
               value={inputMessage}
-              onChange={(e) => setInputMessage(e.target.value)}
+              onChange={(e) => {
+                const value = e.target.value;
+                setInputMessage(value);
+                const trimmed = value.trim();
+
+                if (trimmed.length > 0) {
+                  if (!isTypingSentRef.current) {
+                    onTypingStart?.();
+                    isTypingSentRef.current = true;
+                  }
+                  if (typingTimeoutRef.current) {
+                    clearTimeout(typingTimeoutRef.current);
+                  }
+                  typingTimeoutRef.current = setTimeout(() => {
+                    if (isTypingSentRef.current) {
+                      onTypingStop?.();
+                      isTypingSentRef.current = false;
+                    }
+                  }, 1500);
+                } else if (isTypingSentRef.current) {
+                  onTypingStop?.();
+                  isTypingSentRef.current = false;
+                  if (typingTimeoutRef.current) {
+                    clearTimeout(typingTimeoutRef.current);
+                    typingTimeoutRef.current = null;
+                  }
+                }
+              }}
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey) {
                   e.preventDefault();
                   handleSend();
                 }
                 // Shift+Enter will naturally create a new line
+              }}
+              onBlur={() => {
+                if (typingTimeoutRef.current) {
+                  clearTimeout(typingTimeoutRef.current);
+                  typingTimeoutRef.current = null;
+                }
+                if (isTypingSentRef.current) {
+                  onTypingStop?.();
+                  isTypingSentRef.current = false;
+                }
               }}
               placeholder={
                 !isConnected

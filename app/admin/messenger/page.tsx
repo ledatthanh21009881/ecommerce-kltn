@@ -77,6 +77,46 @@ export default function AdminMessengerPage() {
         if (exists) return prev
         return [...prev, message]
       })
+      setConversations(prev => {
+        const preview = (message.content && message.content.trim() !== '')
+          ? message.content
+          : (message.media && message.media.length > 0 ? '[Media]' : '')
+        const isSelected = selectedConversation?.conversation_id === message.conversation_id
+        let matched = false
+        const updated = prev.map(conv =>
+          conv.conversation_id === message.conversation_id
+            ? (() => {
+                matched = true
+                return {
+                  ...conv,
+                  last_message: preview,
+                  last_message_time: message.sent_at,
+                  unread_count: isSelected ? 0 : (conv.unread_count || 0) + 1,
+                }
+              })()
+            : conv
+        )
+        const next = matched ? updated : [
+          {
+            conversation_id: message.conversation_id,
+            customer_id: message.sender_id,
+            first_name: message.first_name || 'User',
+            last_name: message.last_name || '',
+            email: message.email || '',
+            avatar_url: message.avatar_url,
+            last_message: preview,
+            last_message_time: message.sent_at,
+            unread_count: isSelected ? 0 : 1,
+            status: 'open',
+          },
+          ...updated,
+        ]
+        return next.sort((a, b) => {
+          const aTime = new Date(a.last_message_time || 0).getTime()
+          const bTime = new Date(b.last_message_time || 0).getTime()
+          return bTime - aTime
+        })
+      })
     },
     onTypingStart: (conversationId) => {
       console.log('🔍 Debug - Typing start for conversation:', conversationId)
@@ -589,6 +629,26 @@ export default function AdminMessengerPage() {
               : msg
           )
           return updated
+        })
+        setConversations(prev => {
+          const preview = (savedMessage.content && savedMessage.content.trim() !== '')
+            ? savedMessage.content
+            : (savedMessage.media && savedMessage.media.length > 0 ? '[Media]' : '')
+          const updated = prev.map(conv =>
+            conv.conversation_id === selectedConversation.conversation_id
+              ? {
+                  ...conv,
+                  last_message: preview,
+                  last_message_time: savedMessage.sent_at,
+                  unread_count: 0,
+                }
+              : conv
+          )
+          return updated.sort((a, b) => {
+            const aTime = new Date(a.last_message_time || 0).getTime()
+            const bTime = new Date(b.last_message_time || 0).getTime()
+            return bTime - aTime
+          })
         })
 
         // Send via WebSocket for real-time

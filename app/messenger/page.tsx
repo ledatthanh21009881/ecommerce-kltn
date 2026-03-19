@@ -56,6 +56,8 @@ export default function MessengerPage() {
     isConnecting,
     connect,
     joinConversation,
+    sendTypingStart,
+    sendTypingStop,
   } = useWebSocket({
     onMessage: (message) => {
       console.log('Debug - New message received:', message)
@@ -702,6 +704,16 @@ export default function MessengerPage() {
     sendMessage(text)
   }
 
+  const handleTypingStartFromUI = () => {
+    if (!conversationId || !isConnected) return
+    sendTypingStart(conversationId)
+  }
+
+  const handleTypingStopFromUI = () => {
+    if (!conversationId || !isConnected) return
+    sendTypingStop(conversationId)
+  }
+
   const handleRecallMessage = async (messageId: string | number) => {
     if (!conversationId) return;
     
@@ -902,6 +914,8 @@ export default function MessengerPage() {
             contact={contact}
             messages={chatMessages}
             onSendMessage={handleSendFromUI}
+            onTypingStart={handleTypingStartFromUI}
+            onTypingStop={handleTypingStopFromUI}
             onUploadMedia={uploadMedia}
             onVoiceRecordingComplete={handleVoiceRecordingComplete}
             isConnected={isConnected}
