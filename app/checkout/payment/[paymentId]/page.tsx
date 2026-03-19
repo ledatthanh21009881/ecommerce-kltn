@@ -24,6 +24,33 @@ interface PaymentData {
   } | null
 }
 
+function debugIngest(payload: unknown) {
+  // Opt-in only. If not set, do nothing (prevents production spam/ERR_CONNECTION_REFUSED).
+  const baseUrl = process.env.NEXT_PUBLIC_DEBUG_INGEST_URL
+  const ingestId = process.env.NEXT_PUBLIC_DEBUG_INGEST_ID
+  if (!baseUrl || !ingestId) return
+
+  try {
+    const url = `${baseUrl.replace(/\/+$/, '')}/ingest/${ingestId}`
+    const body = JSON.stringify(payload)
+
+    // Prefer sendBeacon (non-blocking) when available.
+    if (typeof navigator !== 'undefined' && typeof navigator.sendBeacon === 'function') {
+      navigator.sendBeacon(url, new Blob([body], { type: 'application/json' }))
+      return
+    }
+
+    fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body,
+      keepalive: true,
+    }).catch(() => {})
+  } catch {
+    // Never break UX because of debug logging.
+  }
+}
+
 export default function PaymentPage() {
   const router = useRouter()
   const params = useParams()
@@ -137,23 +164,45 @@ export default function PaymentPage() {
 
       const data = await response.json()
       if (data.success) {
-        // #region agent log
-        fetch('http://127.0.0.1:7244/ingest/f2f3a4ec-56d7-4905-bcec-0faf157590e4',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'e7f3bb'},body:JSON.stringify({sessionId:'e7f3bb',runId:'pre-fix',hypothesisId:'H1',location:'web/app/checkout/payment/[paymentId]/page.tsx:138',message:'loadPayment got data.success',data:{paymentId,method:data?.data?.method,status:data?.data?.status,order_id:data?.data?.order_id,has_payment_url:!!data?.data?.payment_url,has_qr_code:!!data?.data?.qr_code},timestamp:Date.now()})}).catch(()=>{});
-        // #endregion
+        debugIngest({
+          event: 'payment.loadPayment.success',
+          location: 'web/app/checkout/payment/[paymentId]/page.tsx',
+          paymentId,
+          data: {
+            method: data?.data?.method,
+            status: data?.data?.status,
+            order_id: data?.data?.order_id,
+            has_payment_url: !!data?.data?.payment_url,
+            has_qr_code: !!data?.data?.qr_code,
+          },
+          timestamp: Date.now(),
+        })
         setPayment(data.data)
         
         // If COD or already confirmed, redirect to success
         if (data.data.method === 'cod' || data.data.status === 'confirmed') {
-          // #region agent log
-          fetch('http://127.0.0.1:7244/ingest/f2f3a4ec-56d7-4905-bcec-0faf157590e4',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'e7f3bb'},body:JSON.stringify({sessionId:'e7f3bb',runId:'pre-fix',hypothesisId:'H2',location:'web/app/checkout/payment/[paymentId]/page.tsx:143',message:'redirect success (cod or confirmed)',data:{paymentId,method:data?.data?.method,status:data?.data?.status,order_id:data?.data?.order_id},timestamp:Date.now()})}).catch(()=>{});
-          // #endregion
+          debugIngest({
+            event: 'payment.redirect.success',
+            location: 'web/app/checkout/payment/[paymentId]/page.tsx',
+            paymentId,
+            data: {
+              method: data?.data?.method,
+              status: data?.data?.status,
+              order_id: data?.data?.order_id,
+            },
+            timestamp: Date.now(),
+          })
           router.push(`/checkout/payment/success?order_id=${data.data.order_id}`)
         }
         // If VNPay, redirect to payment URL
         else if (data.data.method === 'vnpay' && data.data.payment_url) {
-          // #region agent log
-          fetch('http://127.0.0.1:7244/ingest/f2f3a4ec-56d7-4905-bcec-0faf157590e4',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'e7f3bb'},body:JSON.stringify({sessionId:'e7f3bb',runId:'pre-fix',hypothesisId:'H3',location:'web/app/checkout/payment/[paymentId]/page.tsx:147',message:'redirect vnpay',data:{paymentId,has_payment_url:!!data?.data?.payment_url},timestamp:Date.now()})}).catch(()=>{});
-          // #endregion
+          debugIngest({
+            event: 'payment.redirect.vnpay',
+            location: 'web/app/checkout/payment/[paymentId]/page.tsx',
+            paymentId,
+            data: { has_payment_url: !!data?.data?.payment_url },
+            timestamp: Date.now(),
+          })
           window.location.href = data.data.payment_url
         }
         // If PayOS, redirect to payment URL (auto-redirect like VNPay)
@@ -369,10 +418,6 @@ export default function PaymentPage() {
       </div>
     )
   }
-
-  // #region agent log
-  fetch('http://127.0.0.1:7244/ingest/f2f3a4ec-56d7-4905-bcec-0faf157590e4',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'e7f3bb'},body:JSON.stringify({sessionId:'e7f3bb',runId:'pre-fix',hypothesisId:'H4',location:'web/app/checkout/payment/[paymentId]/page.tsx:360',message:'render branch selection',data:{paymentId,method:payment?.method,status:payment?.status,branch:(payment?.method==='mock_qr'||payment?.method==='vietqr')?'qr':(payment?.method==='payos')?'payos':(payment?.method==='vnpay')?'vnpay':'invalid'},timestamp:Date.now()})}).catch(()=>{});
-  // #endregion
 
   return (
     <div className="container mx-auto px-4 py-12 max-w-2xl">
