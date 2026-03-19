@@ -4,7 +4,20 @@ export const getBackendBaseUrl = () => {
 }
 
 export const getWebSocketUrl = () => {
-  return process.env.WEBSOCKET_URL || process.env.NEXT_PUBLIC_WEBSOCKET_URL || "ws://localhost:8080"
+  const explicit =
+    process.env.WEBSOCKET_URL || process.env.NEXT_PUBLIC_WEBSOCKET_URL
+  if (explicit) return explicit
+
+  // On client, derive from current origin to avoid broken localhost fallback in production.
+  if (typeof window !== "undefined") {
+    const protocol = window.location.protocol === "https:" ? "wss" : "ws"
+    const host = window.location.hostname
+    const port = process.env.NEXT_PUBLIC_WEBSOCKET_PORT || "8080"
+    return `${protocol}://${host}:${port}`
+  }
+
+  // Server-side fallback for local dev.
+  return "ws://localhost:8080"
 }
 
 export const backendUrl = (path: string) => {
