@@ -3,6 +3,8 @@ import { getWebSocketUrl } from '@/app/api/backend/config'
 
 interface WebSocketMessage {
   type: string
+  event?: string
+  payload?: any
   conversation_id?: number
   message?: any
   token?: string
@@ -75,22 +77,29 @@ export const useWebSocket = ({
 
       ws.onmessage = (event) => {
         try {
-          const data = JSON.parse(event.data)
+          const data: WebSocketMessage = JSON.parse(event.data)
           console.log('🔍 Debug - WebSocket message received:', data)
 
-          switch (data.event) {
+          const messageEvent = data.event || data.type
+          switch (messageEvent) {
             case 'new_message':
-              callbacksRef.current.onMessage?.(data.payload.message)
+              callbacksRef.current.onMessage?.(data.payload?.message ?? data.message)
               break
             case 'typing_indicator':
-              if (data.payload.type === 'typing_start') {
-                callbacksRef.current.onTypingStart?.(data.payload.conversation_id)
-              } else if (data.payload.type === 'typing_stop') {
-                callbacksRef.current.onTypingStop?.(data.payload.conversation_id)
+              if (data.payload?.type === 'typing_start') {
+                callbacksRef.current.onTypingStart?.(Number(data.payload?.conversation_id))
+              } else if (data.payload?.type === 'typing_stop') {
+                callbacksRef.current.onTypingStop?.(Number(data.payload?.conversation_id))
               }
               break
+            case 'typing_start':
+              callbacksRef.current.onTypingStart?.(Number(data.conversation_id))
+              break
+            case 'typing_stop':
+              callbacksRef.current.onTypingStop?.(Number(data.conversation_id))
+              break
             default:
-              console.log('Unknown event:', data.event)
+              console.log('Unknown event:', messageEvent)
           }
         } catch (error) {
           console.error('Error parsing WebSocket message:', error)
