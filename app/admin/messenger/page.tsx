@@ -117,8 +117,15 @@ export default function AdminMessengerPage() {
   const getAdminToken = () => {
     return localStorage.getItem('adminToken')
   }
-  // Use Next.js backend proxy to avoid hardcoding server IP/host
-  const API_BASE = '/api/backend/v1'
+  // Resolve backend base URL for both local dev and production.
+  // - Production (deployed Next at :3000): call backend via same host on default web port (nginx).
+  // - Local dev: fallback to localhost:8000 unless NEXT_PUBLIC_BACKEND_URL is provided.
+  const API_BASE =
+    process.env.NEXT_PUBLIC_BACKEND_URL
+      ? `${process.env.NEXT_PUBLIC_BACKEND_URL.replace(/\/$/, '')}/api/backend/v1`
+      : (typeof window !== 'undefined' && window.location.hostname !== 'localhost')
+      ? `${window.location.protocol}//${window.location.hostname}/api/backend/v1`
+      : 'http://localhost:8000/api/backend/v1'
 
   useEffect(() => {
     fetchConversations()
