@@ -58,6 +58,7 @@ export default function MessengerPage() {
     joinConversation,
     sendTypingStart,
     sendTypingStop,
+    sendMessage: sendMessageViaWebSocket,
   } = useWebSocket({
     onMessage: (message) => {
       console.log('Debug - New message received:', message)
@@ -427,17 +428,21 @@ export default function MessengerPage() {
         console.log('Debug - Send message response data:', data)
         console.log('Debug - Response message structure:', data.data)
                 if (data.success) {
+         const savedMessage = data.data
          setMessages(prev => {
            const updated = prev.map(msg => 
              msg.message_id === optimisticMessage.message_id 
-               ? data.data 
+               ? savedMessage 
                : msg
            )
            return updated
          })
-         
-         // Message will be sent via WebSocket automatically by backend
-         console.log('Debug - Message sent successfully, backend will broadcast via WebSocket')
+
+         // Relay qua WebSocket giống admin — HTTP broadcast không tới daemon đang chạy
+         if (isConnected && conversationId && savedMessage) {
+           console.log('Debug - Sending customer message via WebSocket for realtime')
+           sendMessageViaWebSocket(savedMessage, conversationId)
+         }
        }
       } else {
         // Remove optimistic message on error
@@ -544,14 +549,24 @@ export default function MessengerPage() {
 
           if (messageResponse.ok) {
             const messageData = await messageResponse.json()
-            setMessages(prev => {
-              const updated = prev.map(msg => 
-                msg.message_id === optimisticMessage.message_id 
-                  ? { ...messageData.data, isUploading: false }
-                  : msg
-              )
-              return updated
-            })
+            const saved = messageData.data
+            if (saved) {
+              setMessages(prev => {
+                const updated = prev.map(msg => 
+                  msg.message_id === optimisticMessage.message_id 
+                    ? { ...saved, isUploading: false }
+                    : msg
+                )
+                return updated
+              })
+              if (
+                isConnected &&
+                conversationId &&
+                messageData.success !== false
+              ) {
+                sendMessageViaWebSocket(saved, conversationId)
+              }
+            }
           } else {
             setMessages(prev => prev.filter(msg => msg.message_id !== optimisticMessage.message_id))
             toast.error('Failed to send media message')
