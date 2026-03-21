@@ -192,13 +192,24 @@ export const useWebSocket = ({
   }, [])
 
   const sendMessage = useCallback((message: any, conversationId: number) => {
+    if (message == null || conversationId == null || Number.isNaN(Number(conversationId))) {
+      console.warn('🔍 sendMessage skipped: missing message or conversationId', {
+        message,
+        conversationId,
+      })
+      return
+    }
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       console.log('🔍 Debug - Sending message via WebSocket:', message, 'for conversation:', conversationId)
-      wsRef.current.send(JSON.stringify({
-        type: 'new_message',
-        conversation_id: conversationId,
-        message: message
-      }))
+      wsRef.current.send(
+        JSON.stringify({
+          type: 'new_message',
+          conversation_id: conversationId,
+          message: message,
+        })
+      )
+    } else {
+      console.warn('🔍 sendMessage skipped: WebSocket not OPEN', wsRef.current?.readyState)
     }
   }, [])
 
