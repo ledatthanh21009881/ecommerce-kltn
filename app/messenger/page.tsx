@@ -620,12 +620,19 @@ export default function MessengerPage() {
         if (firstMedia && firstMedia.url) {
           const mediaType = firstMedia.type || ''
           const mediaUrl = firstMedia.url
-          
+          const voiceLikeUrl = /voice-message|voice_message/i.test(mediaUrl)
+          const voiceLikeContent = message.content === "[Voice Message]"
+
           // Check by MIME type first
           if (mediaType.startsWith("image/")) {
             imageUrl = mediaUrl
           } else if (mediaType.startsWith("video/")) {
-            videoUrl = mediaUrl
+            // Ghi âm gửi lên thường là .webm (MediaRecorder) nhưng CDN/API có thể gắn video/webm
+            if (voiceLikeUrl || voiceLikeContent) {
+              audioUrl = mediaUrl
+            } else {
+              videoUrl = mediaUrl
+            }
           } else if (mediaType.startsWith("audio/")) {
             audioUrl = mediaUrl
           }
@@ -633,11 +640,14 @@ export default function MessengerPage() {
           else if (typeof mediaUrl === 'string') {
             const urlLower = mediaUrl.toLowerCase()
             const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.svg']
-            const videoExtensions = ['.mp4', '.webm', '.ogg', '.mov', '.avi', '.mkv']
+            // Không đưa .webm vào video: tin thoại là voice-message.webm → tránh render <video> cao 150px
+            const videoExtensions = ['.mp4', '.ogg', '.mov', '.avi', '.mkv']
             const audioExtensions = ['.mp3', '.wav', '.ogg', '.m4a', '.aac', '.webm']
-            
+
             if (imageExtensions.some(ext => urlLower.includes(ext))) {
               imageUrl = mediaUrl
+            } else if (voiceLikeUrl || voiceLikeContent) {
+              audioUrl = mediaUrl
             } else if (videoExtensions.some(ext => urlLower.includes(ext))) {
               videoUrl = mediaUrl
             } else if (audioExtensions.some(ext => urlLower.includes(ext))) {
@@ -694,7 +704,7 @@ export default function MessengerPage() {
   // Early return AFTER all hooks have been called
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-screen">
+      <div className="flex items-center justify-center min-h-[100dvh] min-h-screen">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-4"></div>
           <p className="text-gray-600">Initializing chat...</p>
@@ -876,18 +886,27 @@ export default function MessengerPage() {
   }
 
                                   return (
-    <div className={`flex justify-center items-center min-h-screen py-4 px-4 ${isDarkMode ? 'bg-gray-900' : 'bg-gray-50'}`}>
-      <div className={`w-full max-w-5xl h-[calc(100vh-3rem)] max-h-[calc(100vh-3rem)] shadow-xl flex flex-col rounded-2xl overflow-hidden ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
+    <div
+      className={`flex justify-center items-stretch sm:items-center min-h-[100dvh] min-h-screen py-0 px-0 sm:py-4 sm:px-4 ${isDarkMode ? 'bg-gray-900' : 'bg-gray-50'}`}
+    >
+      <div
+        className={`w-full max-w-none sm:max-w-5xl h-[100dvh] max-h-[100dvh] sm:h-[calc(100vh-3rem)] sm:max-h-[calc(100vh-3rem)] shadow-none sm:shadow-xl flex flex-col rounded-none sm:rounded-2xl overflow-hidden pb-[env(safe-area-inset-bottom,0px)] ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}
+      >
         {/* Back Header */}
-        <div className={`flex items-center gap-2 px-4 py-2 border-b ${isDarkMode ? 'border-gray-700 bg-gray-800' : 'border-gray-200 bg-white'}`}>
+        <div
+          className={`flex items-center gap-2 px-3 sm:px-4 py-2 border-b shrink-0 ${isDarkMode ? 'border-gray-700 bg-gray-800' : 'border-gray-200 bg-white'} pt-[max(0.5rem,env(safe-area-inset-top))]`}
+        >
           <Link
             href="/"
-            className={`p-2 rounded-full transition-colors ${isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}
+            className={`p-2 rounded-full transition-colors shrink-0 ${isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}
           >
             <ArrowLeft className={`w-4 h-4 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`} />
           </Link>
-          <span className={`text-sm font-medium ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>
-            Quay lại trang chủ
+          <span
+            className={`text-sm font-medium truncate min-w-0 ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}
+          >
+            <span className="sm:hidden">Trang chủ</span>
+            <span className="hidden sm:inline">Quay lại trang chủ</span>
           </span>
           <div className="ml-auto flex items-center gap-3">
             {/* Dark Mode Toggle */}
