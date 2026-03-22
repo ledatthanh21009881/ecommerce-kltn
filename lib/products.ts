@@ -177,6 +177,32 @@ export interface CategoriesResponse {
   }
 }
 
+/** Resolve category by URL slug (active categories only on backend). */
+export async function getCategoryBySlug(
+  slug: string
+): Promise<{ success: true; data: Category } | { success: false; message?: string }> {
+  try {
+    const trimmed = slug?.trim()
+    if (!trimmed) {
+      return { success: false, message: 'Slug is required' }
+    }
+    const response = await fetch(
+      `/api/backend/v1/categories/slug/${encodeURIComponent(trimmed)}`
+    )
+    const data = await response.json().catch(() => null)
+    if (!response.ok || !data?.success || !data?.data?.category_id) {
+      return {
+        success: false,
+        message: data?.message || 'Category not found',
+      }
+    }
+    return { success: true, data: data.data as Category }
+  } catch (error) {
+    console.error('Failed to fetch category by slug:', error)
+    return { success: false, message: 'Failed to fetch category' }
+  }
+}
+
 // Get all categories
 export async function getCategories(): Promise<CategoriesResponse> {
   try {

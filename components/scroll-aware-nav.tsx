@@ -180,13 +180,15 @@ export default function ScrollAwareNav() {
           <Link href="/cart" className={`block text-xs font-bold uppercase tracking-wider ${textColorClass} ${hoverColorClass} transition-colors py-0.5`}>
             CART
           </Link>
-          <Link href="/messenger" className={`block text-xs font-bold uppercase tracking-wider ${textColorClass} ${hoverColorClass} transition-colors py-0.5`}>
-            MESSENGER
-          </Link>
           {isLoggedIn && (
-            <Link href="/account" className={`block text-xs font-bold uppercase tracking-wider ${textColorClass} ${hoverColorClass} transition-colors py-0.5`}>
-              ACCOUNT
-            </Link>
+            <>
+              <Link href="/messenger" className={`block text-xs font-bold uppercase tracking-wider ${textColorClass} ${hoverColorClass} transition-colors py-0.5`}>
+                MESSENGER
+              </Link>
+              <Link href="/account" className={`block text-xs font-bold uppercase tracking-wider ${textColorClass} ${hoverColorClass} transition-colors py-0.5`}>
+                ACCOUNT
+              </Link>
+            </>
           )}
         </nav>
       </div>

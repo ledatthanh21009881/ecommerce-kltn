@@ -280,16 +280,14 @@ export default function CartPage() {
 
   if (loading) {
     return (
-      <main className="pt-24">
-        <div className="container mx-auto px-4 py-12">
-          <div className="text-center">Đang tải...</div>
-        </div>
-      </main>
+      <div className="p-8 max-w-[85%] ml-[224px] mr-8">
+        <div className="py-12 text-center text-gray-600">Đang tải...</div>
+      </div>
     )
   }
 
   return (
-    <main className="pt-[5px] pb-[95px]">
+    <>
       {/* Error Banner - Top Right */}
       {errorMessage && (
         <div className="fixed top-4 right-4 z-50 max-w-md animate-in slide-in-from-top-5">
@@ -315,7 +313,7 @@ export default function CartPage() {
           </div>
         </div>
       )}
-      
+
       <div className="p-8 max-w-[85%] ml-[224px] mr-8">
         {cartData.items.length === 0 ? (
           <div className="flex flex-col items-center justify-center pt-[82px] pb-[82px] text-center">
@@ -461,6 +459,6 @@ export default function CartPage() {
           </div>
         )}
       </div>
-    </main>
+    </>
   )
 }

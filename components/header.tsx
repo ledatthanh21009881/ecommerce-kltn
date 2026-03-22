@@ -154,13 +154,15 @@ export default function Header() {
             </Button>
           </Link>
 
-          {/* Messenger */}
-          <Link href="/messenger">
-            <Button variant="ghost" size="icon" className={`hidden sm:inline-flex ${!isScrolled ? "text-white" : ""}`}>
-              <MessageCircle className="h-5 w-5" />
-              <span className="sr-only">Messenger</span>
-            </Button>
-          </Link>
+          {/* Messenger — chỉ khi đã đăng nhập */}
+          {isLoggedIn && (
+            <Link href="/messenger">
+              <Button variant="ghost" size="icon" className={`hidden sm:inline-flex ${!isScrolled ? "text-white" : ""}`}>
+                <MessageCircle className="h-5 w-5" />
+                <span className="sr-only">Messenger</span>
+              </Button>
+            </Link>
+          )}
 
           {/* Language Switcher */}
           <LanguageSwitcher 
@@ -364,14 +366,16 @@ export default function Header() {
                   <Search className="h-5 w-5" />
                   Search
                 </Link>
-                <Link
-                  href="/messenger"
-                  className="flex items-center gap-2 text-lg tracking-wider"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  <MessageCircle className="h-5 w-5" />
-                  Messenger
-                </Link>
+                {isLoggedIn && (
+                  <Link
+                    href="/messenger"
+                    className="flex items-center gap-2 text-lg tracking-wider"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    <MessageCircle className="h-5 w-5" />
+                    Messenger
+                  </Link>
+                )}
                 <Link
                   href="/cart"
                   className="flex items-center gap-2 text-lg tracking-wider"

@@ -64,6 +64,13 @@ const translations = {
     'auth.sessionExpired': 'Session expired, please login again',
     'auth.tokenRefreshed': 'Session refreshed successfully',
     'auth.tokenRefreshFailed': 'Failed to refresh session',
+    'auth.accountNamePlaceholder': 'Enter your account name',
+    'auth.passwordPlaceholder': 'Enter your password',
+    'auth.accountNameRequired': 'Account name is required!',
+    'auth.passwordRequired': 'Password is required!',
+    'auth.loginFailed': 'Login failed!',
+    'auth.welcomeBack': 'Welcome back, {name}!',
+    'auth.backToHome': '← Back to Home',
     
     // Logout Modal
     'logout.confirmTitle': 'Confirm Logout',
@@ -185,6 +192,15 @@ const translations = {
     'common.close': 'Close',
     'common.submit': 'Submit',
     'common.reset': 'Reset',
+
+    'footer.subscribe': 'SUBSCRIBE',
+    'footer.emailPlaceholder': 'EMAIL',
+    'footer.subscribeThanks': 'Thank you for subscribing.',
+    'footer.returnExchange': 'RETURN AND EXCHANGE POLICY',
+    'footer.privacy': 'PRIVACY POLICY',
+    'footer.instagram': 'INSTAGRAM',
+    'footer.contact': 'CONTACT',
+    'footer.copyright': '©VIVIENNE {year}',
   },
   vi: {
     // Header/Navigation
@@ -239,6 +255,13 @@ const translations = {
     'auth.sessionExpired': 'Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại',
     'auth.tokenRefreshed': 'Gia hạn phiên đăng nhập thành công',
     'auth.tokenRefreshFailed': 'Không thể gia hạn phiên đăng nhập',
+    'auth.accountNamePlaceholder': 'Nhập tên tài khoản',
+    'auth.passwordPlaceholder': 'Nhập mật khẩu',
+    'auth.accountNameRequired': 'Vui lòng nhập tên tài khoản!',
+    'auth.passwordRequired': 'Vui lòng nhập mật khẩu!',
+    'auth.loginFailed': 'Đăng nhập thất bại!',
+    'auth.welcomeBack': 'Chào mừng trở lại, {name}!',
+    'auth.backToHome': '← Về trang chủ',
     
     // Logout Modal
     'logout.confirmTitle': 'Xác nhận đăng xuất',
@@ -360,6 +383,15 @@ const translations = {
     'common.close': 'Đóng',
     'common.submit': 'Gửi',
     'common.reset': 'Đặt lại',
+
+    'footer.subscribe': 'ĐĂNG KÝ',
+    'footer.emailPlaceholder': 'EMAIL',
+    'footer.subscribeThanks': 'Cảm ơn bạn đã đăng ký.',
+    'footer.returnExchange': 'CHÍNH SÁCH ĐỔI TRẢ',
+    'footer.privacy': 'CHÍNH SÁCH BẢO MẬT',
+    'footer.instagram': 'INSTAGRAM',
+    'footer.contact': 'LIÊN HỆ',
+    'footer.copyright': '©VIVIENNE {year}',
   }
 }
 

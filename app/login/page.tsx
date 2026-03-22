@@ -8,8 +8,10 @@ import { Input } from "@/components/ui/input"
 import { motion } from "framer-motion"
 import { loginUser, authUtils, type LoginData } from "@/lib/auth"
 import { toast } from "sonner"
+import { useLanguage } from "@/components/language-provider"
 
 export default function LoginPage() {
+  const { t } = useLanguage()
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
   const [formData, setFormData] = useState({
@@ -27,12 +29,12 @@ export default function LoginPage() {
     
     // Validation
     if (!formData.accountName.trim()) {
-      toast.error("Account name is required!")
+      toast.error(t("auth.accountNameRequired"))
       return
     }
 
     if (!formData.password.trim()) {
-      toast.error("Password is required!")
+      toast.error(t("auth.passwordRequired"))
       return
     }
 
@@ -50,17 +52,17 @@ export default function LoginPage() {
         // Save user data
         authUtils.saveUser(response.data.user)
         
-        toast.success(`Welcome back, ${response.data.user.first_name}!`)
+        toast.success(t("auth.welcomeBack").replace("{name}", response.data.user.first_name))
         
         // Trigger a page reload to update header state or use router events
         setTimeout(() => {
           window.location.href = "/"
         }, 1500)
       } else {
-        toast.error(response.message || "Login failed!")
+        toast.error(response.message || t("auth.loginFailed"))
       }
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Login failed!")
+      toast.error(error instanceof Error ? error.message : t("auth.loginFailed"))
     } finally {
       setIsLoading(false)
     }
@@ -72,20 +74,20 @@ export default function LoginPage() {
         <div className="mx-auto max-w-md">
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
             <h1 className="mb-8 text-center font-serif text-3xl font-light md:text-4xl">
-              Sign In
+              {t("auth.signIn")}
             </h1>
 
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="space-y-2">
                 <label htmlFor="accountName" className="text-sm">
-                  Account Name
+                  {t("auth.accountName")}
                 </label>
                 <Input 
                   id="accountName" 
                   name="accountName" 
                   value={formData.accountName} 
                   onChange={handleChange} 
-                  placeholder="Enter your account name"
+                  placeholder={t("auth.accountNamePlaceholder")}
                   required 
                 />
               </div>
@@ -93,10 +95,10 @@ export default function LoginPage() {
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <label htmlFor="password" className="text-sm">
-                    Password
+                    {t("auth.password")}
                   </label>
                   <Link href="/forgot-password" className="text-xs underline underline-offset-4">
-                    Forgot password?
+                    {t("auth.forgotPassword")}
                   </Link>
                 </div>
                 <Input
@@ -105,7 +107,7 @@ export default function LoginPage() {
                   type="password"
                   value={formData.password}
                   onChange={handleChange}
-                  placeholder="Enter your password"
+                  placeholder={t("auth.passwordPlaceholder")}
                   required
                 />
               </div>
@@ -117,7 +119,7 @@ export default function LoginPage() {
                   disabled={isLoading}
                 >
                   <span className="relative z-10 font-sans font-bold uppercase tracking-wider">
-                    {isLoading ? "Signing In..." : "Sign In"}
+                    {isLoading ? t("auth.signingIn") : t("auth.signIn")}
                   </span>
                   <div className="absolute inset-0 bg-white transform translate-x-full transition-transform duration-300 ease-in-out group-hover:translate-x-0"></div>
                 </button>
@@ -126,14 +128,14 @@ export default function LoginPage() {
 
             <div className="mt-6 text-center">
               <p className="text-sm">
-                Don't have an account?{" "}
+                {t("auth.dontHaveAccount")}{" "}
                 <Link href="/register" className="underline underline-offset-4">
-                  Create one
+                  {t("auth.createOne")}
                 </Link>
               </p>
               <div className="mt-3">
                 <Link href="/" className="text-xs text-blue-600 hover:text-blue-700 underline underline-offset-4">
-                  ← Back to Home
+                  {t("auth.backToHome")}
                 </Link>
               </div>
             </div>

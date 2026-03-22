@@ -16,17 +16,18 @@ export default function ConditionalLayout({ children }: ConditionalLayoutProps) 
   const isMessengerPage = pathname === '/messenger'
   const isCollectionsPage = pathname?.startsWith('/collections')
   const isOrderMapPage = pathname?.match(/^\/account\/orders\/[^/]+\/map(\/)?$/)
+  const isLoginPage = pathname === '/login'
   
-  if (isAdminRoute || isMessengerPage || isCollectionsPage || isOrderMapPage) {
+  if (isAdminRoute || isMessengerPage || isCollectionsPage || isOrderMapPage || isLoginPage) {
     return <>{children}</>
   }
   
-  // For other routes, render with Footer only (no Header since we have sidebar)
+  // Sticky footer: vùng main flex-1 đẩy Footer xuống đáy màn hình khi nội dung thấp (search, cart...)
   return (
-    <>
-      {children}
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="flex min-h-0 flex-1 flex-col">{children}</div>
       <Footer />
       <WelcomeMessage />
-    </>
+    </div>
   )
 }
