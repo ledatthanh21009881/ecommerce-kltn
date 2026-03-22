@@ -521,6 +521,25 @@ const ChatWindow = ({
               !hasNonVoiceVideo &&
               !message.text;
 
+            /** Chỉ chữ, không media → bong bóng ôm nội dung (không kéo flex-1 full hàng) */
+            const isTextOnlyBubble =
+              Boolean(message.text?.trim()) &&
+              !message.image &&
+              !message.video &&
+              !message.audio;
+
+            const mineBubbleWidthClass = isVoiceOnlyBubble
+              ? "min-w-[220px] w-[min(100%,18rem)] max-w-[min(100%,20rem)] shrink-0"
+              : isTextOnlyBubble
+                ? "w-fit max-w-[min(100%,calc(100vw-4.5rem))] sm:max-w-md shrink-0 min-w-0"
+                : "min-w-0 max-w-full flex-1";
+
+            const theirsBubbleWidthClass = isVoiceOnlyBubble
+              ? "min-w-[220px] w-[min(100%,18rem)] max-w-[min(100%,20rem)] shrink-0"
+              : isTextOnlyBubble
+                ? "w-fit max-w-[min(100%,calc(100vw-4.5rem))] sm:max-w-md shrink-0 min-w-0"
+                : "min-w-0 max-w-[calc(100vw-4.5rem)] sm:max-w-md";
+
             return (
               <div
                 key={message.id}
@@ -605,12 +624,7 @@ const ChatWindow = ({
                         </button>
                       </div>
                       <div
-                        className={`${
-                          isVoiceOnlyBubble
-                            ? /* w-max + max-content làm thanh co ~0px trên vài trình duyệt — cần min-w + width min() */
-                              "min-w-[220px] w-[min(100%,18rem)] max-w-[min(100%,20rem)] shrink-0"
-                            : "min-w-0 max-w-full flex-1"
-                        } overflow-hidden bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-sm transition-all hover:shadow-md ${
+                        className={`${mineBubbleWidthClass} overflow-hidden bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-sm transition-all hover:shadow-md ${
                           isVoiceOnlyBubble
                             ? "rounded-full ring-1 ring-white/20"
                             : "rounded-3xl rounded-br-md"
@@ -700,11 +714,7 @@ const ChatWindow = ({
                     </div>
                   ) : (
                     <div
-                      className={`${
-                        isVoiceOnlyBubble
-                          ? "min-w-[220px] w-[min(100%,18rem)] max-w-[min(100%,20rem)] shrink-0"
-                          : "min-w-0 max-w-[calc(100vw-4.5rem)] sm:max-w-md"
-                      } overflow-hidden ${
+                      className={`${theirsBubbleWidthClass} overflow-hidden ${
                         isDarkMode
                           ? "bg-gray-700 text-white"
                           : "bg-gray-200 text-gray-900"
