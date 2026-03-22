@@ -49,6 +49,8 @@ export default function MessengerPage() {
   const [conversationId, setConversationId] = useState<number | null>(null)
   const [isDarkMode, setIsDarkMode] = useState(false)
   const [isTyping, setIsTyping] = useState(false)
+  const [recallSelectionMode, setRecallSelectionMode] = useState(false)
+  const [selectedRecallMessageIds, setSelectedRecallMessageIds] = useState<number[]>([])
 
   // WebSocket hook
   const {
@@ -731,89 +733,90 @@ export default function MessengerPage() {
     sendTypingStop(conversationId)
   }
 
-  const handleRecallMessage = async (messageId: string | number) => {
-    if (!conversationId) return;
-    
-    try {
-      const token = localStorage.getItem('token') || localStorage.getItem('access_token') || localStorage.getItem('auth_token');
-      if (!token) {
-        toast.error('Please login to recall message');
-        return;
-      }
-
-      const response = await fetch('/api/messenger', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          action: 'recall_message',
-          message_id: messageId,
-          conversation_id: conversationId
-        })
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success) {
-          // Remove message from local state
-          setMessages(prev => prev.filter(msg => msg.message_id !== messageId));
-          toast.success('Tin nhắn đã được thu hồi');
-        } else {
-          toast.error(data.message || 'Failed to recall message');
-        }
-      } else {
-        const errorData = await response.json();
-        toast.error(errorData.message || 'Failed to recall message');
-      }
-    } catch (error) {
-      console.error('Recall message error:', error);
-      toast.error('Failed to recall message');
+  const recallMessageOnServer = async (messageId: number, quiet?: boolean) => {
+    const token =
+      localStorage.getItem('token') ||
+      localStorage.getItem('access_token') ||
+      localStorage.getItem('auth_token')
+    if (!token) {
+      if (!quiet) toast.error('Vui lòng đăng nhập để thu hồi tin nhắn')
+      return false
     }
-  };
-
-  const handleDeleteMessage = async (messageId: string | number) => {
-    if (!conversationId) return;
-    
-    try {
-      const token = localStorage.getItem('token') || localStorage.getItem('access_token') || localStorage.getItem('auth_token');
-      if (!token) {
-        toast.error('Please login to delete message');
-        return;
-      }
-
-      const response = await fetch('/api/messenger', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          action: 'delete_message',
-          message_id: messageId,
-          conversation_id: conversationId
-        })
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success) {
-          // Remove message from local state (only for sender)
-          setMessages(prev => prev.filter(msg => msg.message_id !== messageId));
-          toast.success('Tin nhắn đã được xóa');
-        } else {
-          toast.error(data.message || 'Failed to delete message');
-        }
-      } else {
-        const errorData = await response.json();
-        toast.error(errorData.message || 'Failed to delete message');
-      }
-    } catch (error) {
-      console.error('Delete message error:', error);
-      toast.error('Failed to delete message');
+    const response = await fetch('/api/messenger', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        action: 'recall_message',
+        message_id: messageId,
+        conversation_id: conversationId,
+      }),
+    })
+    const data = await response.json().catch(() => ({}))
+    if (response.ok && data.success) {
+      setMessages((prev) => prev.filter((msg) => msg.message_id !== messageId))
+      return true
     }
-  };
+    if (!quiet) toast.error(data.message || 'Không thu hồi được tin nhắn')
+    return false
+  }
+
+  const handleEnterRecallSelectionMode = () => {
+    setRecallSelectionMode(true)
+    setSelectedRecallMessageIds([])
+  }
+
+  const handleToggleRecallSelect = (messageId: string | number) => {
+    const id = typeof messageId === 'string' ? parseInt(messageId, 10) : messageId
+    if (Number.isNaN(id)) return
+    setSelectedRecallMessageIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    )
+  }
+
+  const handleRecallSelectAllMine = () => {
+    const fn = isMessageFromCustomer
+    const ids = messages.filter((m) => fn(m)).map((m) => m.message_id)
+    setSelectedRecallMessageIds(ids)
+  }
+
+  const handleRecallDeselectAll = () => setSelectedRecallMessageIds([])
+
+  const handleCancelRecallSelection = () => {
+    setRecallSelectionMode(false)
+    setSelectedRecallMessageIds([])
+  }
+
+  const handleConfirmRecallSelected = async () => {
+    if (selectedRecallMessageIds.length === 0) {
+      toast.error('Chọn ít nhất một tin nhắn')
+      return
+    }
+    const n = selectedRecallMessageIds.length
+    const confirmText =
+      n === 1
+        ? 'Thu hồi tin nhắn đã chọn? Người nhận sẽ không còn thấy tin này.'
+        : `Thu hồi ${n} tin nhắn đã chọn? Người nhận sẽ không còn thấy các tin này.`
+    if (typeof window !== 'undefined' && !window.confirm(confirmText)) {
+      return
+    }
+    let ok = 0
+    for (const mid of selectedRecallMessageIds) {
+      if (await recallMessageOnServer(mid, true)) ok += 1
+    }
+    const total = selectedRecallMessageIds.length
+    if (ok === total) {
+      toast.success(ok === 1 ? 'Đã thu hồi tin nhắn' : `Đã thu hồi ${ok} tin nhắn`)
+    } else if (ok > 0) {
+      toast.warning(`Thu hồi được ${ok}/${total} tin — một số tin không thể thu hồi`)
+    } else {
+      toast.error('Không thu hồi được tin nhắn nào')
+    }
+    setRecallSelectionMode(false)
+    setSelectedRecallMessageIds([])
+  }
 
   const handleVoiceRecordingComplete = async (audioBlob: Blob) => {
     if (!conversationId) return
@@ -946,8 +949,14 @@ export default function MessengerPage() {
             onVoiceRecordingComplete={handleVoiceRecordingComplete}
             isConnected={isConnected}
             isDarkMode={isDarkMode}
-            onRecallMessage={handleRecallMessage}
-            onDeleteMessage={handleDeleteMessage}
+            recallSelectionMode={recallSelectionMode}
+            selectedRecallMessageIds={selectedRecallMessageIds}
+            onEnterRecallSelectionMode={handleEnterRecallSelectionMode}
+            onToggleRecallSelect={handleToggleRecallSelect}
+            onRecallSelectAllMine={handleRecallSelectAllMine}
+            onRecallDeselectAll={handleRecallDeselectAll}
+            onCancelRecallSelection={handleCancelRecallSelection}
+            onConfirmRecallSelected={handleConfirmRecallSelected}
             isTyping={isTyping}
           />
         </div>

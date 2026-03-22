@@ -135,6 +135,28 @@ export async function POST(request: NextRequest) {
         case 'send_message':
           url = backendUrl('/api/backend/v1/messages')
           break
+        case 'recall_message':
+        case 'delete_message': {
+          const messageId = (data as { message_id?: number | string }).message_id
+          if (messageId == null || messageId === '') {
+            return NextResponse.json(
+              { success: false, message: 'message_id required' },
+              { status: 400 }
+            )
+          }
+          const delUrl = backendUrl(`/api/backend/v1/messages/${messageId}`)
+          const delRes = await fetch(delUrl, {
+            method: 'DELETE',
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          })
+          const delData = await delRes.json().catch(() => ({
+            success: false,
+            message: 'Invalid response from backend',
+          }))
+          return NextResponse.json(delData, { status: delRes.status })
+        }
         default:
           console.log('🔍 Debug - Invalid action:', action)
           return NextResponse.json({ 

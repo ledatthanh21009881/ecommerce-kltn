@@ -1064,7 +1064,7 @@ export default function AdminMessengerPage() {
                    ) : (
                      <div>
                        <h2 className={`text-lg font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                         Xóa tin nhắn
+                         Thu hồi tin nhắn
                        </h2>
                      </div>
                    )}
@@ -1099,7 +1099,7 @@ export default function AdminMessengerPage() {
                          disabled={selectedMessages.length === 0}
                          className="text-xs"
                        >
-                         Xóa ({selectedMessages.length})
+                         Thu hồi ({selectedMessages.length})
                        </Button>
                      </div>
                    )}

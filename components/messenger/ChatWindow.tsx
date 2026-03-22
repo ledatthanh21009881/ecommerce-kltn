@@ -15,7 +15,6 @@ import {
   Play,
   Paperclip,
   Undo2,
-  Trash2,
 } from "lucide-react";
 import EmojiPicker from "emoji-picker-react";
 import { VoiceRecorder } from "@/components/VoiceRecorder";
@@ -48,8 +47,15 @@ interface ChatWindowProps {
   onVoiceRecordingComplete?: (audioBlob: Blob) => void;
   isConnected?: boolean;
   isDarkMode?: boolean;
-  onRecallMessage?: (messageId: string | number) => void;
-  onDeleteMessage?: (messageId: string | number) => void;
+  /** Bấm ⋮ → Thu hồi: vào chế độ chọn tin (giống Messenger admin) */
+  onEnterRecallSelectionMode?: () => void;
+  recallSelectionMode?: boolean;
+  selectedRecallMessageIds?: number[];
+  onToggleRecallSelect?: (messageId: string | number) => void;
+  onRecallSelectAllMine?: () => void;
+  onRecallDeselectAll?: () => void;
+  onCancelRecallSelection?: () => void;
+  onConfirmRecallSelected?: () => void;
   isTyping?: boolean;
 }
 
@@ -68,8 +74,14 @@ const ChatWindow = ({
   onVoiceRecordingComplete,
   isConnected = true,
   isDarkMode = false,
-  onRecallMessage,
-  onDeleteMessage,
+  onEnterRecallSelectionMode,
+  recallSelectionMode = false,
+  selectedRecallMessageIds = [],
+  onToggleRecallSelect,
+  onRecallSelectAllMine,
+  onRecallDeselectAll,
+  onCancelRecallSelection,
+  onConfirmRecallSelected,
   isTyping = false,
 }: ChatWindowProps) => {
   const [inputMessage, setInputMessage] = useState("");
@@ -323,57 +335,107 @@ const ChatWindow = ({
     <div className={`w-full h-full flex flex-col ${isDarkMode ? 'bg-gray-900' : 'bg-white'}`}>
       {/* HEADER */}
       <div className={`px-3 sm:px-6 py-3 sm:py-4 border-b shrink-0 ${isDarkMode ? 'border-gray-700 bg-gray-800' : 'border-gray-200 bg-white'} shadow-sm`}>
-        <div className="flex items-center justify-between gap-2 min-w-0">
-          <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
-            <div className="relative shrink-0">
-              <img
-                src={contact.avatar}
-                alt={contact.name}
-                className="w-10 h-10 sm:w-12 sm:h-12 rounded-full object-cover ring-2 ring-blue-100"
-              />
-              {contact.online && (
-                <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 rounded-full border-2 border-white" />
+        {!recallSelectionMode ? (
+          <div className="flex items-center justify-between gap-2 min-w-0">
+            <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+              <div className="relative shrink-0">
+                <img
+                  src={contact.avatar}
+                  alt={contact.name}
+                  className="w-10 h-10 sm:w-12 sm:h-12 rounded-full object-cover ring-2 ring-blue-100"
+                />
+                {contact.online && (
+                  <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 rounded-full border-2 border-white" />
+                )}
+              </div>
+              <div className="min-w-0">
+                <h2 className={`font-semibold text-base sm:text-lg truncate ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                  {contact.name}
+                </h2>
+                <p className={`text-xs sm:text-sm font-medium truncate ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                  {!isConnected
+                    ? "Đang kết nối..."
+                    : contact.online
+                    ? "Đang hoạt động"
+                    : "Ngoại tuyến"}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-0.5 sm:gap-2 shrink-0">
+              <button
+                type="button"
+                className={`hidden sm:inline-flex p-2 sm:p-2.5 rounded-full transition-colors ${isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}
+                aria-label="Phone"
+              >
+                <Phone className="w-5 h-5 text-blue-500" />
+              </button>
+              <button
+                type="button"
+                className={`hidden sm:inline-flex p-2 sm:p-2.5 rounded-full transition-colors ${isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}
+                aria-label="Video"
+              >
+                <VideoIcon className="w-5 h-5 text-blue-500" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowMediaGallery(!showMediaGallery)}
+                className={`p-2 sm:p-2.5 rounded-full transition-colors relative ${isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}
+                aria-label="Media"
+              >
+                <Info className="w-5 h-5 text-blue-500" />
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between min-w-0">
+            <h2 className={`font-semibold text-base sm:text-lg ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+              Thu hồi tin nhắn
+            </h2>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className={`text-xs sm:text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                {selectedRecallMessageIds.length} đã chọn
+              </span>
+              {onRecallSelectAllMine && (
+                <button
+                  type="button"
+                  onClick={onRecallSelectAllMine}
+                  className={`rounded-lg border px-2.5 py-1.5 text-xs font-medium ${isDarkMode ? 'border-gray-600 text-gray-200 hover:bg-gray-700' : 'border-gray-300 text-gray-800 hover:bg-gray-100'}`}
+                >
+                  Chọn tất cả
+                </button>
+              )}
+              {onRecallDeselectAll && (
+                <button
+                  type="button"
+                  onClick={onRecallDeselectAll}
+                  className={`rounded-lg border px-2.5 py-1.5 text-xs font-medium ${isDarkMode ? 'border-gray-600 text-gray-200 hover:bg-gray-700' : 'border-gray-300 text-gray-800 hover:bg-gray-100'}`}
+                >
+                  Bỏ chọn
+                </button>
+              )}
+              {onCancelRecallSelection && (
+                <button
+                  type="button"
+                  onClick={onCancelRecallSelection}
+                  className={`rounded-lg px-2.5 py-1.5 text-xs font-medium ${isDarkMode ? 'text-gray-300 hover:bg-gray-700' : 'text-gray-700 hover:bg-gray-100'}`}
+                >
+                  Hủy
+                </button>
+              )}
+              {onConfirmRecallSelected && (
+                <button
+                  type="button"
+                  onClick={onConfirmRecallSelected}
+                  disabled={selectedRecallMessageIds.length === 0}
+                  className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-700 disabled:opacity-50 disabled:pointer-events-none"
+                >
+                  Thu hồi ({selectedRecallMessageIds.length})
+                </button>
               )}
             </div>
-            <div className="min-w-0">
-              <h2 className={`font-semibold text-base sm:text-lg truncate ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                {contact.name}
-              </h2>
-              <p className={`text-xs sm:text-sm font-medium truncate ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                {!isConnected
-                  ? "Đang kết nối..."
-                  : contact.online
-                  ? "Đang hoạt động"
-                  : "Ngoại tuyến"}
-              </p>
-            </div>
           </div>
-
-          <div className="flex items-center gap-0.5 sm:gap-2 shrink-0">
-            <button
-              type="button"
-              className={`hidden sm:inline-flex p-2 sm:p-2.5 rounded-full transition-colors ${isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}
-              aria-label="Phone"
-            >
-              <Phone className="w-5 h-5 text-blue-500" />
-            </button>
-            <button
-              type="button"
-              className={`hidden sm:inline-flex p-2 sm:p-2.5 rounded-full transition-colors ${isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}
-              aria-label="Video"
-            >
-              <VideoIcon className="w-5 h-5 text-blue-500" />
-            </button>
-            <button
-              type="button"
-              onClick={() => setShowMediaGallery(!showMediaGallery)}
-              className={`p-2 sm:p-2.5 rounded-full transition-colors relative ${isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}
-              aria-label="Media"
-            >
-              <Info className="w-5 h-5 text-blue-500" />
-            </button>
-          </div>
-        </div>
+        )}
       </div>
 
       {/* MEDIA GALLERY */}
@@ -480,7 +542,9 @@ const ChatWindow = ({
       )}
 
       {/* MESSAGE LIST */}
-      <div className={`flex-1 overflow-y-auto overflow-x-hidden p-3 sm:p-6 min-h-0 ${isDarkMode ? 'bg-gradient-to-b from-gray-900 to-gray-800' : 'bg-gradient-to-b from-gray-50 to-white'}`}>
+      <div
+        className={`flex-1 overflow-y-auto overflow-x-hidden p-3 sm:p-6 min-h-0 ${isDarkMode ? 'bg-gradient-to-b from-gray-900 to-gray-800' : 'bg-gradient-to-b from-gray-50 to-white'} ${recallSelectionMode ? 'pl-9 sm:pl-11' : ''}`}
+      >
         <div className="max-w-4xl mx-auto space-y-3 w-full min-w-0">
           {messages.length === 0 ? (
             <div className="text-center py-12">
@@ -540,10 +604,18 @@ const ChatWindow = ({
                 ? "w-fit max-w-[min(100%,calc(100vw-4.5rem))] sm:max-w-md shrink-0 min-w-0"
                 : "min-w-0 max-w-[calc(100vw-4.5rem)] sm:max-w-md";
 
+            const recallIdNum =
+              typeof message.id === "string"
+                ? parseInt(message.id, 10)
+                : Number(message.id);
+            const isRecallSelected =
+              !Number.isNaN(recallIdNum) &&
+              selectedRecallMessageIds.includes(recallIdNum);
+
             return (
               <div
                 key={message.id}
-                className={`group/row flex items-end gap-2 ${
+                className={`group/row relative flex items-end gap-2 ${
                   message.isMine ? "flex-row-reverse" : "flex-row"
                 }`}
                 onMouseEnter={() => {
@@ -579,7 +651,40 @@ const ChatWindow = ({
                   }
                 >
                   {message.isMine ? (
-                    <div className="flex flex-row items-end justify-end gap-1 max-w-[calc(100vw-3rem)] sm:max-w-md w-full min-w-0">
+                    <div className="flex max-w-[calc(100vw-3rem)] w-full min-w-0 flex-row items-end justify-end gap-1.5 sm:max-w-md">
+                      {recallSelectionMode && onToggleRecallSelect && (
+                        <button
+                          type="button"
+                          onClick={() => onToggleRecallSelect(message.id)}
+                          className={`mb-px flex h-5 w-5 shrink-0 items-center justify-center rounded-full border shadow-sm transition-colors sm:h-[1.375rem] sm:w-[1.375rem] ${
+                            isRecallSelected
+                              ? "border-blue-500 bg-blue-500 text-white"
+                              : isDarkMode
+                                ? "border-gray-500 bg-gray-800 hover:border-blue-400"
+                                : "border-gray-300 bg-white hover:border-blue-400"
+                          }`}
+                          aria-label={
+                            isRecallSelected ? "Bỏ chọn thu hồi" : "Chọn để thu hồi"
+                          }
+                          aria-pressed={isRecallSelected}
+                        >
+                          {isRecallSelected && (
+                            <svg
+                              className="h-2.5 w-2.5"
+                              fill="currentColor"
+                              viewBox="0 0 20 20"
+                              aria-hidden
+                            >
+                              <path
+                                fillRule="evenodd"
+                                d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                clipRule="evenodd"
+                              />
+                            </svg>
+                          )}
+                        </button>
+                      )}
+                      {!recallSelectionMode && (
                       <div
                         className="relative shrink-0 flex flex-col justify-center pb-0.5"
                         ref={(el) => {
@@ -623,6 +728,7 @@ const ChatWindow = ({
                           <MoreHorizontal className="h-5 w-5" strokeWidth={2} />
                         </button>
                       </div>
+                      )}
                       <div
                         className={`${mineBubbleWidthClass} overflow-hidden bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-sm transition-all hover:shadow-md ${
                           isVoiceOnlyBubble
@@ -853,7 +959,9 @@ const ChatWindow = ({
       </div>
 
       {/* INPUT AREA */}
-      <div className={`p-2 sm:p-4 border-t relative z-[100] shrink-0 pb-[max(0.5rem,env(safe-area-inset-bottom))] ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+      <div
+        className={`p-2 sm:p-4 border-t relative z-[100] shrink-0 pb-[max(0.5rem,env(safe-area-inset-bottom))] ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} ${recallSelectionMode ? 'pointer-events-none opacity-50' : ''}`}
+      >
         {showVoiceRecorder && onVoiceRecordingComplete ? (
           <VoiceRecorder
             onRecordingComplete={onVoiceRecordingComplete}
@@ -1055,13 +1163,13 @@ const ChatWindow = ({
                 left: messageMenuPlacement.left,
               }}
             >
-              {onRecallMessage && (
+              {onEnterRecallSelectionMode && (
                 <button
                   type="button"
                   role="menuitem"
                   onClick={(e) => {
                     e.stopPropagation();
-                    onRecallMessage(openMenuId);
+                    onEnterRecallSelectionMode();
                     setOpenMenuId(null);
                     setMessageMenuPlacement(null);
                   }}
@@ -1073,26 +1181,6 @@ const ChatWindow = ({
                 >
                   <Undo2 className="h-4 w-4 shrink-0 opacity-70" />
                   Thu hồi
-                </button>
-              )}
-              {onDeleteMessage && (
-                <button
-                  type="button"
-                  role="menuitem"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onDeleteMessage(openMenuId);
-                    setOpenMenuId(null);
-                    setMessageMenuPlacement(null);
-                  }}
-                  className={`flex w-full items-center gap-3 px-4 py-2.5 text-left text-[15px] transition-colors ${
-                    isDarkMode
-                      ? "text-red-300 hover:bg-red-950/40"
-                      : "text-red-600 hover:bg-red-50"
-                  }`}
-                >
-                  <Trash2 className="h-4 w-4 shrink-0" />
-                  Xóa tin nhắn
                 </button>
               )}
             </div>
