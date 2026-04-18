@@ -19,6 +19,7 @@ export const UI_TRANSLATIONS = {
     reviews: 'Reviews',
     settings: 'Settings',
     logout: 'Logout',
+    adminLoginSuccess: 'Login successful!',
 
     // Page Titles & Headers
     orderManagement: 'Order Management',
@@ -307,6 +308,9 @@ export const UI_TRANSLATIONS = {
     mainImage: 'Main',
     updateProduct: 'Update Product',
     createProduct: 'Create Product',
+    invalidPrice: 'Invalid price',
+    priceStepMismatch:
+      'Amounts must be multiples of 1,000 VND (for example 1,536,000 or 1,537,000).',
 
     // Search & Filter
     searchOrders: 'Search orders by ID, customer name or email...',
@@ -688,6 +692,7 @@ export const UI_TRANSLATIONS = {
     reviews: 'Đánh giá',
     settings: 'Cài đặt',
     logout: 'Đăng xuất',
+    adminLoginSuccess: 'Đăng nhập thành công!',
 
     // Page Titles & Headers
     orderManagement: 'Quản lý đơn hàng',
@@ -973,6 +978,9 @@ export const UI_TRANSLATIONS = {
     mainImage: 'Ảnh chính',
     updateProduct: 'Cập nhật sản phẩm',
     createProduct: 'Tạo sản phẩm',
+    invalidPrice: 'Giá không hợp lệ',
+    priceStepMismatch:
+      'Giá phải là bội số của 1.000 VND (ví dụ: 1.536.000 hoặc 1.537.000).',
 
     // Search & Filter
     searchOrders: 'Tìm kiếm đơn hàng theo ID, tên khách hàng hoặc email...',

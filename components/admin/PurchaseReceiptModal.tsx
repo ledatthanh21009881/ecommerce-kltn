@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { toast } from 'sonner'
 import { getAuthData } from '@/lib/admin-auth'
 import { useLanguage } from '@/contexts/LanguageContext'
+import { violatesVndPriceStep } from '@/lib/vnd-price-step'
 
 interface ProductVariant {
   variant_id: number
@@ -223,6 +224,8 @@ export default function PurchaseReceiptModal({ isOpen, onClose, receipt, onSaved
       }
       if (item.unit_price <= 0) {
         newErrors[`item_${index}_price`] = t('unitPriceMustBePositive')
+      } else if (violatesVndPriceStep(item.unit_price)) {
+        newErrors[`item_${index}_price`] = t('priceStepMismatch')
       }
     })
 
@@ -311,7 +314,7 @@ export default function PurchaseReceiptModal({ isOpen, onClose, receipt, onSaved
           </Button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+        <form noValidate onSubmit={handleSubmit} className="p-6 space-y-6">
           {/* Supplier Selection */}
           <div className="space-y-2">
             <Label htmlFor="supplier">{t('receiptSupplierLabel')} *</Label>

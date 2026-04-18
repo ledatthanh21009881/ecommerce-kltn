@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
 import { getAuthData } from '@/lib/admin-auth'
 import { useLanguage } from '@/contexts/LanguageContext'
+import { violatesVndPriceStep } from '@/lib/vnd-price-step'
 
 interface ShippingMethod {
   shipping_method_id: number
@@ -69,6 +70,8 @@ export default function ShippingModal({ isOpen, onClose, onSuccess, editingMetho
       newErrors.fee = t('feeRequired')
     } else if (isNaN(Number(formData.fee)) || Number(formData.fee) < 0) {
       newErrors.fee = t('invalidShippingFee')
+    } else if (violatesVndPriceStep(Number(formData.fee))) {
+      newErrors.fee = t('priceStepMismatch')
     }
 
     if (!formData.estimated_days.trim()) {
@@ -151,7 +154,7 @@ export default function ShippingModal({ isOpen, onClose, onSuccess, editingMetho
         </CardHeader>
 
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form noValidate onSubmit={handleSubmit} className="space-y-6">
             {/* Method Name */}
             <div className="space-y-2">
               <Label htmlFor="name" className="text-sm font-medium">

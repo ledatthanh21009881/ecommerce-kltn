@@ -12,6 +12,7 @@ import { toast } from 'sonner'
 import { Product, ProductFormData, ProductVariant, ProductImage } from '@/lib/types'
 import { authUtils } from '@/lib/auth'
 import { useLanguage } from '@/contexts/LanguageContext'
+import { violatesVndPriceStep } from '@/lib/vnd-price-step'
 
 interface ProductModalProps {
   isOpen: boolean
@@ -201,6 +202,15 @@ export default function ProductModal({ isOpen, onClose, product, categories, onS
       return
     }
 
+    if (
+      violatesVndPriceStep(Number(formData.list_price) || 0) ||
+      violatesVndPriceStep(Number(formData.compare_at_price) || 0) ||
+      violatesVndPriceStep(Number(formData.cost_price) || 0)
+    ) {
+      toast.error(t('priceStepMismatch'))
+      return
+    }
+
     setLoading(true)
 
     try {
@@ -353,7 +363,7 @@ export default function ProductModal({ isOpen, onClose, product, categories, onS
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+        <form noValidate onSubmit={handleSubmit} className="p-6 space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Basic Information */}
             <div className="space-y-4">

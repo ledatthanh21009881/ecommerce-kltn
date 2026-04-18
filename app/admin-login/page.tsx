@@ -9,6 +9,17 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { toast } from 'sonner'
 import { Lock, User } from 'lucide-react'
 import { getAuthData, setAuthData, checkAndRefreshAuth } from '@/lib/admin-auth'
+import { getTranslation, type Language } from '@/lib/ui-translations'
+
+/** Admin UI uses localStorage `adminLanguage`; fallback to storefront `language`. */
+function getAdminUiLanguage(): Language {
+  if (typeof window === 'undefined') return 'en'
+  const admin = localStorage.getItem('adminLanguage')
+  if (admin === 'vi' || admin === 'en') return admin
+  const site = localStorage.getItem('language')
+  if (site === 'vi' || site === 'en') return site
+  return 'en'
+}
 
 export default function AdminLoginPage() {
   const router = useRouter()
@@ -73,7 +84,7 @@ export default function AdminLoginPage() {
         console.log('Login successful, setting auth data:', result.data)
         // API returns 'account' instead of 'user'
         setAuthData(result.data.token, result.data.account)
-        toast.success('Login successful!')
+        toast.success(getTranslation('adminLoginSuccess', getAdminUiLanguage()))
         
         // Immediate redirect without setTimeout
         console.log('Redirecting to admin dashboard...')

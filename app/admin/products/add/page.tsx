@@ -13,6 +13,8 @@ import { ProductFormData } from '../../../../lib/products'
 import { getCategories, Category } from '../../../../lib/categories'
 import { authUtils } from '../../../../lib/auth'
 import { ArrowLeft, Upload, X, ImageIcon, Save } from 'lucide-react'
+import { useLanguage } from '@/contexts/LanguageContext'
+import { violatesVndPriceStep } from '@/lib/vnd-price-step'
 
 interface ImageUpload {
   id: string
@@ -25,7 +27,8 @@ interface ImageUpload {
 export default function AddProductPage() {
   const router = useRouter()
   const { toast } = useToast()
-  
+  const { t } = useLanguage()
+
   const [loading, setLoading] = useState(false)
   const [categories, setCategories] = useState<Category[]>([])
   const [images, setImages] = useState<ImageUpload[]>([])
@@ -102,6 +105,19 @@ export default function AddProductPage() {
         title: "❌ Validation Error",
         description: "Product name and category are required",
         variant: "destructive"
+      })
+      return
+    }
+
+    if (
+      violatesVndPriceStep(formData.list_price) ||
+      violatesVndPriceStep(formData.compare_at_price) ||
+      violatesVndPriceStep(formData.cost_price)
+    ) {
+      toast({
+        title: t('invalidPrice'),
+        description: t('priceStepMismatch'),
+        variant: 'destructive',
       })
       return
     }
@@ -368,7 +384,7 @@ export default function AddProductPage() {
         <h1 className="text-3xl font-bold">Add New Product</h1>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-8">
+      <form noValidate onSubmit={handleSubmit} className="space-y-8">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           <div className="space-y-6">
             <div className="bg-white p-6 rounded-lg border">
