@@ -2,7 +2,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Search, RefreshCw, ShoppingCart, Eye, Package, Truck, CheckCircle, Clock, XCircle, Edit, MoreHorizontal, Download, FileText, Calendar, TrendingUp, Users, DollarSign, Mail, LayoutList, LayoutGrid, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Search, RefreshCw, ShoppingCart, Eye, Package, Truck, CheckCircle, Clock, XCircle, Edit, MoreHorizontal, Download, FileText, Calendar, TrendingUp, Users, DollarSign, Mail, LayoutList, LayoutGrid, ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
@@ -12,6 +12,7 @@ import { Order, OrderStatistics } from '@/lib/types'
 import OrderDetailModal from '@/components/admin/OrderDetailModal'
 import OrderStatusModal from '@/components/admin/OrderStatusModal'
 import AssignShipperModal from '@/components/admin/AssignShipperModal'
+import OrderCreateModal from '@/components/admin/OrderCreateModal'
 import ConfirmModal from '@/components/ui/confirm-modal'
 import { getAuthData, checkAndRefreshAuth } from '@/lib/admin-auth'
 import { ordersApi } from '@/lib/api'
@@ -47,6 +48,7 @@ export default function AdminOrdersPage() {
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false)
   const [isStatusModalOpen, setIsStatusModalOpen] = useState(false)
   const [isShipperModalOpen, setIsShipperModalOpen] = useState(false)
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
   const [deletingOrderId, setDeletingOrderId] = useState<number | null>(null)
@@ -399,6 +401,13 @@ export default function AdminOrdersPage() {
                 <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
                 {t('refresh')}
               </Button>
+              <Button
+                onClick={() => setIsCreateModalOpen(true)}
+                className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white"
+              >
+                <Plus className="h-4 w-4" />
+                {t('createCounterOrder')}
+              </Button>
             </div>
           </div>
         </div>
@@ -749,6 +758,15 @@ export default function AdminOrdersPage() {
         onClose={() => setIsShipperModalOpen(false)}
         order={selectedOrder}
         onShipperAssigned={handleShipperAssigned}
+      />
+
+      <OrderCreateModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        onCreated={() => {
+          fetchOrders()
+          fetchStatistics()
+        }}
       />
 
       <ConfirmModal

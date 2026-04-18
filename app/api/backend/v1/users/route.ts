@@ -12,7 +12,11 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    const response = await fetch(backendUrl('/api/backend/v1/users'), {
+    const { searchParams } = new URL(request.url)
+    const queryString = searchParams.toString()
+    const url = `${backendUrl('/api/backend/v1/users')}${queryString ? `?${queryString}` : ''}`
+
+    const response = await fetch(url, {
       method: 'GET',
       headers: {
         'Authorization': token,
