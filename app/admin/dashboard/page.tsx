@@ -96,6 +96,7 @@ function compactVnd(n: number): string {
 export default function AdminDashboardPage() {
   const { t, language } = useLanguage()
   const initialRange = useMemo(() => lastMonthRange(), [])
+
   const [revenueRange, setRevenueRange] = useState(initialRange)
   const [productsRange, setProductsRange] = useState(initialRange)
 

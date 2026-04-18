@@ -283,6 +283,29 @@ export const UI_TRANSLATIONS = {
     orderTrackingPageTitle: 'Order Tracking',
     orderTrackingPageSubtitle:
       'Real-time order tracking and shipper management',
+    trackingShippersDelivering: 'Shippers on delivery',
+    trackingShippersDeliveringDesc:
+      'Shippers with orders in pickup or transit. Click a row or “View route” to see the road segment on the map.',
+    trackingNoShippersDelivering: 'No shippers are on an active delivery right now.',
+    trackingShipperCol: 'Shipper',
+    trackingVehicleCol: 'Vehicle',
+    trackingActiveOrdersCount: 'Active orders',
+    trackingViewRoute: 'View route',
+    trackingRouteTitle: 'Route preview',
+    trackingRouteDialogDesc:
+      'Choose an order on the right to update the highlighted segment (current GPS → drop-off).',
+    trackingOrdersInRoute: 'Orders on this run',
+    trackingShipperFullPage: 'Open shipper detail',
+    trackingOrdersUnifiedTitle: 'Orders & delivery',
+    trackingOrdersUnifiedDesc:
+      'One list per order: shipper, vehicle, status, location, and how many orders that shipper is handling on this run. Use Refresh to update — no auto-refresh.',
+    trackingOrderCol: 'Order',
+    trackingCustomerCol: 'Customer',
+    trackingLocationCol: 'Location (GPS)',
+    trackingMessageCustomer: 'Message customer',
+    trackingNoCustomerForChat: 'This order has no customer account linked for chat.',
+    trackingMessengerNoConversation:
+      'No messenger conversation found for this customer yet.',
     settingsStoreSubtitle: 'Configure your store settings and preferences',
 
     // Order Management
@@ -1032,6 +1055,29 @@ export const UI_TRANSLATIONS = {
     orderTrackingPageTitle: 'Theo dõi đơn hàng',
     orderTrackingPageSubtitle:
       'Theo dõi đơn thời gian thực và quản lý người giao hàng',
+    trackingShippersDelivering: 'Shipper đang giao hàng',
+    trackingShippersDeliveringDesc:
+      'Shipper có đơn đang lấy hàng / đang giao. Bấm dòng hoặc «Xem tuyến» để mở bản đồ đoạn đường.',
+    trackingNoShippersDelivering: 'Hiện không có shipper nào đang trên đơn giao.',
+    trackingShipperCol: 'Shipper',
+    trackingVehicleCol: 'Phương tiện',
+    trackingActiveOrdersCount: 'Đơn đang xử lý',
+    trackingViewRoute: 'Xem tuyến',
+    trackingRouteTitle: 'Xem tuyến đường',
+    trackingRouteDialogDesc:
+      'Chọn đơn bên phải để đổi đoạn đường (GPS hiện tại → điểm giao).',
+    trackingOrdersInRoute: 'Đơn trong chuyến',
+    trackingShipperFullPage: 'Trang chi tiết shipper',
+    trackingOrdersUnifiedTitle: 'Đơn & giao hàng',
+    trackingOrdersUnifiedDesc:
+      'Một danh sách theo đơn: shipper, phương tiện, trạng thái, vị trí, số đơn shipper đang xử lý trên chuyến. Bấm «Làm mới» để cập nhật — không tự tải lại liên tục.',
+    trackingOrderCol: 'Đơn',
+    trackingCustomerCol: 'Khách hàng',
+    trackingLocationCol: 'Vị trí (GPS)',
+    trackingMessageCustomer: 'Nhắn tin',
+    trackingNoCustomerForChat: 'Đơn này chưa gắn tài khoản khách để mở tin nhắn.',
+    trackingMessengerNoConversation:
+      'Chưa có hội thoại Messenger với khách này.',
     settingsStoreSubtitle: 'Cấu hình cài đặt và tùy chọn cửa hàng',
 
     // Order Management

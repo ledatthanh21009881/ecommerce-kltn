@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect, useRef, useMemo } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect, useRef, useMemo, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useLanguage } from '@/contexts/LanguageContext'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -71,8 +71,24 @@ interface MessageMedia {
   file_name?: string
 }
 
-export default function AdminMessengerPage() {
+/** Chỉ cho phép quay lại trong admin — tránh open redirect. */
+function resolveMessengerReturnPath(raw: string | null): string {
+  const fallback = '/admin/dashboard'
+  if (!raw?.trim()) return fallback
+  let decoded = raw.trim()
+  try {
+    decoded = decodeURIComponent(decoded)
+  } catch {
+    return fallback
+  }
+  if (!decoded.startsWith('/admin/')) return fallback
+  if (decoded.includes('..')) return fallback
+  return decoded
+}
+
+function AdminMessengerPageInner() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { t } = useLanguage()
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null)
@@ -224,6 +240,36 @@ export default function AdminMessengerPage() {
       return name.includes(q) || mail.includes(q)
     })
   }, [conversations, forwardRecipientSearch])
+
+  const returnToParam = searchParams.get('returnTo')
+  const messengerReturnTo = useMemo(
+    () => resolveMessengerReturnPath(returnToParam),
+    [returnToParam],
+  )
+  const deepLinkCustomerIdParam = searchParams.get('customer_id')
+  const messengerMissingCustomerToastRef = useRef<number | null>(null)
+
+  useEffect(() => {
+    if (!deepLinkCustomerIdParam) {
+      messengerMissingCustomerToastRef.current = null
+      return
+    }
+    const id = Number(deepLinkCustomerIdParam)
+    if (!Number.isFinite(id)) return
+    if (conversations.length === 0) return
+
+    const conv = conversations.find((c) => Number(c.customer_id) === id)
+    if (conv) {
+      setSelectedConversation(conv)
+      if (conv.status === 'customer') setActiveFilter('customers')
+      messengerMissingCustomerToastRef.current = null
+      return
+    }
+    if (messengerMissingCustomerToastRef.current !== id) {
+      messengerMissingCustomerToastRef.current = id
+      toast.info(t('trackingMessengerNoConversation'))
+    }
+  }, [conversations, deepLinkCustomerIdParam, t])
 
   useEffect(() => {
     fetchConversations()
@@ -1261,7 +1307,7 @@ export default function AdminMessengerPage() {
           className={`gap-1.5 text-[15px] font-medium ${
             isDarkMode ? 'text-[#e4e6eb] hover:bg-[#3a3b3c]' : 'text-[#050505] hover:bg-[#F0F2F5]'
           }`}
-          onClick={() => router.push('/admin/dashboard')}
+          onClick={() => router.push(messengerReturnTo)}
         >
           <ArrowLeft className="h-5 w-5" />
           <span>{t('back')}</span>
@@ -2777,3 +2823,17 @@ export default function AdminMessengerPage() {
     </div>
    )
  }
+
+export default function AdminMessengerPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-[200px] flex-1 items-center justify-center p-6 text-sm text-muted-foreground">
+          Loading…
+        </div>
+      }
+    >
+      <AdminMessengerPageInner />
+    </Suspense>
+  )
+}

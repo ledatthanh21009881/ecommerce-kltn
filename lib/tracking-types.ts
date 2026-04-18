@@ -13,6 +13,8 @@ export interface OrderTracking {
   total_amount: number
   created_at: string
   estimated_delivery_at?: string
+  /** `users.user_id` của khách — dùng mở Messenger admin. */
+  customer_id?: number | null
   customer_name: string
   customer_phone: string
   customer_address: string

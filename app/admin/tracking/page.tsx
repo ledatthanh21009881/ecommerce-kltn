@@ -1,6 +1,7 @@
 'use client'
 
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useMemo } from 'react'
+import dynamic from 'next/dynamic'
 import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -9,24 +10,22 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { 
-  Search, 
-  Filter, 
-  RefreshCw, 
-  MapPin, 
-  Truck, 
-  Package, 
-  Clock, 
+import {
+  Search,
+  RefreshCw,
+  MapPin,
+  Truck,
+  Package,
+  Clock,
   DollarSign,
   Users,
-  AlertCircle,
   CheckCircle,
   XCircle,
   Eye,
   Phone,
-  MessageSquare,
   Star,
-  X
+  Route,
+  MessageSquare,
 } from 'lucide-react'
 import { 
   OrderTracking, 
@@ -34,15 +33,38 @@ import {
   OrderFilters, 
   ORDER_STATUS_CONFIG,
   ensureArray,
-  getNestedValue,
   Shipper
 } from '@/lib/tracking-types'
-import TrackingMap, { MapLegend, MapStats } from '@/components/admin/TrackingMap'
 import { authUtils } from '@/lib/auth'
+import { cn } from '@/lib/utils'
 import { fetchJsonSafe } from '@/lib/api'
 import { toast } from 'sonner'
 import { useLanguage } from '@/contexts/LanguageContext'
 import { AdminPageHeading } from '@/components/admin/AdminPageHeading'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+
+const TrackingOrderRoutePreview = dynamic(
+  () => import('@/components/admin/TrackingOrderRoutePreview'),
+  {
+    ssr: false,
+    loading: () => <div className="h-[360px] animate-pulse rounded-xl bg-slate-100" />,
+  }
+)
+
+/** Đơn đang trong luồng giao (có shipper). */
+const DELIVERY_STATUSES = new Set([
+  'assigned',
+  'picking_up',
+  'picked_up',
+  'in_transit',
+  'arriving',
+])
 
 // Mock data for development
 const mockStats: TrackingStats = {
@@ -67,6 +89,7 @@ const mockOrders: OrderTracking[] = [
     total_amount: 450000,
     created_at: '2025-10-28 14:30:00',
     estimated_delivery_at: '2025-10-28 15:30:00',
+    customer_id: 101,
     customer_name: 'Nguyễn Văn A',
     customer_phone: '0901234567',
     customer_address: '123 Nguyễn Huệ, Q1, TP.HCM',
@@ -90,6 +113,7 @@ const mockOrders: OrderTracking[] = [
     total_amount: 320000,
     created_at: '2025-10-28 13:15:00',
     estimated_delivery_at: '2025-10-28 14:15:00',
+    customer_id: 102,
     customer_name: 'Lê Văn C',
     customer_phone: '0912345678',
     customer_address: '456 Lê Lợi, Q3, TP.HCM',
@@ -179,9 +203,31 @@ export default function OrderTrackingPage() {
   })
   
   // UI state
-  const [selectedOrderId, setSelectedOrderId] = useState<number | undefined>()
   const [activeTab, setActiveTab] = useState('overview')
   const [warned, setWarned] = useState(false)
+  const [routeModal, setRouteModal] = useState<{
+    open: boolean
+    shipperName: string
+    shipperId: number | null
+    orders: OrderTracking[]
+    selectedOrderId: number | null
+  }>({
+    open: false,
+    shipperName: '',
+    shipperId: null,
+    orders: [],
+    selectedOrderId: null,
+  })
+
+  /** Số đơn “đang giao” theo từng shipper (cùng logic bảng shipper cũ). */
+  const shipperActiveDeliveryCount = useMemo(() => {
+    const m = new Map<number, number>()
+    for (const o of ensureArray<OrderTracking>(orders)) {
+      if (!o.shipper_id || !DELIVERY_STATUSES.has(o.status)) continue
+      m.set(o.shipper_id, (m.get(o.shipper_id) ?? 0) + 1)
+    }
+    return m
+  }, [orders])
 
   // Fetch data functions
   const fetchOrders = useCallback(async () => {
@@ -267,22 +313,11 @@ export default function OrderTrackingPage() {
     }
   }, [])
 
-  // Initial data fetch
+  // Initial data fetch (no interval — tránh lag; admin bấm Làm mới khi cần)
   useEffect(() => {
     fetchOrders()
     fetchStats()
     fetchShippers()
-  }, [fetchOrders, fetchStats, fetchShippers])
-
-  // Auto-refresh every 5 seconds
-  useEffect(() => {
-    const interval = setInterval(() => {
-      fetchOrders()
-      fetchStats()
-      fetchShippers()
-    }, 5000)
-
-    return () => clearInterval(interval)
   }, [fetchOrders, fetchStats, fetchShippers])
 
   // Event handlers
@@ -309,14 +344,50 @@ export default function OrderTrackingPage() {
     toast.success('Data refreshed')
   }
 
-  const handleOrderSelect = (orderId: number) => {
-    setSelectedOrderId(orderId)
-    setActiveTab('map')
-  }
-
   const handleShipperSelect = (shipperId: number) => {
     router.push(`/admin/tracking/shipper/${shipperId}`)
   }
+
+  const openRouteModalForOrder = (order: OrderTracking) => {
+    if (!order.shipper_id) {
+      toast.error('Đơn hàng chưa được gán shipper')
+      return
+    }
+    const group = ensureArray<OrderTracking>(orders).filter(
+      (o) => o.shipper_id === order.shipper_id && DELIVERY_STATUSES.has(o.status)
+    )
+    const list = group.length ? group : [order]
+    const withCoords = list.find(
+      (o) =>
+        o.current_lat != null &&
+        o.current_lng != null &&
+        o.destination_lat != null &&
+        o.destination_lng != null
+    )
+    const defaultId = withCoords?.order_id ?? list[0]?.order_id ?? null
+    setRouteModal({
+      open: true,
+      shipperName: order.shipper_name || 'Shipper',
+      shipperId: order.shipper_id,
+      orders: list,
+      selectedOrderId: defaultId,
+    })
+  }
+
+  const openMessengerForOrderCustomer = (order: OrderTracking) => {
+    const cid = order.customer_id
+    if (cid == null || Number.isNaN(Number(cid))) {
+      toast.error(t('trackingNoCustomerForChat'))
+      return
+    }
+    const returnTo = encodeURIComponent('/admin/tracking')
+    router.push(`/admin/messenger?customer_id=${Number(cid)}&returnTo=${returnTo}`)
+  }
+
+  const selectedRouteOrder =
+    routeModal.orders.find((o) => o.order_id === routeModal.selectedOrderId) ??
+    routeModal.orders[0] ??
+    null
 
   const getStatusConfig = (status: string) => {
     return ORDER_STATUS_CONFIG[status as keyof typeof ORDER_STATUS_CONFIG] || {
@@ -338,10 +409,6 @@ export default function OrderTrackingPage() {
       hour: '2-digit',
       minute: '2-digit'
     })
-  }
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('vi-VN')
   }
 
   return (
@@ -497,40 +564,40 @@ export default function OrderTrackingPage() {
 
       {/* Main Content Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full max-w-md grid-cols-2">
           <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="map">Map View</TabsTrigger>
           <TabsTrigger value="shippers">Shippers</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-4">
-          {/* Orders Table */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Active Orders</CardTitle>
-              <CardDescription>
-                Real-time tracking of all active orders
-              </CardDescription>
+          <Card className="border-violet-200/80 bg-white/90 shadow-sm">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg">{t('trackingOrdersUnifiedTitle')}</CardTitle>
+              <CardDescription>{t('trackingOrdersUnifiedDesc')}</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Order ID</TableHead>
-                      <TableHead>Customer</TableHead>
-                      <TableHead>Shipper</TableHead>
+                      <TableHead>{t('trackingOrderCol')}</TableHead>
+                      <TableHead>{t('trackingCustomerCol')}</TableHead>
+                      <TableHead>{t('trackingShipperCol')}</TableHead>
+                      <TableHead>{t('trackingVehicleCol')}</TableHead>
                       <TableHead>Status</TableHead>
+                      <TableHead>{t('trackingLocationCol')}</TableHead>
+                      <TableHead className="text-center whitespace-nowrap">
+                        {t('trackingActiveOrdersCount')}
+                      </TableHead>
                       <TableHead>Amount</TableHead>
-                      <TableHead>Location</TableHead>
                       <TableHead>Updated</TableHead>
-                      <TableHead>Actions</TableHead>
+                      <TableHead className="w-[132px]">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {loading ? (
                       <TableRow>
-                        <TableCell colSpan={8} className="text-center py-8">
+                        <TableCell colSpan={10} className="text-center py-8">
                           <div className="flex items-center justify-center">
                             <RefreshCw className="h-4 w-4 animate-spin mr-2" />
                             Loading orders...
@@ -539,22 +606,26 @@ export default function OrderTrackingPage() {
                       </TableRow>
                     ) : error ? (
                       <TableRow>
-                        <TableCell colSpan={8} className="text-center py-8 text-red-600">
+                        <TableCell colSpan={10} className="text-center py-8 text-red-600">
                           {error}
                         </TableCell>
                       </TableRow>
                     ) : ensureArray(orders).length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={8} className="text-center py-8 text-gray-500">
+                        <TableCell colSpan={10} className="text-center py-8 text-gray-500">
                           No orders found
                         </TableCell>
                       </TableRow>
                     ) : (
                       ensureArray<OrderTracking>(orders).map((order: OrderTracking) => {
                         const statusConfig = getStatusConfig(order.status)
+                        const shipperCount =
+                          order.shipper_id != null
+                            ? shipperActiveDeliveryCount.get(order.shipper_id) ?? 0
+                            : 0
                         return (
                           <TableRow key={order.order_id}>
-                            <TableCell className="font-medium">
+                            <TableCell className="font-medium whitespace-nowrap">
                               #{order.order_id}
                             </TableCell>
                             <TableCell>
@@ -573,19 +644,19 @@ export default function OrderTrackingPage() {
                                 <span className="text-gray-500">Not assigned</span>
                               )}
                             </TableCell>
+                            <TableCell className="text-sm text-slate-600 max-w-[140px]">
+                              {order.vehicle_info || '—'}
+                            </TableCell>
                             <TableCell>
                               <Badge className={statusConfig.color}>
                                 {statusConfig.icon} {statusConfig.label}
                               </Badge>
                             </TableCell>
                             <TableCell>
-                              {formatCurrency(order.total_amount)}
-                            </TableCell>
-                            <TableCell>
-                              {order.current_lat && order.current_lng ? (
+                              {order.current_lat != null && order.current_lng != null ? (
                                 <div className="flex items-center gap-1">
-                                  <MapPin className="h-3 w-3 text-green-600" />
-                                  <span className="text-xs">
+                                  <MapPin className="h-3 w-3 shrink-0 text-green-600" />
+                                  <span className="text-xs font-mono">
                                     {order.current_lat.toFixed(4)}, {order.current_lng.toFixed(4)}
                                   </span>
                                 </div>
@@ -593,35 +664,49 @@ export default function OrderTrackingPage() {
                                 <span className="text-gray-500">No location</span>
                               )}
                             </TableCell>
+                            <TableCell className="text-center">
+                              {order.shipper_id != null && DELIVERY_STATUSES.has(order.status) ? (
+                                <Badge variant="secondary" className="font-mono">
+                                  {shipperCount}
+                                </Badge>
+                              ) : (
+                                <span className="text-xs text-slate-400">—</span>
+                              )}
+                            </TableCell>
+                            <TableCell>{formatCurrency(order.total_amount)}</TableCell>
                             <TableCell>
                               <div className="text-sm">
                                 {formatTime(order.last_event_at || order.created_at)}
                               </div>
                             </TableCell>
                             <TableCell>
-                              <div className="flex items-center gap-1">
+                              <div className="flex flex-wrap items-center gap-1">
                                 <Button
                                   size="sm"
                                   variant="outline"
-                                  onClick={() => {
-                                    if (order.shipper_id) {
-                                      handleShipperSelect(order.shipper_id)
-                                    } else {
-                                      toast.error('Đơn hàng chưa được gán shipper')
-                                    }
-                                  }}
+                                  title={t('trackingViewRoute')}
+                                  onClick={() => openRouteModalForOrder(order)}
                                 >
-                                  <Eye className="h-3 w-3" />
+                                  <Route className="h-3 w-3" />
                                 </Button>
-                                {order.shipper_phone && (
+                                {order.shipper_phone ? (
                                   <Button
                                     size="sm"
                                     variant="outline"
+                                    title="Call shipper"
                                     onClick={() => window.open(`tel:${order.shipper_phone}`)}
                                   >
                                     <Phone className="h-3 w-3" />
                                   </Button>
-                                )}
+                                ) : null}
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  title={t('trackingMessageCustomer')}
+                                  onClick={() => openMessengerForOrderCustomer(order)}
+                                >
+                                  <MessageSquare className="h-3 w-3" />
+                                </Button>
                               </div>
                             </TableCell>
                           </TableRow>
@@ -633,35 +718,6 @@ export default function OrderTrackingPage() {
               </div>
             </CardContent>
           </Card>
-        </TabsContent>
-
-        <TabsContent value="map" className="space-y-4" forceMount>
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            <div className="lg:col-span-2">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Live Tracking Map</CardTitle>
-                  <CardDescription>
-                    Fleet overview - Real-time location of all shippers
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <TrackingMap
-                    orders={ensureArray(orders)}
-                    shippers={ensureArray(shippers)}
-                    selectedOrderId={selectedOrderId}
-                    onOrderSelect={handleOrderSelect}
-                    onShipperSelect={handleShipperSelect}
-                    className="h-96"
-                  />
-                </CardContent>
-              </Card>
-            </div>
-            <div className="space-y-4">
-              <MapLegend />
-              <MapStats orders={ensureArray(orders)} shippers={ensureArray(shippers)} />
-            </div>
-          </div>
         </TabsContent>
 
         <TabsContent value="shippers" className="space-y-4">
@@ -751,6 +807,67 @@ export default function OrderTrackingPage() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      <Dialog
+        open={routeModal.open}
+        onOpenChange={(open) => setRouteModal((prev) => ({ ...prev, open }))}
+      >
+        <DialogContent className="max-h-[92vh] max-w-4xl overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              {t('trackingRouteTitle')}
+              {routeModal.shipperName ? ` — ${routeModal.shipperName}` : ''}
+            </DialogTitle>
+            <DialogDescription>{t('trackingRouteDialogDesc')}</DialogDescription>
+          </DialogHeader>
+          <div className="mt-2 grid gap-4 lg:grid-cols-[1fr_minmax(0,240px)]">
+            <TrackingOrderRoutePreview order={selectedRouteOrder} />
+            <div className="flex flex-col gap-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                {t('trackingOrdersInRoute')}
+              </p>
+              <div className="max-h-[340px] space-y-1.5 overflow-y-auto pr-1">
+                {routeModal.orders.map((o) => (
+                  <button
+                    key={o.order_id}
+                    type="button"
+                    onClick={() =>
+                      setRouteModal((prev) => ({ ...prev, selectedOrderId: o.order_id }))
+                    }
+                    className={cn(
+                      'w-full rounded-lg border px-3 py-2.5 text-left text-sm transition-colors',
+                      routeModal.selectedOrderId === o.order_id
+                        ? 'border-violet-500 bg-violet-50 text-violet-950'
+                        : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
+                    )}
+                  >
+                    <span className="font-semibold">#{o.order_id}</span>
+                    <span className="mt-0.5 block truncate text-xs text-slate-600">{o.customer_name}</span>
+                    <Badge variant="outline" className="mt-1.5 text-[10px]">
+                      {getStatusConfig(o.status).label}
+                    </Badge>
+                  </button>
+                ))}
+              </div>
+              {routeModal.shipperId != null && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="mt-auto shrink-0"
+                  onClick={() => {
+                    const id = routeModal.shipperId
+                    setRouteModal((p) => ({ ...p, open: false }))
+                    if (id != null) handleShipperSelect(id)
+                  }}
+                >
+                  {t('trackingShipperFullPage')}
+                </Button>
+              )}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
       </div>
     </div>
   )
