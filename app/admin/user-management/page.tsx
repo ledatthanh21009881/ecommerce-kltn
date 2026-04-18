@@ -64,6 +64,8 @@ import {
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import { apiClient } from "@/lib/api-client"
+import { useLanguage } from "@/contexts/LanguageContext"
+import { AdminPageHeading } from "@/components/admin/AdminPageHeading"
 
 interface User {
   user_id: number
@@ -100,6 +102,7 @@ interface Pagination {
 }
 
 export default function UserManagementPage() {
+  const { t } = useLanguage()
   const [users, setUsers] = useState<User[]>([])
   const [roles, setRoles] = useState<Role[]>([])
   const [stats, setStats] = useState<UserStats>({
@@ -343,17 +346,16 @@ export default function UserManagementPage() {
 
   return (
     <div className="p-6 space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold">User Management</h1>
-          <p className="text-muted-foreground">Manage system users and their permissions</p>
-        </div>
-        <Button onClick={() => setAddUserModal(true)}>
-          <Plus className="w-4 h-4 mr-2" />
-          Add User
-        </Button>
-      </div>
+      <AdminPageHeading
+        title={t("userManagement")}
+        description={t("manageSystemUsersAndPermissions")}
+        actions={
+          <Button onClick={() => setAddUserModal(true)}>
+            <Plus className="w-4 h-4 mr-2" />
+            {t("addUser")}
+          </Button>
+        }
+      />
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">

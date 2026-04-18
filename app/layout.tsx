@@ -40,7 +40,12 @@ export default function RootLayout({
       <body className="min-h-screen bg-white font-sans antialiased overflow-x-hidden" suppressHydrationWarning>
         <LanguageProvider>
           <TokenRefreshProvider>
-            <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
+            <ThemeProvider
+              attribute="class"
+              defaultTheme="light"
+              enableSystem={false}
+              storageKey="vivienne-theme-v2"
+            >
               <ClientLayout>
                 {children}
               </ClientLayout>

@@ -176,6 +176,24 @@ export const analyticsApi = {
     apiFetch(`api/backend/v1/analytics${range ? `?range=${range}` : ''}`),
 };
 
+/** Thống kê trang admin — from/to (doanh thu); top_from/top_to (top SP, tùy chọn). */
+export const adminApi = {
+  getDashboard: (range?: { from: string; to: string; topFrom?: string; topTo?: string }) => {
+    if (!range?.from || !range?.to) {
+      return apiFetch('api/backend/v1/admin/dashboard')
+    }
+    const qs = new URLSearchParams({
+      from: range.from,
+      to: range.to,
+    })
+    if (range.topFrom && range.topTo) {
+      qs.set('top_from', range.topFrom)
+      qs.set('top_to', range.topTo)
+    }
+    return apiFetch(`api/backend/v1/admin/dashboard?${qs.toString()}`)
+  },
+};
+
 export const shippersApi = {
   getAvailable: () => 
     apiFetch('api/test/available-shippers'),

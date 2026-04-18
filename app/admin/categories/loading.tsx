@@ -10,7 +10,7 @@ export default function CategoriesLoading() {
 
       <Skeleton className="h-10 w-full" />
 
-      <div className="rounded-lg border bg-white shadow">
+      <div className="rounded-lg border border-gray-200 bg-white shadow">
         <div className="grid grid-cols-12 border-b bg-gray-50 p-4">
           <div className="col-span-4">
             <Skeleton className="h-5 w-32" />

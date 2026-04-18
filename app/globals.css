@@ -59,10 +59,9 @@
 }
 
 @layer base {
-  * {
-    @apply border-border;
-  }
-  
+  /* Không dùng * { border-border }: khi html.dark (next-themes) mà giao diện admin vẫn sáng,
+     mọi viền dùng --border tối sẽ trông như viền đen. Màu viền gắn trực tiếp trên component (border-border). */
+
   html, body {
     overflow-x: hidden;
     max-width: 100vw;
@@ -155,6 +154,15 @@
 
 /* Messenger: tin ghi âm — căn giữa dọc (flex-end làm lệch play/time/volume lên trên trong khung cắt) */
 @layer components {
+  /* Admin: tiêu đề serif (Playfair) + mô tả sans — đồng bộ các trang quản lý */
+  .admin-page-title {
+    @apply font-serif text-3xl font-bold tracking-tight text-[#1a2b56];
+  }
+
+  .admin-page-description {
+    @apply mt-1 max-w-3xl font-sans text-base font-normal leading-relaxed text-slate-600;
+  }
+
   .chat-voice-wrap {
     display: flex;
     height: 2.75rem;

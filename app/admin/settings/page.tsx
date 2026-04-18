@@ -10,6 +10,7 @@ import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import { toast } from 'sonner'
 import { getAuthData } from '@/lib/admin-auth'
+import { useLanguage } from '@/contexts/LanguageContext'
 
 interface SettingsData {
   general: {
@@ -55,6 +56,7 @@ interface SettingsData {
 }
 
 export default function AdminSettingsPage() {
+  const { t } = useLanguage()
   const [settings, setSettings] = useState<SettingsData>({
     general: {
       site_name: 'ShopSwift',
@@ -163,8 +165,8 @@ export default function AdminSettingsPage() {
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-slate-900 mb-2">Settings</h1>
-          <p className="text-slate-600">Configure your store settings and preferences</p>
+          <h1 className="admin-page-title mb-2">{t('settingsManagement')}</h1>
+          <p className="admin-page-description">{t('settingsStoreSubtitle')}</p>
         </div>
 
         {/* Settings Container */}

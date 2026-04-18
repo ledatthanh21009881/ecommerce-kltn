@@ -128,8 +128,8 @@ export default function SimplePromotionsPage() {
       {/* Header */}
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Quản lý Phiếu giảm giá</h1>
-          <p className="text-gray-600 mt-2">Quản lý các phiếu giảm giá và khuyến mãi</p>
+          <h1 className="admin-page-title">Quản lý Phiếu giảm giá</h1>
+          <p className="admin-page-description">Quản lý các phiếu giảm giá và khuyến mãi</p>
         </div>
         <Button className="bg-blue-600 hover:bg-blue-700">
           <Plus className="w-4 h-4 mr-2" />

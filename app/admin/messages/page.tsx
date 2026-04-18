@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
 import { getAuthData } from '@/lib/admin-auth'
 import EmojiPicker from 'emoji-picker-react'
+import { useLanguage } from '@/contexts/LanguageContext'
 
 interface Message {
   message_id: number
@@ -25,6 +26,7 @@ interface Message {
 }
 
 export default function AdminMessagesPage() {
+  const { t } = useLanguage()
   const [messages, setMessages] = useState<Message[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
@@ -185,8 +187,8 @@ export default function AdminMessagesPage() {
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-slate-900 mb-2">Message Management</h1>
-          <p className="text-slate-600">Manage customer inquiries and support messages</p>
+          <h1 className="admin-page-title mb-2">{t('messengerManagement')}</h1>
+          <p className="admin-page-description">{t('messengerManagementDesc')}</p>
         </div>
 
         {/* Stats Cards */}

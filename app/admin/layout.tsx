@@ -6,9 +6,7 @@ import Link from 'next/link'
 import { 
   ShoppingBag, 
   Users, 
-  BarChart3, 
   Settings, 
-  LogOut, 
   Menu, 
   X,
   LayoutDashboard,
@@ -19,10 +17,7 @@ import {
   Tag,
   Building2,
   FileText,
-  MessageSquare,
   CreditCard,
-  Star,
-  Bell
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
@@ -145,11 +140,6 @@ function AdminLayoutContent({
       href: '/admin/content'
     },
     {
-      name: t('messenger'),
-      icon: MessageSquare,
-      href: '/admin/messenger'
-    },
-    {
       name: t('payments'),
       icon: CreditCard,
       href: '/admin/payments'
@@ -167,13 +157,14 @@ function AdminLayoutContent({
   ]
 
   const isShipperDetailPage = pathname?.match(/^\/admin\/tracking\/shipper\/[^/]+$/)
+  const isMessengerPage = pathname === '/admin/messenger'
 
   if (isLoading || !user) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading admin panel...</p>
+          <p className="text-gray-600">{t('loadingAdminPanel')}</p>
         </div>
       </div>
     )
@@ -187,6 +178,14 @@ function AdminLayoutContent({
     )
   }
 
+  if (isMessengerPage) {
+    return (
+      <div className="flex h-[100dvh] max-h-[100dvh] flex-col overflow-hidden bg-transparent">
+        {children}
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Mobile sidebar */}
@@ -194,7 +193,7 @@ function AdminLayoutContent({
         <div className="fixed inset-0 z-50 lg:hidden">
           <div className="fixed inset-0 bg-gray-600 bg-opacity-75" onClick={() => setSidebarOpen(false)} />
           <div className="fixed inset-y-0 left-0 flex w-64 flex-col bg-white">
-            <div className="flex h-16 items-center justify-between px-4 border-b">
+            <div className="flex h-16 items-center justify-between px-4 border-b border-gray-200">
               <h1 className="text-xl font-bold text-gray-900">{t('adminPanel')}</h1>
               <Button variant="ghost" size="sm" onClick={() => setSidebarOpen(false)}>
                 <X className="h-6 w-6" />
@@ -224,7 +223,7 @@ function AdminLayoutContent({
       {/* Desktop sidebar - luôn hiện; thu hẹp (chỉ icon) khi sidebarOpen false */}
       <div className={`hidden lg:flex fixed inset-y-0 left-0 z-40 flex-col bg-white border-r border-gray-200 transition-[width] duration-200 ease-in-out ${sidebarOpen ? 'w-64' : 'w-16'}`}>
         <div className="flex flex-col flex-grow w-full overflow-hidden">
-          <div className={`flex h-16 items-center border-b shrink-0 ${sidebarOpen ? 'px-4 justify-start' : 'px-0 justify-center'}`}>
+          <div className={`flex h-16 items-center border-b border-gray-200 shrink-0 ${sidebarOpen ? 'px-4 justify-start' : 'px-0 justify-center'}`}>
             {sidebarOpen && <h1 className="text-xl font-bold text-gray-900 whitespace-nowrap">{t('adminPanel')}</h1>}
           </div>
           <nav className="flex-1 space-y-1 px-2 py-4 overflow-x-hidden">
@@ -268,8 +267,8 @@ function AdminLayoutContent({
             <div className="flex items-center gap-x-4 lg:gap-x-6">
               {/* Language Selector */}
               <Select value={language} onValueChange={(value: 'en' | 'vi') => setLanguage(value)}>
-                <SelectTrigger className="w-32">
-                  <Languages className="h-4 w-4 mr-2" />
+                <SelectTrigger className="min-w-[11rem] w-auto max-w-[14rem] border-gray-200 bg-white text-gray-900">
+                  <Languages className="h-4 w-4 shrink-0 mr-2" />
                   <SelectValue placeholder={t('language')} />
                 </SelectTrigger>
                 <SelectContent>
@@ -282,6 +281,7 @@ function AdminLayoutContent({
                 userName={user.account_name || 'Admin User'}
                 userEmail={user.account_name ? `${user.account_name}@example.com` : 'admin@example.com'}
                 onLogout={handleLogout}
+                messengerLabel={t('messenger')}
               />
             </div>
           </div>

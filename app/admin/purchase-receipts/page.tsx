@@ -262,8 +262,8 @@ export default function AdminPurchaseReceiptsPage() {
       <div className="max-w-7xl mx-auto">
         <div className="mb-8 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-slate-800 via-blue-800 to-indigo-800 bg-clip-text text-transparent mb-2">{t('purchaseReceiptManagement')}</h1>
-            <p className="text-slate-600">{t('purchaseReceiptManagementDesc')}</p>
+            <h1 className="admin-page-title mb-2">{t('purchaseReceiptManagement')}</h1>
+            <p className="admin-page-description">{t('purchaseReceiptManagementDesc')}</p>
           </div>
           <div className="flex items-center gap-2 shrink-0 flex-nowrap">
             <span className="text-sm font-medium text-slate-600 mr-1 hidden sm:inline">{t('view')}:</span>

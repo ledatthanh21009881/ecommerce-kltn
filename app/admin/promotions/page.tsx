@@ -245,8 +245,8 @@ export default function PromotionsPage() {
       <div className="max-w-7xl mx-auto">
         <div className="mb-8 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-slate-800 via-blue-800 to-indigo-800 bg-clip-text text-transparent mb-2">{t('promotionsManagement')}</h1>
-            <p className="text-slate-600">{t('promotionsManagementDesc')}</p>
+            <h1 className="admin-page-title mb-2">{t('promotionsManagement')}</h1>
+            <p className="admin-page-description">{t('promotionsManagementDesc')}</p>
           </div>
           <div className="flex items-center gap-2 shrink-0 flex-nowrap">
             <span className="text-sm font-medium text-slate-600 mr-1 hidden sm:inline">{t('view')}:</span>
@@ -393,7 +393,7 @@ export default function PromotionsPage() {
                     id="discount_type"
                     value={formData.discount_type}
                     onChange={(e) => setFormData({...formData, discount_type: e.target.value as 'percent' | 'amount'})}
-                    className="w-full p-2 border rounded-md"
+                    className="w-full p-2 border border-gray-200 rounded-md"
                   >
                     <option value="percent">{t('percentage')}</option>
                     <option value="amount">{t('fixedAmount')}</option>

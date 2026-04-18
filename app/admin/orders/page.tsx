@@ -17,6 +17,7 @@ import ConfirmModal from '@/components/ui/confirm-modal'
 import { getAuthData, checkAndRefreshAuth } from '@/lib/admin-auth'
 import { ordersApi } from '@/lib/api'
 import { useLanguage } from '@/contexts/LanguageContext'
+import { AdminPageHeading } from '@/components/admin/AdminPageHeading'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -356,16 +357,11 @@ export default function AdminOrdersPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
       <div className="max-w-7xl mx-auto p-6">
-        {/* Header: tiêu đề và nút View + Làm mới cùng một hàng */}
-        <div className="mb-8">
-          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-            <div>
-              <h1 className="text-4xl font-bold bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent">
-                {t('orderManagement')}
-              </h1>
-              <p className="text-slate-600 mt-2 text-lg">{t('orderManagementDesc')}</p>
-            </div>
-            <div className="flex items-center gap-2 shrink-0 flex-nowrap">
+        <AdminPageHeading
+          title={t('orderManagement')}
+          description={t('orderManagementDesc')}
+          actions={
+            <>
               <span className="text-sm font-medium text-slate-600 mr-1 hidden sm:inline">{t('view')}:</span>
               <div className="flex rounded-lg border border-slate-200 bg-white/80 overflow-hidden">
                 <Button
@@ -408,9 +404,9 @@ export default function AdminOrdersPage() {
                 <Plus className="h-4 w-4" />
                 {t('createCounterOrder')}
               </Button>
-            </div>
-          </div>
-        </div>
+            </>
+          }
+        />
 
         {/* Stats Cards - Revenue first, width auto theo số tiền */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-[auto_1fr_1fr_1fr] gap-6 mb-8">

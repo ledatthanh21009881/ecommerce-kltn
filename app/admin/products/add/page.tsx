@@ -381,13 +381,13 @@ export default function AddProductPage() {
           <ArrowLeft className="h-4 w-4 mr-2" />
           Back
         </Button>
-        <h1 className="text-3xl font-bold">Add New Product</h1>
+        <h1 className="admin-page-title">{t('modalAddProduct')}</h1>
       </div>
 
       <form noValidate onSubmit={handleSubmit} className="space-y-8">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           <div className="space-y-6">
-            <div className="bg-white p-6 rounded-lg border">
+            <div className="bg-white p-6 rounded-lg border border-gray-200">
               <h2 className="text-xl font-semibold mb-4">Basic Information</h2>
               
               <div className="space-y-4">
@@ -440,7 +440,7 @@ export default function AddProductPage() {
                         className="fixed inset-0 z-40" 
                         onClick={() => setCategoryDropdownOpen(false)}
                       />
-                      <div className="absolute top-full left-0 right-0 z-50 mt-1 max-h-60 overflow-auto rounded-md border bg-white shadow-md">
+                      <div className="absolute top-full left-0 right-0 z-50 mt-1 max-h-60 overflow-auto rounded-md border border-gray-200 bg-white shadow-md">
                         {categories.map((category) => (
                           <div
                             key={category.category_id}
@@ -497,7 +497,7 @@ export default function AddProductPage() {
               </div>
             </div>
 
-            <div className="bg-white p-6 rounded-lg border">
+            <div className="bg-white p-6 rounded-lg border border-gray-200">
               <h2 className="text-xl font-semibold mb-4">Pricing & Stock</h2>
               
               <div className="grid grid-cols-2 gap-4">
@@ -613,7 +613,7 @@ export default function AddProductPage() {
               )}
             </div>
 
-            <div className="bg-white p-6 rounded-lg border">
+            <div className="bg-white p-6 rounded-lg border border-gray-200">
               <h2 className="text-xl font-semibold mb-4">Product Settings</h2>
               
               <div className="space-y-4">
@@ -640,7 +640,7 @@ export default function AddProductPage() {
                         className="fixed inset-0 z-40" 
                         onClick={() => setStatusDropdownOpen(false)}
                       />
-                      <div className="absolute top-full left-0 right-0 z-50 mt-1 max-h-60 overflow-auto rounded-md border bg-white shadow-md">
+                      <div className="absolute top-full left-0 right-0 z-50 mt-1 max-h-60 overflow-auto rounded-md border border-gray-200 bg-white shadow-md">
                         {[
                           { value: 'active', label: 'Active' },
                           { value: 'inactive', label: 'Inactive' },
@@ -682,7 +682,7 @@ export default function AddProductPage() {
           </div>
 
           <div className="space-y-6">
-            <div className="bg-white p-6 rounded-lg border">
+            <div className="bg-white p-6 rounded-lg border border-gray-200">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-semibold">Product Images</h2>
                 <Button 
@@ -697,7 +697,7 @@ export default function AddProductPage() {
               
               <div className="space-y-4">
                 {images.map((image, index) => (
-                  <div key={image.id} className="border rounded-lg p-4">
+                  <div key={image.id} className="border border-gray-200 rounded-lg p-4">
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-medium">Image {index + 1}</span>

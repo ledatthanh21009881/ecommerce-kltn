@@ -41,6 +41,8 @@ import TrackingMap, { MapLegend, MapStats } from '@/components/admin/TrackingMap
 import { authUtils } from '@/lib/auth'
 import { fetchJsonSafe } from '@/lib/api'
 import { toast } from 'sonner'
+import { useLanguage } from '@/contexts/LanguageContext'
+import { AdminPageHeading } from '@/components/admin/AdminPageHeading'
 
 // Mock data for development
 const mockStats: TrackingStats = {
@@ -160,6 +162,7 @@ const mockShippers = [
 
 export default function OrderTrackingPage() {
   const router = useRouter()
+  const { t } = useLanguage()
   // State management - áp dụng error prevention patterns từ Loi_thuong_gap.md
   const [orders, setOrders] = useState<OrderTracking[]>([])
   const [shippers, setShippers] = useState<Shipper[]>(mockShippers as Shipper[])
@@ -344,12 +347,10 @@ export default function OrderTrackingPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 p-6">
       <div className="space-y-6 max-w-7xl mx-auto">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-slate-800 via-blue-800 to-indigo-800 bg-clip-text text-transparent">Order Tracking</h1>
-          <p className="text-slate-600">Real-time order tracking and shipper management</p>
-        </div>
-        <div className="flex items-center gap-2">
+      <AdminPageHeading
+        title={t('orderTrackingPageTitle')}
+        description={t('orderTrackingPageSubtitle')}
+        actions={
           <Button
             variant="outline"
             size="sm"
@@ -358,10 +359,10 @@ export default function OrderTrackingPage() {
             className="bg-white/80 backdrop-blur-sm border-slate-200 hover:bg-white"
           >
             <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-            Refresh
+            {t('refresh')}
           </Button>
-        </div>
-      </div>
+        }
+      />
 
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-[auto_1fr_1fr_1fr_1fr_1fr_1fr_1fr] gap-4">
         <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg order-first w-fit max-w-full col-span-2 md:col-span-1 lg:col-span-1">

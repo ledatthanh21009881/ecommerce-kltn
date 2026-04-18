@@ -1,20 +1,29 @@
 'use client'
 
-import { Bell, LogOut, User } from 'lucide-react'
+import { Bell, LogOut, User, MessageSquare } from 'lucide-react'
 import { useState } from 'react'
+import Link from 'next/link'
+import { usePathname } from 'next/navigation'
+import { cn } from '@/lib/utils'
+import { useAdminMessengerUnreadCount } from '@/hooks/useAdminMessengerUnreadCount'
 
 interface UserHeaderProps {
   userName?: string
   userEmail?: string
   onLogout?: () => void
+  messengerLabel?: string
 }
 
 export default function UserHeader({ 
   userName = "Admin User", 
   userEmail = "admin@example.com",
-  onLogout 
+  onLogout,
+  messengerLabel = 'Messenger',
 }: UserHeaderProps) {
   const [showDropdown, setShowDropdown] = useState(false)
+  const pathname = usePathname()
+  const messengerActive = pathname === '/admin/messenger'
+  const { count: unreadMessengerCount } = useAdminMessengerUnreadCount()
 
   const handleLogout = () => {
     if (onLogout) {
@@ -25,13 +34,39 @@ export default function UserHeader({
 
   return (
     <div className="flex items-center gap-4">
-      {/* Notification Bell */}
-      <button className="relative p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-full transition-colors">
+      <Link
+        href="/admin/messenger"
+        className={cn(
+          'relative rounded-full p-2 transition-colors',
+          messengerActive
+            ? 'bg-blue-50 text-blue-700'
+            : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+        )}
+        title={messengerLabel}
+        aria-label={
+          unreadMessengerCount > 0
+            ? `${messengerLabel}, ${unreadMessengerCount} unread`
+            : messengerLabel
+        }
+      >
+        <MessageSquare className="h-5 w-5" />
+        {unreadMessengerCount > 0 && (
+          <span
+            className="absolute -right-0.5 -top-0.5 flex min-h-[1.125rem] min-w-[1.125rem] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-semibold leading-none text-white"
+            aria-hidden
+          >
+            {unreadMessengerCount > 99 ? '99+' : unreadMessengerCount}
+          </span>
+        )}
+      </Link>
+
+      {/* Notification Bell — có thể gắn API thông báo sau */}
+      <button
+        type="button"
+        className="relative p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-full transition-colors"
+        aria-label="Notifications"
+      >
         <Bell className="h-5 w-5" />
-        {/* Notification badge */}
-        <span className="absolute -top-1 -right-1 h-3 w-3 bg-red-500 rounded-full text-xs text-white flex items-center justify-center">
-          3
-        </span>
       </button>
 
       {/* User Profile */}

@@ -583,7 +583,7 @@ export default function EditProductPage() {
     return (
       <div className="container mx-auto py-6 max-w-4xl">
         <div className="text-center">
-          <h1 className="text-2xl font-bold mb-4">Product Not Found</h1>
+          <h1 className="font-serif text-2xl font-bold tracking-tight text-[#1a2b56] mb-4">Product Not Found</h1>
           <Button onClick={() => router.push('/admin/products')}>
             Back to Products
           </Button>
@@ -603,13 +603,15 @@ export default function EditProductPage() {
           <ArrowLeft className="h-4 w-4" />
           Back
         </Button>
-        <h1 className="text-3xl font-bold">Edit Product: {product.product_name}</h1>
+        <h1 className="admin-page-title">
+          {t('modalEditProduct')}: {product.product_name}
+        </h1>
       </div>
 
       <form noValidate onSubmit={handleSubmit} className="space-y-8">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           <div className="space-y-6 overflow-visible">
-            <div className="bg-white p-6 rounded-lg border relative z-10">
+            <div className="bg-white p-6 rounded-lg border border-gray-200 relative z-10">
               <h2 className="text-xl font-semibold mb-4">Basic Information</h2>
               
               <div className="space-y-4">
@@ -662,7 +664,7 @@ export default function EditProductPage() {
                         className="fixed inset-0 z-40" 
                         onClick={() => setCategoryDropdownOpen(false)}
                       />
-                      <div className="absolute top-full left-0 right-0 z-50 mt-1 max-h-60 overflow-auto rounded-md border bg-popover text-popover-foreground shadow-md">
+                      <div className="absolute top-full left-0 right-0 z-50 mt-1 max-h-60 overflow-auto rounded-md border border-border bg-popover text-popover-foreground shadow-md">
                         {categories.map((category) => (
                           <div
                             key={category.category_id}
@@ -720,7 +722,7 @@ export default function EditProductPage() {
             </div>
 
             {/* Pricing & Stock */}
-            <div className="bg-white p-6 rounded-lg border relative z-10">
+            <div className="bg-white p-6 rounded-lg border border-gray-200 relative z-10">
               <h2 className="text-xl font-semibold mb-4">Pricing & Stock</h2>
               
               <div className="grid grid-cols-2 gap-4">
@@ -841,7 +843,7 @@ export default function EditProductPage() {
               )}
             </div>
 
-            <div className="bg-white p-6 rounded-lg border relative z-10">
+            <div className="bg-white p-6 rounded-lg border border-gray-200 relative z-10">
               <h2 className="text-xl font-semibold mb-4">Product Settings</h2>
               
               <div className="space-y-4">
@@ -868,7 +870,7 @@ export default function EditProductPage() {
                         className="fixed inset-0 z-40" 
                         onClick={() => setStatusDropdownOpen(false)}
                       />
-                      <div className="absolute top-full left-0 right-0 z-50 mt-1 max-h-60 overflow-auto rounded-md border bg-popover text-popover-foreground shadow-md">
+                      <div className="absolute top-full left-0 right-0 z-50 mt-1 max-h-60 overflow-auto rounded-md border border-border bg-popover text-popover-foreground shadow-md">
                         {[
                           { value: 'active', label: 'Active' },
                           { value: 'inactive', label: 'Inactive' },
@@ -910,7 +912,7 @@ export default function EditProductPage() {
           </div>
 
           <div className="space-y-6">
-            <div className="bg-white p-6 rounded-lg border">
+            <div className="bg-white p-6 rounded-lg border border-gray-200">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-semibold">Product Images</h2>
                 <Button 
@@ -926,7 +928,7 @@ export default function EditProductPage() {
               
               <div className="space-y-4">
                 {images.map((image, index) => (
-                  <div key={image.id} className="border rounded-lg p-4">
+                  <div key={image.id} className="border border-gray-200 rounded-lg p-4">
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-medium">Image {index + 1}</span>

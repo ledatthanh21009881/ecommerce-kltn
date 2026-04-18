@@ -8,8 +8,10 @@ import { Badge } from '@/components/ui/badge'
 import { useToast } from '@/hooks/use-toast'
 import { productApi, Product } from '@/lib/products'
 import { ArrowLeft, Edit, Calendar, Package, DollarSign, Tag, Image as ImageIcon, Star } from 'lucide-react'
+import { useLanguage } from '@/contexts/LanguageContext'
 
 export default function ProductDetailsPage() {
+  const { t } = useLanguage()
   const router = useRouter()
   const params = useParams()
   const { toast } = useToast()
@@ -89,7 +91,7 @@ export default function ProductDetailsPage() {
             <ArrowLeft className="h-4 w-4" />
             Back
           </Button>
-          <h1 className="text-3xl font-bold">Product Details</h1>
+          <h1 className="admin-page-title">{t('viewProduct')}</h1>
         </div>
         
         <Button
@@ -104,7 +106,7 @@ export default function ProductDetailsPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Product Images */}
         <div className="space-y-6">
-          <div className="bg-white p-6 rounded-lg border">
+          <div className="bg-white p-6 rounded-lg border border-gray-200">
             <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
               <ImageIcon className="h-5 w-5" />
               Product Images
@@ -153,7 +155,7 @@ export default function ProductDetailsPage() {
         {/* Product Information */}
         <div className="space-y-6">
           {/* Basic Info */}
-          <div className="bg-white p-6 rounded-lg border">
+          <div className="bg-white p-6 rounded-lg border border-gray-200">
             <h2 className="text-xl font-semibold mb-4">Basic Information</h2>
             <div className="space-y-4">
               <div>
@@ -197,7 +199,7 @@ export default function ProductDetailsPage() {
           </div>
 
           {/* Pricing & Stock */}
-          <div className="bg-white p-6 rounded-lg border">
+          <div className="bg-white p-6 rounded-lg border border-gray-200">
             <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
               <DollarSign className="h-5 w-5" />
               Pricing & Stock
@@ -222,7 +224,7 @@ export default function ProductDetailsPage() {
           </div>
 
           {/* Descriptions */}
-          <div className="bg-white p-6 rounded-lg border">
+          <div className="bg-white p-6 rounded-lg border border-gray-200">
             <h2 className="text-xl font-semibold mb-4">Descriptions</h2>
             <div className="space-y-4">
               <div>
@@ -246,7 +248,7 @@ export default function ProductDetailsPage() {
           </div>
 
           {/* Metadata */}
-          <div className="bg-white p-6 rounded-lg border">
+          <div className="bg-white p-6 rounded-lg border border-gray-200">
             <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
               <Calendar className="h-5 w-5" />
               Metadata
