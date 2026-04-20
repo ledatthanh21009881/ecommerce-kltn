@@ -250,7 +250,8 @@ const formatPrice = (price: string | number) => {
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300">
+          <Card className="relative overflow-hidden border-slate-200/80 bg-white/90 shadow-sm backdrop-blur transition hover:shadow-md">
+            <div className="pointer-events-none absolute -right-6 -top-10 h-32 w-32 rounded-full bg-gradient-to-br from-blue-500/15 to-transparent" />
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -258,13 +259,14 @@ const formatPrice = (price: string | number) => {
                   <p className="text-3xl font-bold text-slate-900">{pagination?.total ?? products.length}</p>
                   <p className="text-xs text-slate-500 mt-1">{t('inCatalog')}</p>
                 </div>
-                <div className="h-12 w-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg">
-                  <Package className="h-6 w-6 text-white" />
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-500/15 text-blue-700">
+                  <Package className="h-4 w-4" />
                 </div>
               </div>
             </CardContent>
           </Card>
-          <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300">
+          <Card className="relative overflow-hidden border-slate-200/80 bg-white/90 shadow-sm backdrop-blur transition hover:shadow-md">
+            <div className="pointer-events-none absolute -right-6 -top-10 h-32 w-32 rounded-full bg-gradient-to-br from-emerald-500/15 to-transparent" />
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -272,13 +274,14 @@ const formatPrice = (price: string | number) => {
                   <p className="text-3xl font-bold text-slate-900">{products.filter(p => p.status === 'active').length}</p>
                   <p className="text-xs text-slate-500 mt-1">{t('onThisPage')}</p>
                 </div>
-                <div className="h-12 w-12 bg-gradient-to-br from-emerald-500 to-green-600 rounded-xl flex items-center justify-center shadow-lg">
-                  <Package className="h-6 w-6 text-white" />
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-700">
+                  <Package className="h-4 w-4" />
                 </div>
               </div>
             </CardContent>
           </Card>
-          <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300">
+          <Card className="relative overflow-hidden border-slate-200/80 bg-white/90 shadow-sm backdrop-blur transition hover:shadow-md">
+            <div className="pointer-events-none absolute -right-6 -top-10 h-32 w-32 rounded-full bg-gradient-to-br from-amber-500/15 to-transparent" />
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -286,13 +289,14 @@ const formatPrice = (price: string | number) => {
                   <p className="text-3xl font-bold text-slate-900">{products.filter(p => p.is_featured).length}</p>
                   <p className="text-xs text-slate-500 mt-1">{t('onThisPage')}</p>
                 </div>
-                <div className="h-12 w-12 bg-gradient-to-br from-amber-500 to-orange-500 rounded-xl flex items-center justify-center shadow-lg">
-                  <Star className="h-6 w-6 text-white" />
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-500/15 text-amber-700">
+                  <Star className="h-4 w-4" />
                 </div>
               </div>
             </CardContent>
           </Card>
-          <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300">
+          <Card className="relative overflow-hidden border-slate-200/80 bg-white/90 shadow-sm backdrop-blur transition hover:shadow-md">
+            <div className="pointer-events-none absolute -right-6 -top-10 h-32 w-32 rounded-full bg-gradient-to-br from-violet-500/15 to-transparent" />
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -300,8 +304,8 @@ const formatPrice = (price: string | number) => {
                   <p className="text-3xl font-bold text-slate-900">{categories.length}</p>
                   <p className="text-xs text-slate-500 mt-1">{t('total')}</p>
                 </div>
-                <div className="h-12 w-12 bg-gradient-to-br from-purple-500 to-violet-600 rounded-xl flex items-center justify-center shadow-lg">
-                  <Package className="h-6 w-6 text-white" />
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-500/15 text-violet-700">
+                  <Package className="h-4 w-4" />
                 </div>
               </div>
             </CardContent>

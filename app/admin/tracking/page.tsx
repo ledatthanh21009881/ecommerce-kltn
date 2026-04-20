@@ -3,6 +3,8 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import dynamic from 'next/dynamic'
 import { useRouter } from 'next/navigation'
+import Image from 'next/image'
+import deliveryIcon from '../../../delivery.png'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -17,7 +19,6 @@ import {
   Truck,
   Package,
   Clock,
-  DollarSign,
   Users,
   CheckCircle,
   XCircle,
@@ -367,7 +368,7 @@ export default function OrderTrackingPage() {
     const defaultId = withCoords?.order_id ?? list[0]?.order_id ?? null
     setRouteModal({
       open: true,
-      shipperName: order.shipper_name || 'Shipper',
+      shipperName: order.shipper_name || t('trackingShipperCol'),
       shipperId: order.shipper_id,
       orders: list,
       selectedOrderId: defaultId,
@@ -390,11 +391,39 @@ export default function OrderTrackingPage() {
     null
 
   const getStatusConfig = (status: string) => {
-    return ORDER_STATUS_CONFIG[status as keyof typeof ORDER_STATUS_CONFIG] || {
-      label: status,
-      color: 'bg-gray-100 text-gray-800',
-      icon: '❓'
+    const normalized = status.toLowerCase()
+    const base =
+      ORDER_STATUS_CONFIG[status as keyof typeof ORDER_STATUS_CONFIG] || {
+        label: status,
+        color: 'bg-gray-100 text-gray-800',
+        icon: '❓',
+      }
+
+    // Tracking UX: nhãn ngắn gọn + tương phản mạnh + icon xe máy cho luồng giao hàng
+    if (normalized === 'in_transit') {
+      return {
+        ...base,
+        label: t('trackingStatusShortInTransit'),
+        color: 'bg-blue-600 text-white hover:bg-blue-600',
+        icon: 'delivery',
+      }
     }
+    if (normalized === 'picking_up') {
+      return {
+        ...base,
+        label: t('trackingStatusShortPickingUp'),
+        color: 'bg-amber-600 text-white hover:bg-amber-600',
+        icon: 'delivery',
+      }
+    }
+    if (['assigned', 'picked_up', 'arriving'].includes(normalized)) {
+      return {
+        ...base,
+        icon: '🛵',
+      }
+    }
+
+    return base
   }
 
   const formatCurrency = (amount: number) => {
@@ -431,93 +460,82 @@ export default function OrderTrackingPage() {
         }
       />
 
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-[auto_1fr_1fr_1fr_1fr_1fr_1fr_1fr] gap-4">
-        <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg order-first w-fit max-w-full col-span-2 md:col-span-1 lg:col-span-1">
-          <CardContent className="p-4 flex items-center justify-between gap-3">
-            <div className="min-w-0">
-              <p className="text-2xl font-bold text-emerald-600 whitespace-nowrap">{formatCurrency(stats.total_revenue_today)}</p>
-              <p className="text-sm text-gray-600">Revenue</p>
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-6">
+        <Card className="relative overflow-hidden border-slate-200/80 bg-white/90 shadow-sm backdrop-blur transition hover:shadow-md">
+          <div className="pointer-events-none absolute -right-6 -top-10 h-32 w-32 rounded-full bg-gradient-to-br from-sky-500/15 to-transparent" />
+          <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-slate-600">{t('trackingStatTotalToday')}</CardTitle>
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-sky-500/15 text-sky-700">
+              <Package className="h-4 w-4" />
             </div>
-            <DollarSign className="h-8 w-8 text-green-600 shrink-0" />
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-semibold tracking-tight text-slate-900">{stats.total_orders_today}</p>
           </CardContent>
         </Card>
-        <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg">
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-2">
-              <div className="h-10 w-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center shrink-0">
-                <Package className="h-5 w-5 text-white" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-slate-900">{stats.total_orders_today}</p>
-                <p className="text-sm text-slate-600">Total Today</p>
-              </div>
+
+        <Card className="relative overflow-hidden border-slate-200/80 bg-white/90 shadow-sm backdrop-blur transition hover:shadow-md">
+          <div className="pointer-events-none absolute -right-6 -top-10 h-32 w-32 rounded-full bg-gradient-to-br from-orange-500/15 to-transparent" />
+          <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-slate-600">{t('trackingStatActive')}</CardTitle>
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-orange-500/15 text-orange-700">
+              <Truck className="h-4 w-4" />
             </div>
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-semibold tracking-tight text-slate-900">{stats.active_deliveries}</p>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-2">
-              <Truck className="h-5 w-5 text-orange-600" />
-              <div>
-                <p className="text-2xl font-bold">{stats.active_deliveries}</p>
-                <p className="text-sm text-gray-600">Active</p>
-              </div>
+
+        <Card className="relative overflow-hidden border-slate-200/80 bg-white/90 shadow-sm backdrop-blur transition hover:shadow-md">
+          <div className="pointer-events-none absolute -right-6 -top-10 h-32 w-32 rounded-full bg-gradient-to-br from-emerald-500/15 to-transparent" />
+          <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-slate-600">{t('trackingStatCompleted')}</CardTitle>
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-700">
+              <CheckCircle className="h-4 w-4" />
             </div>
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-semibold tracking-tight text-slate-900">{stats.completed_today}</p>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-2">
-              <CheckCircle className="h-5 w-5 text-green-600" />
-              <div>
-                <p className="text-2xl font-bold">{stats.completed_today}</p>
-                <p className="text-sm text-gray-600">Completed</p>
-              </div>
+
+        <Card className="relative overflow-hidden border-slate-200/80 bg-white/90 shadow-sm backdrop-blur transition hover:shadow-md">
+          <div className="pointer-events-none absolute -right-6 -top-10 h-32 w-32 rounded-full bg-gradient-to-br from-amber-500/15 to-transparent" />
+          <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-slate-600">{t('trackingStatPending')}</CardTitle>
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-500/15 text-amber-700">
+              <Clock className="h-4 w-4" />
             </div>
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-semibold tracking-tight text-slate-900">{stats.pending_pickup}</p>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-2">
-              <Clock className="h-5 w-5 text-yellow-600" />
-              <div>
-                <p className="text-2xl font-bold">{stats.pending_pickup}</p>
-                <p className="text-sm text-gray-600">Pending</p>
-              </div>
+
+        <Card className="relative overflow-hidden border-slate-200/80 bg-white/90 shadow-sm backdrop-blur transition hover:shadow-md">
+          <div className="pointer-events-none absolute -right-6 -top-10 h-32 w-32 rounded-full bg-gradient-to-br from-rose-500/15 to-transparent" />
+          <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-slate-600">{t('trackingStatFailed')}</CardTitle>
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-rose-500/15 text-rose-700">
+              <XCircle className="h-4 w-4" />
             </div>
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-semibold tracking-tight text-slate-900">{stats.failed_deliveries}</p>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-2">
-              <XCircle className="h-5 w-5 text-red-600" />
-              <div>
-                <p className="text-2xl font-bold">{stats.failed_deliveries}</p>
-                <p className="text-sm text-gray-600">Failed</p>
-              </div>
+
+        <Card className="relative overflow-hidden border-slate-200/80 bg-white/90 shadow-sm backdrop-blur transition hover:shadow-md">
+          <div className="pointer-events-none absolute -right-6 -top-10 h-32 w-32 rounded-full bg-gradient-to-br from-indigo-500/15 to-transparent" />
+          <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-slate-600">{t('trackingStatShippers')}</CardTitle>
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-indigo-500/15 text-indigo-700">
+              <Users className="h-4 w-4" />
             </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-2">
-              <Clock className="h-5 w-5 text-purple-600" />
-              <div>
-                <p className="text-2xl font-bold">{stats.avg_delivery_time}m</p>
-                <p className="text-sm text-gray-600">Avg Time</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-2">
-              <Users className="h-5 w-5 text-indigo-600" />
-              <div>
-                <p className="text-2xl font-bold">{stats.active_shippers}</p>
-                <p className="text-sm text-gray-600">Shippers</p>
-              </div>
-            </div>
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-semibold tracking-tight text-slate-900">{stats.active_shippers}</p>
           </CardContent>
         </Card>
       </div>
@@ -530,7 +548,7 @@ export default function OrderTrackingPage() {
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                 <Input
-                  placeholder="Search orders, customers, shippers..."
+                  placeholder={t('trackingSearchPlaceholder')}
                   value={filters.search || ''}
                   onChange={(e) => handleSearch(e.target.value)}
                   className="pl-10"
@@ -542,20 +560,20 @@ export default function OrderTrackingPage() {
               onValueChange={(value) => handleFilterChange('status', value)}
             >
               <SelectTrigger className="w-full md:w-48">
-                <SelectValue placeholder="Filter by status" />
+                <SelectValue placeholder={t('trackingFilterByStatus')} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="pending">Pending</SelectItem>
-                <SelectItem value="confirmed">Confirmed</SelectItem>
-                <SelectItem value="assigned">Assigned</SelectItem>
-                <SelectItem value="picking_up">Picking Up</SelectItem>
-                <SelectItem value="picked_up">Picked Up</SelectItem>
-                <SelectItem value="in_transit">In Transit</SelectItem>
-                <SelectItem value="arriving">Arriving</SelectItem>
-                <SelectItem value="delivered">Delivered</SelectItem>
-                <SelectItem value="failed">Failed</SelectItem>
-                <SelectItem value="cancelled">Cancelled</SelectItem>
+                <SelectItem value="all">{t('trackingStatusAll')}</SelectItem>
+                <SelectItem value="pending">{t('trackingStatusPending')}</SelectItem>
+                <SelectItem value="confirmed">{t('trackingStatusConfirmed')}</SelectItem>
+                <SelectItem value="assigned">{t('trackingStatusAssigned')}</SelectItem>
+                <SelectItem value="picking_up">{t('trackingStatusPickingUp')}</SelectItem>
+                <SelectItem value="picked_up">{t('trackingStatusPickedUp')}</SelectItem>
+                <SelectItem value="in_transit">{t('trackingStatusInTransit')}</SelectItem>
+                <SelectItem value="arriving">{t('trackingStatusArriving')}</SelectItem>
+                <SelectItem value="delivered">{t('trackingStatusDelivered')}</SelectItem>
+                <SelectItem value="failed">{t('trackingStatusFailed')}</SelectItem>
+                <SelectItem value="cancelled">{t('trackingStatusCancelled')}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -565,16 +583,12 @@ export default function OrderTrackingPage() {
       {/* Main Content Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid w-full max-w-md grid-cols-2">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="shippers">Shippers</TabsTrigger>
+          <TabsTrigger value="overview">{t('trackingTabOverview')}</TabsTrigger>
+          <TabsTrigger value="shippers">{t('trackingTabShippers')}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-4">
           <Card className="border-violet-200/80 bg-white/90 shadow-sm">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-lg">{t('trackingOrdersUnifiedTitle')}</CardTitle>
-              <CardDescription>{t('trackingOrdersUnifiedDesc')}</CardDescription>
-            </CardHeader>
             <CardContent>
               <div className="overflow-x-auto">
                 <Table>
@@ -584,14 +598,14 @@ export default function OrderTrackingPage() {
                       <TableHead>{t('trackingCustomerCol')}</TableHead>
                       <TableHead>{t('trackingShipperCol')}</TableHead>
                       <TableHead>{t('trackingVehicleCol')}</TableHead>
-                      <TableHead>Status</TableHead>
+                      <TableHead className="w-[140px] min-w-[140px]">{t('trackingStatusCol')}</TableHead>
                       <TableHead>{t('trackingLocationCol')}</TableHead>
                       <TableHead className="text-center whitespace-nowrap">
                         {t('trackingActiveOrdersCount')}
                       </TableHead>
-                      <TableHead>Amount</TableHead>
-                      <TableHead>Updated</TableHead>
-                      <TableHead className="w-[132px]">Actions</TableHead>
+                      <TableHead>{t('trackingAmountCol')}</TableHead>
+                      <TableHead>{t('trackingUpdatedCol')}</TableHead>
+                      <TableHead className="w-[132px]">{t('trackingActionsCol')}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -600,7 +614,7 @@ export default function OrderTrackingPage() {
                         <TableCell colSpan={10} className="text-center py-8">
                           <div className="flex items-center justify-center">
                             <RefreshCw className="h-4 w-4 animate-spin mr-2" />
-                            Loading orders...
+                            {t('trackingLoadingOrders')}
                           </div>
                         </TableCell>
                       </TableRow>
@@ -613,7 +627,7 @@ export default function OrderTrackingPage() {
                     ) : ensureArray(orders).length === 0 ? (
                       <TableRow>
                         <TableCell colSpan={10} className="text-center py-8 text-gray-500">
-                          No orders found
+                          {t('trackingNoOrders')}
                         </TableCell>
                       </TableRow>
                     ) : (
@@ -641,27 +655,36 @@ export default function OrderTrackingPage() {
                                   <div className="text-sm text-gray-500">{order.shipper_phone}</div>
                                 </div>
                               ) : (
-                                <span className="text-gray-500">Not assigned</span>
+                                <span className="text-gray-500">{t('trackingNotAssigned')}</span>
                               )}
                             </TableCell>
                             <TableCell className="text-sm text-slate-600 max-w-[140px]">
                               {order.vehicle_info || '—'}
                             </TableCell>
-                            <TableCell>
-                              <Badge className={statusConfig.color}>
-                                {statusConfig.icon} {statusConfig.label}
+                            <TableCell className="min-w-[140px]">
+                              <Badge className={`${statusConfig.color} whitespace-nowrap px-2.5 py-1`}>
+                                {statusConfig.icon === 'delivery' ? (
+                                  <Image
+                                    src={deliveryIcon}
+                                    alt=""
+                                    className="mr-1 inline-block h-4 w-4 align-middle"
+                                  />
+                                ) : (
+                                  <span className="mr-1">{statusConfig.icon}</span>
+                                )}
+                                {statusConfig.label}
                               </Badge>
                             </TableCell>
                             <TableCell>
                               {order.current_lat != null && order.current_lng != null ? (
-                                <div className="flex items-center gap-1">
+                                <div className="flex items-center gap-1 whitespace-nowrap">
                                   <MapPin className="h-3 w-3 shrink-0 text-green-600" />
-                                  <span className="text-xs font-mono">
+                                  <span className="text-xs font-mono whitespace-nowrap">
                                     {order.current_lat.toFixed(4)}, {order.current_lng.toFixed(4)}
                                   </span>
                                 </div>
                               ) : (
-                                <span className="text-gray-500">No location</span>
+                                <span className="text-gray-500">{t('trackingNoLocation')}</span>
                               )}
                             </TableCell>
                             <TableCell className="text-center">
@@ -693,7 +716,7 @@ export default function OrderTrackingPage() {
                                   <Button
                                     size="sm"
                                     variant="outline"
-                                    title="Call shipper"
+                                    title={t('trackingCallShipper')}
                                     onClick={() => window.open(`tel:${order.shipper_phone}`)}
                                   >
                                     <Phone className="h-3 w-3" />
@@ -722,24 +745,18 @@ export default function OrderTrackingPage() {
 
         <TabsContent value="shippers" className="space-y-4">
           <Card>
-            <CardHeader>
-              <CardTitle>Shipper Management</CardTitle>
-              <CardDescription>
-                Monitor shipper performance and availability
-              </CardDescription>
-            </CardHeader>
             <CardContent>
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Shipper</TableHead>
-                      <TableHead>Vehicle</TableHead>
-                      <TableHead>Rating</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Location</TableHead>
-                      <TableHead>Active Orders</TableHead>
-                      <TableHead>Actions</TableHead>
+                      <TableHead>{t('trackingShipperCol')}</TableHead>
+                      <TableHead>{t('trackingVehicleCol')}</TableHead>
+                      <TableHead>{t('trackingRatingCol')}</TableHead>
+                      <TableHead>{t('trackingStatusCol')}</TableHead>
+                      <TableHead>{t('trackingLocationCol')}</TableHead>
+                      <TableHead>{t('trackingActiveOrdersCount')}</TableHead>
+                      <TableHead>{t('trackingActionsCol')}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -755,12 +772,12 @@ export default function OrderTrackingPage() {
                         <TableCell>
                           <div className="flex items-center gap-1">
                             <Star className="h-3 w-3 text-yellow-500" />
-                            {shipper.rating?.toFixed(1) || 'N/A'}
+                            {shipper.rating?.toFixed(1) || t('trackingNoRating')}
                           </div>
                         </TableCell>
                         <TableCell>
                           <Badge className={shipper.is_available ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}>
-                            {shipper.is_available ? 'Available' : 'Busy'}
+                            {shipper.is_available ? t('trackingShipperAvailable') : t('trackingShipperBusy')}
                           </Badge>
                         </TableCell>
                         <TableCell>
@@ -772,7 +789,7 @@ export default function OrderTrackingPage() {
                               </span>
                             </div>
                           ) : (
-                            <span className="text-gray-500">No location</span>
+                            <span className="text-gray-500">{t('trackingNoLocation')}</span>
                           )}
                         </TableCell>
                         <TableCell>

@@ -268,54 +268,58 @@ export default function AdminInventoryPage() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300">
+          <Card className="relative overflow-hidden border-slate-200/80 bg-white/90 shadow-sm backdrop-blur transition hover:shadow-md">
+            <div className="pointer-events-none absolute -right-6 -top-10 h-32 w-32 rounded-full bg-gradient-to-br from-blue-500/15 to-transparent" />
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-slate-600 mb-1">{t('totalVariants')}</p>
                   <p className="text-3xl font-bold text-slate-900">{totalVariants}</p>
                 </div>
-                <div className="h-12 w-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg">
-                  <Package className="h-6 w-6 text-white" />
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-500/15 text-blue-700">
+                  <Package className="h-4 w-4" />
                 </div>
               </div>
             </CardContent>
           </Card>
-          <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300">
+          <Card className="relative overflow-hidden border-slate-200/80 bg-white/90 shadow-sm backdrop-blur transition hover:shadow-md">
+            <div className="pointer-events-none absolute -right-6 -top-10 h-32 w-32 rounded-full bg-gradient-to-br from-emerald-500/15 to-transparent" />
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-slate-600 mb-1">{t('inStock')}</p>
                   <p className="text-3xl font-bold text-slate-900">{inStockVariants}</p>
                 </div>
-                <div className="h-12 w-12 bg-gradient-to-br from-emerald-500 to-green-600 rounded-xl flex items-center justify-center shadow-lg">
-                  <Package className="h-6 w-6 text-white" />
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-700">
+                  <Package className="h-4 w-4" />
                 </div>
               </div>
             </CardContent>
           </Card>
-          <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300">
+          <Card className="relative overflow-hidden border-slate-200/80 bg-white/90 shadow-sm backdrop-blur transition hover:shadow-md">
+            <div className="pointer-events-none absolute -right-6 -top-10 h-32 w-32 rounded-full bg-gradient-to-br from-rose-500/15 to-transparent" />
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-slate-600 mb-1">{t('outOfStock')}</p>
                   <p className="text-3xl font-bold text-slate-900">{outOfStockVariants}</p>
                 </div>
-                <div className="h-12 w-12 bg-gradient-to-br from-red-500 to-red-600 rounded-xl flex items-center justify-center shadow-lg">
-                  <Package className="h-6 w-6 text-white" />
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-rose-500/15 text-rose-700">
+                  <Package className="h-4 w-4" />
                 </div>
               </div>
             </CardContent>
           </Card>
-          <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300">
+          <Card className="relative overflow-hidden border-slate-200/80 bg-white/90 shadow-sm backdrop-blur transition hover:shadow-md">
+            <div className="pointer-events-none absolute -right-6 -top-10 h-32 w-32 rounded-full bg-gradient-to-br from-amber-500/15 to-transparent" />
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-slate-600 mb-1">{t('lowStock')}</p>
                   <p className="text-3xl font-bold text-slate-900">{lowStockVariants}</p>
                 </div>
-                <div className="h-12 w-12 bg-gradient-to-br from-amber-500 to-orange-500 rounded-xl flex items-center justify-center shadow-lg">
-                  <AlertTriangle className="h-6 w-6 text-white" />
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-500/15 text-amber-700">
+                  <AlertTriangle className="h-4 w-4" />
                 </div>
               </div>
             </CardContent>
@@ -410,7 +414,12 @@ export default function AdminInventoryPage() {
                               <div className="text-xs text-slate-500 font-mono">{variant.sku}</div>
                             </div>
                           </div>
-                          <Badge variant={variant.status === 'in_stock' ? 'default' : 'secondary'}>{variant.status === 'in_stock' ? t('inStock') : t('outOfStock')}</Badge>
+                          <Badge
+                            variant={variant.status === 'in_stock' ? 'default' : 'secondary'}
+                            className={variant.status === 'in_stock' ? 'bg-emerald-600 text-white hover:bg-emerald-600' : undefined}
+                          >
+                            {variant.status === 'in_stock' ? t('inStock') : t('outOfStock')}
+                          </Badge>
                         </div>
                         <div className="flex items-center justify-between text-sm text-slate-600 mb-3">
                           <span>{t('size')}: <Badge variant="outline">{variant.size_name}</Badge></span>
@@ -481,7 +490,10 @@ export default function AdminInventoryPage() {
                             </div>
                           </td>
                           <td className="py-4 px-4">
-                            <Badge variant={variant.status === 'in_stock' ? 'default' : 'secondary'}>
+                            <Badge
+                              variant={variant.status === 'in_stock' ? 'default' : 'secondary'}
+                              className={variant.status === 'in_stock' ? 'bg-emerald-600 text-white hover:bg-emerald-600' : undefined}
+                            >
                               {variant.status === 'in_stock' ? t('inStock') : t('outOfStock')}
                             </Badge>
                           </td>
