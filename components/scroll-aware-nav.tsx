@@ -5,10 +5,12 @@ import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { authUtils } from "@/lib/auth"
 import { toast } from "sonner"
+import { useLanguage } from "@/components/language-provider"
 import { fetchCollections } from "@/lib/collections-api"
 import type { Collection } from "@/lib/collections-api"
 
 export default function ScrollAwareNav() {
+  const { t } = useLanguage()
   const [isOverVideo, setIsOverVideo] = useState(true)
   const [isClient, setIsClient] = useState(false)
   const [isShopOpen, setIsShopOpen] = useState(false)
@@ -70,11 +72,11 @@ export default function ScrollAwareNav() {
     try {
       await authUtils.logout()
       setIsLoggedIn(false)
-      toast.success('Logged out successfully')
+      toast.success(t('logout.success'))
       router.push('/')
     } catch (error) {
       console.error('Logout error:', error)
-      toast.error('Logout failed')
+      toast.error(t('logout.failed'))
     }
   }
 
@@ -109,32 +111,32 @@ export default function ScrollAwareNav() {
             onClick={() => setIsShopOpen(!isShopOpen)}
             className={`text-xs font-bold uppercase tracking-wider ${textColorClass} ${hoverColorClass} transition-colors cursor-pointer`}
           >
-            SHOP
+            {t('nav.shopNav')}
           </button>
         </div>
         
         {isShopOpen && (
           <nav className="space-y-1 sidebar-nav relative z-[110] bg-transparent">
             <Link href="/all-products" className={`block text-xs font-bold uppercase tracking-wider ${textColorClass} ${hoverColorClass} transition-colors py-0.5`}>
-              ALL
+              {t('nav.shopAll')}
             </Link>
             <Link href="/category/tops" className={`block text-xs font-bold uppercase tracking-wider ${textColorClass} ${hoverColorClass} transition-colors py-0.5`}>
-              TOPS
+              {t('nav.shopTops')}
             </Link>
             <Link href="/category/shirts" className={`block text-xs font-bold uppercase tracking-wider ${textColorClass} ${hoverColorClass} transition-colors py-0.5`}>
-              SHIRTS
+              {t('nav.shopShirts')}
             </Link>
             <Link href="/category/jackets" className={`block text-xs font-bold uppercase tracking-wider ${textColorClass} ${hoverColorClass} transition-colors py-0.5`}>
-              JACKETS & COATS
+              {t('nav.shopJackets')}
             </Link>
             <Link href="/category/skirts" className={`block text-xs font-bold uppercase tracking-wider ${textColorClass} ${hoverColorClass} transition-colors py-0.5`}>
-              SKIRTS
+              {t('nav.shopSkirts')}
             </Link>
             <Link href="/category/pants" className={`block text-xs font-bold uppercase tracking-wider ${textColorClass} ${hoverColorClass} transition-colors py-0.5`}>
-              PANTS
+              {t('nav.shopPants')}
             </Link>
             <Link href="/category/accessories" className={`block text-xs font-bold uppercase tracking-wider ${textColorClass} ${hoverColorClass} transition-colors py-0.5`}>
-              ACCESSORIES
+              {t('nav.shopAccessories')}
             </Link>
           </nav>
         )}
@@ -147,7 +149,7 @@ export default function ScrollAwareNav() {
             onClick={() => setIsCollectionOpen(!isCollectionOpen)}
             className={`text-xs font-bold uppercase tracking-wider ${textColorClass} ${hoverColorClass} transition-colors cursor-pointer`}
           >
-            COLLECTION
+            {t('nav.collectionNav')}
           </button>
         </div>
         {isCollectionOpen && (
@@ -172,21 +174,21 @@ export default function ScrollAwareNav() {
         )}
         <nav className="space-y-1 sidebar-nav">
           <Link href="/about" className={`block text-xs font-bold uppercase tracking-wider ${textColorClass} ${hoverColorClass} transition-colors py-0.5`}>
-            ABOUT
+            {t('nav.aboutNav')}
           </Link>
           <Link href="/search" className={`block text-xs font-bold uppercase tracking-wider ${textColorClass} ${hoverColorClass} transition-colors py-0.5`}>
-            SEARCH
+            {t('nav.searchNav')}
           </Link>
           <Link href="/cart" className={`block text-xs font-bold uppercase tracking-wider ${textColorClass} ${hoverColorClass} transition-colors py-0.5`}>
-            CART
+            {t('nav.cartNav')}
           </Link>
           {isLoggedIn && (
             <>
               <Link href="/messenger" className={`block text-xs font-bold uppercase tracking-wider ${textColorClass} ${hoverColorClass} transition-colors py-0.5`}>
-                MESSENGER
+                {t('nav.messengerNav')}
               </Link>
               <Link href="/account" className={`block text-xs font-bold uppercase tracking-wider ${textColorClass} ${hoverColorClass} transition-colors py-0.5`}>
-                ACCOUNT
+                {t('nav.accountNav')}
               </Link>
             </>
           )}
@@ -200,11 +202,11 @@ export default function ScrollAwareNav() {
             onClick={handleLogout}
             className={`block text-xs font-bold uppercase tracking-wider ${textColorClass} ${hoverColorClass} transition-colors py-0.5 cursor-pointer`}
           >
-            LOGOUT
+            {t('nav.logoutNav')}
           </button>
         ) : (
           <Link href="/login" className={`block text-xs font-bold uppercase tracking-wider ${textColorClass} ${hoverColorClass} transition-colors py-0.5`}>
-            LOGIN
+            {t('nav.loginNav')}
           </Link>
         )}
       </div>

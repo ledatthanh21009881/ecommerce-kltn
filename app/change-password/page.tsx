@@ -1,35 +1,36 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { changePassword } from '@/lib/auth'
 import { useLanguage } from '@/components/language-provider'
 import { toast } from 'sonner'
 import ProtectedRoute from '@/components/protected-route'
+import { Input } from '@/components/ui/input'
 
 export default function ChangePasswordPage() {
   const [formData, setFormData] = useState({
     current_password: '',
     new_password: '',
-    confirm_password: ''
+    confirm_password: '',
   })
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
-  const { t } = useLanguage()
+  const { t, language } = useLanguage()
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value
+      [e.target.name]: e.target.value,
     })
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     const { current_password, new_password, confirm_password } = formData
 
-    // Validation
     if (!current_password) {
       toast.error(t('auth.currentPasswordRequired'))
       return
@@ -53,27 +54,32 @@ export default function ChangePasswordPage() {
     setIsLoading(true)
 
     try {
-      await changePassword({
-        current_password,
-        new_password,
-        confirm_password
-      })
+      const res = await changePassword(
+        {
+          current_password,
+          new_password,
+          confirm_password,
+        },
+        language,
+      )
+      if (!res.ok) {
+        toast.error(res.message || t('auth.passwordChangeError'))
+        return
+      }
+
       toast.success(t('auth.passwordChangeSuccess'))
-      
-      // Reset form
+
       setFormData({
         current_password: '',
         new_password: '',
-        confirm_password: ''
+        confirm_password: '',
       })
-      
-      // Optionally redirect to account page
+
       setTimeout(() => {
         router.push('/account')
-      }, 2000)
-    } catch (error) {
-      console.error('Change password error:', error)
-      toast.error(error instanceof Error ? error.message : t('auth.passwordChangeError'))
+      }, 1200)
+    } catch {
+      toast.error(t('auth.passwordChangeError'))
     } finally {
       setIsLoading(false)
     }
@@ -81,95 +87,87 @@ export default function ChangePasswordPage() {
 
   return (
     <ProtectedRoute>
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-md w-full space-y-8">
-          <div>
-            <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
+      <main className="min-h-screen bg-white pt-24">
+        <div className="container mx-auto px-4 py-12">
+          <div className="mx-auto max-w-md">
+            <h1 className="mb-8 text-center font-serif text-3xl font-light md:text-4xl">
               {t('auth.changePassword')}
-            </h2>
-          </div>
-          <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-            <div className="space-y-4">
-              <div>
-                <label htmlFor="current_password" className="block text-sm font-medium text-gray-700">
+            </h1>
+
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <div className="space-y-2">
+                <label htmlFor="current_password" className="text-sm">
                   {t('auth.currentPassword')}
                 </label>
-                <input
+                <Input
                   id="current_password"
                   name="current_password"
                   type="password"
                   autoComplete="current-password"
-                  required
-                  className="mt-1 appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
                   value={formData.current_password}
                   onChange={handleChange}
                   disabled={isLoading}
+                  required
                 />
               </div>
 
-              <div>
-                <label htmlFor="new_password" className="block text-sm font-medium text-gray-700">
+              <div className="space-y-2">
+                <label htmlFor="new_password" className="text-sm">
                   {t('auth.newPassword')}
                 </label>
-                <input
+                <Input
                   id="new_password"
                   name="new_password"
                   type="password"
                   autoComplete="new-password"
-                  required
-                  className="mt-1 appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
                   value={formData.new_password}
                   onChange={handleChange}
                   disabled={isLoading}
+                  required
                 />
               </div>
 
-              <div>
-                <label htmlFor="confirm_password" className="block text-sm font-medium text-gray-700">
+              <div className="space-y-2">
+                <label htmlFor="confirm_password" className="text-sm">
                   {t('auth.confirmPassword')}
                 </label>
-                <input
+                <Input
                   id="confirm_password"
                   name="confirm_password"
                   type="password"
                   autoComplete="new-password"
-                  required
-                  className="mt-1 appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
                   value={formData.confirm_password}
                   onChange={handleChange}
                   disabled={isLoading}
+                  required
                 />
               </div>
-            </div>
 
-            <div>
-              <button
-                type="submit"
-                disabled={isLoading}
-                className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isLoading ? (
-                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                ) : null}
-                {isLoading ? t('auth.changingPassword') : t('auth.changePassword')}
-              </button>
-            </div>
+              <div className="relative overflow-hidden border border-black">
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="relative h-10 w-full bg-black text-sm font-normal uppercase tracking-wider text-white transition-all duration-300 ease-in-out hover:bg-white hover:text-black disabled:cursor-not-allowed disabled:opacity-60 group"
+                >
+                  <span className="relative z-10 font-sans font-bold uppercase tracking-wider">
+                    {isLoading ? t('auth.changingPassword') : t('auth.changePassword')}
+                  </span>
+                  <div className="absolute inset-0 translate-x-full transform bg-white transition-transform duration-300 ease-in-out group-hover:translate-x-0 group-disabled:hidden" />
+                </button>
+              </div>
 
-            <div className="text-center">
-              <button
-                type="button"
-                onClick={() => router.back()}
-                className="text-indigo-600 hover:text-indigo-500 text-sm"
-              >
-                {t('auth.backToLogin')}
-              </button>
-            </div>
-          </form>
+              <div className="text-center">
+                <Link
+                  href="/account"
+                  className="text-sm underline underline-offset-4 text-black/80 hover:text-black"
+                >
+                  {t('auth.backToAccount')}
+                </Link>
+              </div>
+            </form>
+          </div>
         </div>
-      </div>
+      </main>
     </ProtectedRoute>
   )
 }

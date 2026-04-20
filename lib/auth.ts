@@ -438,24 +438,90 @@ export const forgotPassword = async (data: ForgotPasswordData): Promise<ForgotPa
   }
 }
 
-// Change password function
-export const changePassword = async (data: ChangePasswordData): Promise<ChangePasswordResponse> => {
-  try {
-    const response = await fetchWithAuth(`${API_BASE_URL}/auth/change-password`, {
-      method: 'POST',
-      body: JSON.stringify(data),
-    })
+type LangShort = 'en' | 'vi'
 
-    const result: ApiResponse<ChangePasswordResponse> = await response.json()
+/** Chuẩn hóa message API (thường là tiếng Anh) theo ngôn ngữ giao diện */
+function normalizeChangePasswordMessage(raw: string, lang: LangShort): string {
+  const m = raw.trim()
+  if (!m) return lang === 'vi' ? 'Không thể đổi mật khẩu' : 'Could not change password'
+  const low = m.toLowerCase()
+  if (low.includes('at least 6') || (low.includes('new_password') && low.includes('6'))) {
+    return lang === 'vi'
+      ? 'Mật khẩu mới phải có ít nhất 6 ký tự'
+      : 'New password must be at least 6 characters'
+  }
+  if (low.includes('current password') && (low.includes('incorrect') || low.includes('wrong'))) {
+    return lang === 'vi' ? 'Mật khẩu hiện tại không đúng' : 'Current password is incorrect'
+  }
+  if (low.includes('confirmation') && low.includes('match')) {
+    return lang === 'vi' ? 'Xác nhận mật khẩu không khớp' : 'Password confirmation does not match'
+  }
+  return m
+}
 
-    if (!response.ok) {
-      throw new Error(result.message || 'Failed to change password')
+export type ChangePasswordResult =
+  | { ok: true; data?: ChangePasswordResponse }
+  | { ok: false; message: string }
+
+// Change password — chỉ dùng token khách (`auth_token`), không dùng adminToken (Next proxy: `/api/backend/v1/...`)
+export const changePassword = async (
+  data: ChangePasswordData,
+  lang: LangShort = 'vi',
+): Promise<ChangePasswordResult> => {
+  if (typeof window === 'undefined') {
+    return {
+      ok: false,
+      message: lang === 'vi' ? 'Chỉ đổi mật khẩu được trên trình duyệt.' : 'Change password is only available in the browser.',
     }
+  }
 
-    return result.data || { message: result.message }
-  } catch (error) {
-    console.error('Change password error:', error)
-    throw error
+  const token = localStorage.getItem('auth_token')
+  if (!token) {
+    return {
+      ok: false,
+      message:
+        lang === 'vi'
+          ? 'Không có phiên đăng nhập. Vui lòng đăng nhập lại.'
+          : 'You are not logged in. Please sign in again.',
+    }
+  }
+
+  const response = await fetch('/api/backend/v1/auth/change-password', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(data),
+  })
+
+  let result: ApiResponse<ChangePasswordResponse> & {
+    errors?: Record<string, string[]>
+  }
+
+  try {
+    result = await response.json()
+  } catch {
+    return {
+      ok: false,
+      message: lang === 'vi' ? 'Không đọc được phản hồi từ máy chủ.' : 'Could not read server response.',
+    }
+  }
+
+  if (!response.ok || result.success === false) {
+    const firstErr =
+      result.errors &&
+      Object.values(result.errors)
+        .flat()
+        .find(Boolean)
+    const fallback = lang === 'vi' ? 'Không thể đổi mật khẩu' : 'Could not change password'
+    const raw = firstErr || result.message || fallback
+    return { ok: false, message: normalizeChangePasswordMessage(raw, lang) }
+  }
+
+  return {
+    ok: true,
+    data: result.data ?? { message: result.message ?? 'Password changed successfully' },
   }
 }
 

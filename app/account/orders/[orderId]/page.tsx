@@ -93,11 +93,25 @@ function getStatusBadgeClass(status: string | undefined | null): string {
   return 'bg-gray-100 text-gray-800'
 }
 
+/** API người dùng có thể trả `processing`, `shipping`… không có trong ORDER_STATUS_CONFIG. */
+const USER_ORDER_EXTRA_LABELS: Record<string, string> = {
+  processing: 'Đang xử lý',
+  shipping: 'Đang giao',
+  completed: 'Hoàn thành',
+  packaged: 'Đang đóng gói',
+  packaging: 'Đang đóng gói',
+  ready_to_ship: 'Chuẩn bị giao',
+  payment_pending: 'Chờ thanh toán',
+}
+
 function getStatusLabel(status: string | undefined | null): string {
-  const raw = (status ?? '').toString()
-  const key = raw as keyof typeof ORDER_STATUS_CONFIG
-  if (key && key in ORDER_STATUS_CONFIG) return ORDER_STATUS_CONFIG[key].label
-  return raw || '—'
+  const raw = (status ?? '').toString().trim()
+  const s = raw.toLowerCase()
+  if (!s) return '—'
+  if (USER_ORDER_EXTRA_LABELS[s]) return USER_ORDER_EXTRA_LABELS[s]
+  const key = s as keyof typeof ORDER_STATUS_CONFIG
+  if (key in ORDER_STATUS_CONFIG) return ORDER_STATUS_CONFIG[key].label
+  return raw
 }
 
 /** Chỉ hiện bản đồ khi đơn đang giao (in_transit, picking_up, picked_up, arriving, shipping). */
@@ -130,9 +144,26 @@ function getPaymentStatusLabel(status: string | undefined): string {
   if (!status) return '—'
   const s = status.toLowerCase()
   if (s === 'pending') return 'Chờ thanh toán'
-  if (s === 'confirmed' || s === 'paid') return 'Đã thanh toán'
-  if (s === 'failed' || s === 'cancelled') return 'Thất bại / Đã hủy'
+  if (s === 'confirmed' || s === 'paid' || s === 'success' || s === 'completed') return 'Đã thanh toán'
+  if (s === 'failed' || s === 'cancelled' || s === 'expired') return 'Thất bại / Đã hủy'
+  if (s === 'refunded' || s === 'partially_refunded') return 'Đã hoàn tiền'
   return status
+}
+
+function getPaymentStatusBadgeClass(status: string | undefined): string {
+  if (!status) return 'bg-gray-100 text-gray-800'
+  const s = status.toLowerCase()
+  if (s === 'pending') return 'bg-amber-100 text-amber-900 ring-1 ring-amber-200'
+  if (s === 'confirmed' || s === 'paid' || s === 'success' || s === 'completed') {
+    return 'bg-emerald-100 text-emerald-900 ring-1 ring-emerald-200'
+  }
+  if (s === 'failed' || s === 'cancelled' || s === 'expired') {
+    return 'bg-red-100 text-red-900 ring-1 ring-red-200'
+  }
+  if (s === 'refunded' || s === 'partially_refunded') {
+    return 'bg-slate-200 text-slate-900 ring-1 ring-slate-300'
+  }
+  return 'bg-gray-100 text-gray-800 ring-1 ring-gray-200'
 }
 
 export default function OrderDetailPage() {
@@ -434,7 +465,13 @@ export default function OrderDetailPage() {
                   </div>
                   <div>
                     <dt className="text-gray-500">Trạng thái thanh toán</dt>
-                    <dd>{getPaymentStatusLabel(payment?.status)}</dd>
+                    <dd>
+                      <span
+                        className={`inline-flex rounded-lg px-2.5 py-1 text-xs font-semibold ${getPaymentStatusBadgeClass(payment?.status)}`}
+                      >
+                        {getPaymentStatusLabel(payment?.status)}
+                      </span>
+                    </dd>
                   </div>
                   {payment?.paid_amount != null && payment.paid_amount > 0 && (
                     <div>

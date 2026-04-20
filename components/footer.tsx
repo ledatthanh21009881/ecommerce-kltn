@@ -33,6 +33,7 @@ export default function Footer() {
           {/* Trái: nhãn EMAIL xám + gạch chân + SUBSCRIBE (layout Gian) */}
           <form
             onSubmit={handleSubscribe}
+            suppressHydrationWarning
             className="flex flex-col gap-2 sm:flex-row sm:items-end sm:gap-6 lg:max-w-lg"
           >
             <div className="min-w-[140px] flex-1 sm:min-w-[200px]">
@@ -47,13 +48,15 @@ export default function Footer() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                autoComplete="email"
+                autoComplete="off"
+                suppressHydrationWarning
                 className="w-full border-0 border-b border-black bg-transparent pb-0.5 text-[11px] font-bold uppercase leading-none tracking-[0.12em] text-black placeholder:text-neutral-300 focus:border-black focus:outline-none focus:ring-0"
                 placeholder=""
               />
             </div>
             <button
               type="submit"
+              suppressHydrationWarning
               className="h-fit shrink-0 self-start border border-black px-4 py-1.5 text-[11px] font-bold uppercase leading-none tracking-[0.14em] text-black transition-colors hover:bg-black hover:text-white sm:self-end"
             >
               {t("footer.subscribe")}
@@ -63,10 +66,14 @@ export default function Footer() {
           {/* Phải: hàng 1 link (khoảng cách rộng như Gian) — hàng 2 © nhỏ hơn, căn phải */}
           <div className="flex min-w-0 flex-col items-stretch gap-0 lg:items-end">
             <nav className="flex flex-wrap items-baseline justify-start gap-x-5 gap-y-1 sm:gap-x-7 md:gap-x-9 lg:justify-end">
-              <span className="inline-flex items-baseline gap-0.5 text-[11px] font-bold uppercase leading-none tracking-[0.14em] text-black">
+              <span
+                suppressHydrationWarning
+                className="inline-flex items-baseline gap-0.5 text-[11px] font-bold uppercase leading-none tracking-[0.14em] text-black"
+              >
                 <button
                   type="button"
                   onClick={() => setLanguage("en")}
+                  suppressHydrationWarning
                   className={`font-sans transition-opacity ${language === "en" ? "text-black underline decoration-1 underline-offset-4" : "text-black/45 hover:text-black/70"}`}
                 >
                   ENG
@@ -77,6 +84,7 @@ export default function Footer() {
                 <button
                   type="button"
                   onClick={() => setLanguage("vi")}
+                  suppressHydrationWarning
                   className={`font-sans transition-opacity ${language === "vi" ? "text-black underline decoration-1 underline-offset-4" : "text-black/45 hover:text-black/70"}`}
                 >
                   VIE

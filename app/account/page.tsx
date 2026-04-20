@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
+import { useLanguage } from "@/components/language-provider"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -65,6 +66,7 @@ const labelClass = "font-gotham text-[17px] text-black uppercase tracking-wider 
 const inputClass = "font-gotham text-[17px] border-black/20 rounded-none focus-visible:ring-black/30"
 
 export default function AccountPage() {
+  const { t } = useLanguage()
   const [user, setUser] = useState<User | null>(null)
   const [profileData, setProfileData] = useState({
     firstName: "",
@@ -164,7 +166,7 @@ export default function AccountPage() {
         })
       }
       if (!ok) {
-        setProfileError((data as { message?: string })?.message ?? "Không tải được thông tin tài khoản")
+        setProfileError((data as { message?: string })?.message ?? t("account.err.loadProfile"))
       }
     }
   }
@@ -175,7 +177,7 @@ export default function AccountPage() {
     const { ok, data } = await userOrdersApi.getOrders()
     setOrdersLoading(false)
     if (!ok) {
-      setOrdersError((data as { message?: string })?.message ?? "Không tải được đơn hàng")
+      setOrdersError((data as { message?: string })?.message ?? t("account.err.loadOrders"))
       return
     }
     setOrders(mapApiOrdersToOrders(data))
@@ -189,7 +191,7 @@ export default function AccountPage() {
     if (ok && data?.success && Array.isArray(data.data)) {
       setAddressesList(data.data)
     } else {
-      setAddressesError((data as { message?: string })?.message ?? "Không tải được địa chỉ")
+      setAddressesError((data as { message?: string })?.message ?? t("account.err.loadAddresses"))
     }
   }
 
@@ -213,7 +215,7 @@ export default function AccountPage() {
         setProvinces(data)
       }
     } catch {
-      toast.error("Không tải được danh sách tỉnh/thành phố")
+      toast.error(t("account.err.loadProvinces"))
     }
   }
 
@@ -356,19 +358,19 @@ export default function AccountPage() {
     e.preventDefault()
     const phoneNorm = addressForm.phone.trim().replace(/\D/g, "")
     if (!PHONE_REGEX.test(phoneNorm)) {
-      toast.error("Số điện thoại phải bắt đầu bằng 0 và có đúng 10 chữ số")
+      toast.error(t("account.err.phoneAddress"))
       return
     }
     if (!addressForm.province.trim()) {
-      toast.error("Vui lòng chọn Tỉnh/Thành phố")
+      toast.error(t("account.err.pickProvince"))
       return
     }
     if (!addressForm.district.trim()) {
-      toast.error("Vui lòng chọn Quận/Huyện")
+      toast.error(t("account.err.pickDistrict"))
       return
     }
     if (!addressForm.ward.trim()) {
-      toast.error("Vui lòng chọn Phường/Xã")
+      toast.error(t("account.err.pickWard"))
       return
     }
     setAddressSaving(true)
@@ -385,21 +387,21 @@ export default function AccountPage() {
       const { ok, data } = await addressesApi.update(editingAddress.address_id, payload)
       setAddressSaving(false)
       if (ok) {
-        toast.success("Đã cập nhật địa chỉ")
+        toast.success(t("account.success.addressUpdated"))
         setAddressDialogOpen(false)
         loadAddresses()
       } else {
-        toast.error((data as { message?: string })?.message ?? "Không thể cập nhật")
+        toast.error((data as { message?: string })?.message ?? t("account.err.addressUpdateFailed"))
       }
     } else {
       const { ok, data } = await addressesApi.create(payload)
       setAddressSaving(false)
       if (ok) {
-        toast.success("Đã thêm địa chỉ")
+        toast.success(t("account.success.addressAdded"))
         setAddressDialogOpen(false)
         loadAddresses()
       } else {
-        toast.error((data as { message?: string })?.message ?? "Không thể thêm địa chỉ")
+        toast.error((data as { message?: string })?.message ?? t("account.err.addressAddFailed"))
       }
     }
   }
@@ -407,10 +409,10 @@ export default function AccountPage() {
   const handleSetDefaultAddress = async (id: number) => {
     const { ok } = await addressesApi.setDefault(id)
     if (ok) {
-      toast.success("Đã đặt làm địa chỉ mặc định")
+      toast.success(t("account.success.defaultSet"))
       loadAddresses()
     } else {
-      toast.error("Không thể đặt địa chỉ mặc định")
+      toast.error(t("account.err.defaultFailed"))
     }
   }
 
@@ -418,11 +420,11 @@ export default function AccountPage() {
     const { ok } = await addressesApi.delete(id)
     setDeleteTargetId(null)
     if (ok) {
-      toast.success("Đã xóa địa chỉ")
+      toast.success(t("account.success.addressDeleted"))
       setSelectedAddressIds((prev) => prev.filter((x) => x !== id))
       loadAddresses()
     } else {
-      toast.error("Không thể xóa địa chỉ")
+      toast.error(t("account.err.addressDeleteFailed"))
     }
   }
 
@@ -453,9 +455,11 @@ export default function AccountPage() {
       setBulkDeleteIds(null)
       return
     }
+    const idsToDelete = [...bulkDeleteIds]
+    const totalCount = idsToDelete.length
     setBulkDeleting(true)
     let failed = 0
-    for (const id of bulkDeleteIds) {
+    for (const id of idsToDelete) {
       const { ok } = await addressesApi.delete(id)
       if (!ok) failed++
     }
@@ -464,9 +468,14 @@ export default function AccountPage() {
     setSelectedAddressIds([])
     loadAddresses()
     if (failed === 0) {
-      toast.success(`Đã xóa ${bulkDeleteIds.length} địa chỉ`)
+      toast.success(t("account.success.bulkDeleted").replace("{{n}}", String(totalCount)))
     } else {
-      toast.error(`Đã xóa ${bulkDeleteIds.length - failed} địa chỉ, ${failed} lỗi`)
+      const okCount = totalCount - failed
+      toast.error(
+        t("account.err.bulkPartial")
+          .replace("{{ok}}", String(okCount))
+          .replace("{{fail}}", String(failed)),
+      )
     }
   }
 
@@ -477,13 +486,13 @@ export default function AccountPage() {
     const phoneValid = PHONE_REGEX.test(phoneNormalized)
     const emailValid = isValidEmail(profileData.email.trim())
     if (!emailValid) {
-      setFieldErrors((prev) => ({ ...prev, email: "Email không đúng định dạng" }))
-      toast.error("Vui lòng nhập đúng định dạng email")
+      setFieldErrors((prev) => ({ ...prev, email: t("account.err.emailFormat") }))
+      toast.error(t("account.err.emailInvalid"))
       return
     }
     if (!phoneValid) {
-      setFieldErrors((prev) => ({ ...prev, phone: "Số điện thoại phải bắt đầu bằng 0 và có đúng 10 chữ số" }))
-      toast.error("Số điện thoại phải bắt đầu bằng 0 và có đúng 10 chữ số (ví dụ: 0912345678)")
+      setFieldErrors((prev) => ({ ...prev, phone: t("account.err.phoneProfile") }))
+      toast.error(t("account.err.phoneProfile"))
       return
     }
     setSaving(true)
@@ -495,7 +504,7 @@ export default function AccountPage() {
     })
     setSaving(false)
     if (ok && (data as { success?: boolean })?.success !== false) {
-      toast.success("Đã lưu thông tin tài khoản")
+      toast.success(t("account.success.profileSaved"))
       await loadProfile()
     } else {
       const errors = (data as { errors?: Record<string, string[]> })?.errors
@@ -505,7 +514,7 @@ export default function AccountPage() {
         if (errors.email?.[0]) next.email = errors.email[0]
         setFieldErrors(next)
       }
-      const msg = (data as { message?: string })?.message ?? "Không thể lưu thay đổi"
+      const msg = (data as { message?: string })?.message ?? t("account.err.saveFailed")
       toast.error(msg)
     }
   }
@@ -519,7 +528,7 @@ export default function AccountPage() {
         >
           <div className={contentClass} style={{ fontFamily: "SVN-Gotham" }}>
             <h1 className="font-gotham text-2xl font-bold uppercase tracking-wider text-black mb-8">
-              Account
+              {t("account.title")}
             </h1>
 
             <Tabs defaultValue="orders" className="w-full">
@@ -528,19 +537,19 @@ export default function AccountPage() {
                   value="orders"
                   className="font-gotham text-xs font-bold uppercase tracking-wider rounded-none border-b-2 border-transparent pb-3 pt-0 data-[state=active]:border-black data-[state=active]:text-black text-black/70"
                 >
-                  Orders
+                  {t("account.tabOrders")}
                 </TabsTrigger>
                 <TabsTrigger
                   value="profile"
                   className="font-gotham text-xs font-bold uppercase tracking-wider rounded-none border-b-2 border-transparent pb-3 pt-0 data-[state=active]:border-black data-[state=active]:text-black text-black/70"
                 >
-                  Profile
+                  {t("account.tabProfile")}
                 </TabsTrigger>
                 <TabsTrigger
                   value="addresses"
                   className="font-gotham text-xs font-bold uppercase tracking-wider rounded-none border-b-2 border-transparent pb-3 pt-0 data-[state=active]:border-black data-[state=active]:text-black text-black/70"
                 >
-                  Addresses
+                  {t("account.tabAddresses")}
                 </TabsTrigger>
               </TabsList>
 
@@ -563,7 +572,7 @@ export default function AccountPage() {
                     <div className="grid grid-cols-2 gap-6">
                       <div className="space-y-2">
                         <label htmlFor="firstName" className={labelClass}>
-                          First Name
+                          {t("account.firstName")}
                         </label>
                         <Input
                           id="firstName"
@@ -575,7 +584,7 @@ export default function AccountPage() {
                       </div>
                       <div className="space-y-2">
                         <label htmlFor="lastName" className={labelClass}>
-                          Last Name
+                          {t("account.lastName")}
                         </label>
                         <Input
                           id="lastName"
@@ -588,7 +597,7 @@ export default function AccountPage() {
                     </div>
                     <div className="space-y-2">
                       <label htmlFor="email" className={labelClass}>
-                        Email
+                        {t("account.email")}
                       </label>
                       <Input
                         id="email"
@@ -597,7 +606,7 @@ export default function AccountPage() {
                         value={profileData.email}
                         onChange={handleProfileChange}
                         className={inputClass}
-                        placeholder="example@gmail.com"
+                        placeholder={t("account.emailPlaceholder")}
                       />
                       {fieldErrors.email && (
                         <p className="text-sm text-red-600">{fieldErrors.email}</p>
@@ -605,7 +614,7 @@ export default function AccountPage() {
                     </div>
                     <div className="space-y-2">
                       <label htmlFor="phone" className={labelClass}>
-                        Phone
+                        {t("account.phone")}
                       </label>
                       <Input
                         id="phone"
@@ -620,19 +629,17 @@ export default function AccountPage() {
                       {fieldErrors.phone && (
                         <p className="text-sm text-red-600">{fieldErrors.phone}</p>
                       )}
-                      <p className="text-xs text-black/60">
-                        Tối đa 10 số, bắt đầu bằng 0 (ví dụ: 0912345678)
-                      </p>
+                      <p className="text-xs text-black/60">{t("account.phoneHint")}</p>
                     </div>
 
                     <div className="border-t border-black/10 pt-6">
                       <div className="flex items-center justify-between">
                         <div>
                           <h3 className="font-gotham text-[17px] font-medium uppercase tracking-wider">
-                            Password
+                            {t("account.passwordSection")}
                           </h3>
                           <p className="text-[15px] text-black/60 mt-1">
-                            Change your account password
+                            {t("account.passwordChangeHint")}
                           </p>
                         </div>
                         <Link href="/change-password">
@@ -641,7 +648,7 @@ export default function AccountPage() {
                             size="sm"
                             className="font-gotham text-xs font-bold uppercase tracking-wider rounded-none border-black/30 hover:bg-black/5"
                           >
-                            Change Password
+                            {t("account.changePasswordBtn")}
                           </Button>
                         </Link>
                       </div>
@@ -652,7 +659,7 @@ export default function AccountPage() {
                       disabled={saving || profileLoading}
                       className="font-gotham text-xs font-bold uppercase tracking-wider bg-black text-white rounded-none hover:bg-black/90 disabled:opacity-60"
                     >
-                      {saving ? "Đang lưu..." : "Save Changes"}
+                      {saving ? t("account.saving") : t("account.saveChanges")}
                     </Button>
                   </form>
                 </div>
@@ -664,7 +671,7 @@ export default function AccountPage() {
                     <p className="text-sm text-red-600">{addressesError}</p>
                   )}
                   {addressesLoading ? (
-                    <p className="text-[15px] text-black/60">Đang tải địa chỉ...</p>
+                    <p className="text-[15px] text-black/60">{t("account.addressesLoading")}</p>
                   ) : (
                     <>
                       {addressesList.length > 0 && (
@@ -675,7 +682,7 @@ export default function AccountPage() {
                               onCheckedChange={toggleSelectAllAddresses}
                               className="rounded border-black/30"
                             />
-                            Chọn tất cả
+                            {t("account.selectAll")}
                           </label>
                           {selectedAddressIds.length > 0 && (
                             <Button
@@ -684,7 +691,7 @@ export default function AccountPage() {
                               className="font-gotham text-xs uppercase tracking-wider rounded-none border-red-300 text-red-700"
                               onClick={handleBulkDeleteClick}
                             >
-                              Xóa đã chọn ({selectedAddressIds.length})
+                              {t("account.deleteSelected")} ({selectedAddressIds.length})
                             </Button>
                           )}
                         </div>
@@ -721,7 +728,9 @@ export default function AccountPage() {
                                 <h3 className="text-[17px] font-medium uppercase tracking-wider">
                                   {addr.receiver_name}
                                   {addr.is_default ? (
-                                    <span className="ml-2 text-xs font-normal normal-case text-black/60">(Mặc định)</span>
+                                    <span className="ml-2 text-xs font-normal normal-case text-black/60">
+                                      {t("account.defaultBadge")}
+                                    </span>
                                   ) : null}
                                 </h3>
                               </div>
@@ -732,7 +741,7 @@ export default function AccountPage() {
                                   className="font-gotham text-xs uppercase tracking-wider rounded-none border-black/30"
                                   onClick={() => openEditAddress(addr)}
                                 >
-                                  Edit
+                                  {t("account.edit")}
                                 </Button>
                                 {!addr.is_default && (
                                   <Button
@@ -741,7 +750,7 @@ export default function AccountPage() {
                                     className="font-gotham text-xs uppercase tracking-wider rounded-none border-black/30"
                                     onClick={() => handleSetDefaultAddress(addr.address_id)}
                                   >
-                                    Đặt mặc định
+                                    {t("account.setDefault")}
                                   </Button>
                                 )}
                                 <Button
@@ -750,7 +759,7 @@ export default function AccountPage() {
                                   className="font-gotham text-xs uppercase tracking-wider rounded-none border-red-300 text-red-700"
                                   onClick={() => setDeleteTargetId(addr.address_id)}
                                 >
-                                  Xóa
+                                  {t("common.delete")}
                                 </Button>
                               </div>
                             </div>
@@ -769,7 +778,7 @@ export default function AccountPage() {
                           className="font-gotham text-xs font-bold uppercase tracking-wider rounded-none border-black/30 hover:bg-black/5"
                           onClick={openAddAddress}
                         >
-                          Add New Address
+                          {t("account.addNewAddress")}
                         </Button>
                       </div>
                     </>
@@ -780,12 +789,12 @@ export default function AccountPage() {
                   <DialogContent className="font-gotham max-w-4xl w-[95vw] sm:w-full">
                     <DialogHeader>
                       <DialogTitle className="uppercase tracking-wider">
-                        {editingAddress ? "Chỉnh sửa địa chỉ" : "Thêm địa chỉ mới"}
+                        {editingAddress ? t("account.dialog.editAddress") : t("account.dialog.addAddress")}
                       </DialogTitle>
                     </DialogHeader>
                     <form onSubmit={handleAddressFormSubmit} className="space-y-4">
                       <div>
-                        <label className={labelClass}>Người nhận</label>
+                        <label className={labelClass}>{t("account.field.receiver")}</label>
                         <Input
                           className={inputClass}
                           value={addressForm.receiver_name}
@@ -794,7 +803,7 @@ export default function AccountPage() {
                         />
                       </div>
                       <div>
-                        <label className={labelClass}>Số điện thoại</label>
+                        <label className={labelClass}>{t("account.phone")}</label>
                         <Input
                           className={inputClass}
                           value={addressForm.phone}
@@ -808,7 +817,7 @@ export default function AccountPage() {
                         />
                       </div>
                       <div>
-                        <label className={labelClass}>Địa chỉ</label>
+                        <label className={labelClass}>{t("account.field.addressLine")}</label>
                         <Input
                           className={inputClass}
                           value={addressForm.address_line}
@@ -818,7 +827,7 @@ export default function AccountPage() {
                       </div>
                       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                         <div>
-                          <label className={labelClass}>Tỉnh/Thành phố</label>
+                          <label className={labelClass}>{t("account.field.province")}</label>
                           <Popover open={provinceOpen} onOpenChange={setProvinceOpen}>
                             <PopoverTrigger asChild>
                               <Button
@@ -830,15 +839,15 @@ export default function AccountPage() {
                               >
                                 {selectedProvinceCode && provinces.find((p) => p.code === selectedProvinceCode)?.name
                                   ? provinces.find((p) => p.code === selectedProvinceCode)?.name
-                                  : "Chọn Tỉnh/Thành phố"}
+                                  : t("account.field.pickProvince")}
                                 <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                               </Button>
                             </PopoverTrigger>
                             <PopoverContent className="z-[100] w-[var(--radix-popover-trigger-width)] p-0" align="start">
                               <Command>
-                                <CommandInput placeholder="Tìm tỉnh/thành phố..." />
+                                <CommandInput placeholder={t("account.field.searchProvince")} />
                                 <CommandList>
-                                  <CommandEmpty>Không tìm thấy.</CommandEmpty>
+                                  <CommandEmpty>{t("account.field.cmdEmpty")}</CommandEmpty>
                                   <CommandGroup>
                                     {provinces.map((province) => (
                                       <CommandItem
@@ -866,7 +875,7 @@ export default function AccountPage() {
                           </Popover>
                         </div>
                         <div>
-                          <label className={labelClass}>Quận/Huyện</label>
+                          <label className={labelClass}>{t("account.field.district")}</label>
                           <Popover open={districtOpen} onOpenChange={setDistrictOpen}>
                             <PopoverTrigger asChild>
                               <Button
@@ -879,15 +888,15 @@ export default function AccountPage() {
                               >
                                 {selectedDistrictCode && districts.find((d) => d.code === selectedDistrictCode)?.name
                                   ? districts.find((d) => d.code === selectedDistrictCode)?.name
-                                  : "Chọn Quận/Huyện"}
+                                  : t("account.field.pickDistrict")}
                                 <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                               </Button>
                             </PopoverTrigger>
                             <PopoverContent className="z-[100] w-[var(--radix-popover-trigger-width)] p-0" align="start">
                               <Command>
-                                <CommandInput placeholder="Tìm quận/huyện..." />
+                                <CommandInput placeholder={t("account.field.searchDistrict")} />
                                 <CommandList>
-                                  <CommandEmpty>Không tìm thấy.</CommandEmpty>
+                                  <CommandEmpty>{t("account.field.cmdEmpty")}</CommandEmpty>
                                   <CommandGroup>
                                     {districts.map((district) => (
                                       <CommandItem
@@ -915,7 +924,7 @@ export default function AccountPage() {
                           </Popover>
                         </div>
                         <div>
-                          <label className={labelClass}>Phường/Xã</label>
+                          <label className={labelClass}>{t("account.field.ward")}</label>
                           <Popover open={wardOpen} onOpenChange={setWardOpen}>
                             <PopoverTrigger asChild>
                               <Button
@@ -928,15 +937,15 @@ export default function AccountPage() {
                               >
                                 {selectedWardCode && wards.find((w) => w.code === selectedWardCode)?.name
                                   ? wards.find((w) => w.code === selectedWardCode)?.name
-                                  : "Chọn Phường/Xã"}
+                                  : t("account.field.pickWard")}
                                 <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                               </Button>
                             </PopoverTrigger>
                             <PopoverContent className="z-[100] w-[var(--radix-popover-trigger-width)] p-0" align="start">
                               <Command>
-                                <CommandInput placeholder="Tìm phường/xã..." />
+                                <CommandInput placeholder={t("account.field.searchWard")} />
                                 <CommandList>
-                                  <CommandEmpty>Không tìm thấy.</CommandEmpty>
+                                  <CommandEmpty>{t("account.field.cmdEmpty")}</CommandEmpty>
                                   <CommandGroup>
                                     {wards.map((ward) => (
                                       <CommandItem
@@ -972,14 +981,20 @@ export default function AccountPage() {
                           onChange={(e) => setAddressForm((p) => ({ ...p, is_default: e.target.checked }))}
                           className="rounded border-black/30"
                         />
-                        <label htmlFor="addr-default" className="text-sm">Đặt làm địa chỉ mặc định</label>
+                        <label htmlFor="addr-default" className="text-sm">
+                          {t("account.checkbox.defaultAddress")}
+                        </label>
                       </div>
                       <DialogFooter>
                         <Button type="button" variant="outline" onClick={() => setAddressDialogOpen(false)}>
-                          Hủy
+                          {t("common.cancel")}
                         </Button>
                         <Button type="submit" disabled={addressSaving} className="bg-black text-white rounded-none">
-                          {addressSaving ? "Đang lưu..." : editingAddress ? "Cập nhật" : "Thêm địa chỉ"}
+                          {addressSaving
+                            ? t("account.saving")
+                            : editingAddress
+                              ? t("account.dialog.updateBtn")
+                              : t("account.dialog.addSubmitBtn")}
                         </Button>
                       </DialogFooter>
                     </form>
@@ -999,17 +1014,23 @@ export default function AccountPage() {
                     <AlertDialogHeader>
                       <AlertDialogTitle>
                         {bulkDeleteIds && bulkDeleteIds.length > 0
-                          ? `Xóa ${bulkDeleteIds.length} địa chỉ`
-                          : "Xóa địa chỉ"}
+                          ? t("account.confirm.deleteBulkTitle").replace(
+                              "{{n}}",
+                              String(bulkDeleteIds.length),
+                            )
+                          : t("account.confirm.deleteTitle")}
                       </AlertDialogTitle>
                       <AlertDialogDescription>
                         {bulkDeleteIds && bulkDeleteIds.length > 0
-                          ? `Bạn có chắc muốn xóa ${bulkDeleteIds.length} địa chỉ đã chọn?`
-                          : "Bạn có chắc muốn xóa địa chỉ này?"}
+                          ? t("account.confirm.deleteBulkDesc").replace(
+                              "{{n}}",
+                              String(bulkDeleteIds.length),
+                            )
+                          : t("account.confirm.deleteDesc")}
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                      <AlertDialogCancel disabled={bulkDeleting}>Hủy</AlertDialogCancel>
+                      <AlertDialogCancel disabled={bulkDeleting}>{t("common.cancel")}</AlertDialogCancel>
                       <AlertDialogAction
                         onClick={() => {
                           if (bulkDeleteIds && bulkDeleteIds.length > 0) {
@@ -1021,7 +1042,7 @@ export default function AccountPage() {
                         disabled={bulkDeleting}
                         className="bg-red-600 hover:bg-red-700"
                       >
-                        {bulkDeleting ? "Đang xóa..." : "Xóa"}
+                        {bulkDeleting ? t("account.confirm.deleting") : t("common.delete")}
                       </AlertDialogAction>
                     </AlertDialogFooter>
                   </AlertDialogContent>
