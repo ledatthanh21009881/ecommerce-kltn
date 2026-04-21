@@ -5,7 +5,7 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     
-    const response = await fetch(backendUrl('/test-forgot-password.php'), {
+    const response = await fetch(backendUrl('/api/v1/auth/forgot-password'), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

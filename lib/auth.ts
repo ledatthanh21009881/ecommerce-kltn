@@ -58,6 +58,7 @@ export interface ForgotPasswordData {
 }
 
 export interface ForgotPasswordResponse {
+  ok: boolean
   message: string
 }
 
@@ -428,13 +429,21 @@ export const forgotPassword = async (data: ForgotPasswordData): Promise<ForgotPa
     const result = await response.json()
 
     if (!response.ok) {
-      throw new Error(result.message || 'Failed to send reset password email')
+      return {
+        ok: false,
+        message: result?.message || 'Failed to send reset password email',
+      }
     }
 
-    return result.data || { message: result.message }
+    return {
+      ok: true,
+      message: result?.message || result?.data?.message || 'Reset link sent',
+    }
   } catch (error) {
-    console.error('Forgot password error:', error)
-    throw error
+    return {
+      ok: false,
+      message: error instanceof Error ? error.message : 'Failed to send reset password email',
+    }
   }
 }
 

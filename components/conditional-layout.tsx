@@ -18,6 +18,8 @@ export default function ConditionalLayout({ children }: ConditionalLayoutProps) 
   const isOrderMapPage = pathname?.match(/^\/account\/orders\/[^/]+\/map(\/)?$/)
   const isLoginPage = pathname === '/login'
   const isChangePasswordPage = pathname === '/change-password'
+  const isForgotPasswordPage = pathname === '/forgot-password'
+  const isResetPasswordPage = pathname === '/reset-password'
 
   if (
     isAdminRoute ||
@@ -25,7 +27,9 @@ export default function ConditionalLayout({ children }: ConditionalLayoutProps) 
     isCollectionsPage ||
     isOrderMapPage ||
     isLoginPage ||
-    isChangePasswordPage
+    isChangePasswordPage ||
+    isForgotPasswordPage ||
+    isResetPasswordPage
   ) {
     return <>{children}</>
   }

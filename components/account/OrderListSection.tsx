@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Input } from '@/components/ui/input'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -75,6 +75,8 @@ export function OrderListSection({
   const { t } = useLanguage()
   const [searchQuery, setSearchQuery] = useState('')
   const [activeTab, setActiveTab] = useState('all')
+  const [page, setPage] = useState(1)
+  const pageSize = 6
 
   const filteredOrders = orders.filter((order) => {
     const orderId = order.invoice_number || `ORD-${order.order_id}`
@@ -89,6 +91,17 @@ export function OrderListSection({
     if (activeTab === 'all') return matchesSearch
     return matchesSearch && status === activeTab.toLowerCase()
   })
+
+  const totalPages = Math.max(1, Math.ceil(filteredOrders.length / pageSize))
+  const paginatedOrders = filteredOrders.slice((page - 1) * pageSize, page * pageSize)
+
+  useEffect(() => {
+    setPage(1)
+  }, [searchQuery, activeTab])
+
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages)
+  }, [page, totalPages])
 
   if (loading) {
     return (
@@ -163,18 +176,42 @@ export function OrderListSection({
         </TabsList>
 
         <TabsContent value="all" className="mt-0">
-          {renderList(filteredOrders, t)}
+          {renderList(paginatedOrders, t)}
         </TabsContent>
         <TabsContent value="processing" className="mt-0">
-          {renderList(filteredOrders, t)}
+          {renderList(paginatedOrders, t)}
         </TabsContent>
         <TabsContent value="shipping" className="mt-0">
-          {renderList(filteredOrders, t)}
+          {renderList(paginatedOrders, t)}
         </TabsContent>
         <TabsContent value="delivered" className="mt-0">
-          {renderList(filteredOrders, t)}
+          {renderList(paginatedOrders, t)}
         </TabsContent>
       </Tabs>
+
+      {filteredOrders.length > 0 && totalPages > 1 && (
+        <div className="flex items-center justify-center gap-3">
+          <button
+            type="button"
+            className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            disabled={page <= 1}
+          >
+            {t('account.paginationPrev')}
+          </button>
+          <span className="text-sm text-gray-600">
+            {t('account.paginationPage')} {page}/{totalPages}
+          </span>
+          <button
+            type="button"
+            className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            disabled={page >= totalPages}
+          >
+            {t('account.paginationNext')}
+          </button>
+        </div>
+      )}
     </div>
   )
 }
