@@ -7,6 +7,7 @@ import { Menu, Search, ShoppingBag, User, X, LogOut, Shield, MessageCircle } fro
 import { Button } from "@/components/ui/button"
 import { useMobile } from "@/hooks/use-mobile"
 import { authUtils, logoutUser, type User as UserType } from "@/lib/auth"
+import { fetchCollections, type Collection } from "@/lib/collections-api"
 import { toast } from "sonner"
 import { useLanguage } from "@/components/language-provider"
 import LanguageSwitcher from "@/components/language-switcher"
@@ -23,6 +24,7 @@ export default function Header() {
   const [user, setUser] = useState<UserType | null>(null)
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [isAdmin, setIsAdmin] = useState(false)
+  const [collections, setCollections] = useState<Collection[]>([])
   const isMobile = useMobile()
 
   useEffect(() => {
@@ -41,6 +43,7 @@ export default function Header() {
     }
 
     checkAuth()
+    fetchCollections().then(setCollections).catch(console.error)
     window.addEventListener("scroll", handleScroll)
     
     return () => window.removeEventListener("scroll", handleScroll)
@@ -127,14 +130,17 @@ export default function Header() {
           >
             {t('nav.collections')}
           </Link>
-          <Link
-            href="/collections/spring-summer-2024"
-            className={`text-sm tracking-wider transition-colors hover:text-gray-600 ${
-              !isScrolled ? "text-white" : ""
-            }`}
-          >
-            Spring Summer 2024
-          </Link>
+          {collections.slice(0, 3).map((collection) => (
+            <Link
+              key={collection.collection_id}
+              href={`/collections/${collection.slug}`}
+              className={`text-sm tracking-wider transition-colors hover:text-gray-600 ${
+                !isScrolled ? "text-white" : ""
+              }`}
+            >
+              {collection.collection_name}
+            </Link>
+          ))}
           <Link
             href="/about"
             className={`text-sm tracking-wider transition-colors hover:text-gray-600 ${
@@ -284,13 +290,16 @@ export default function Header() {
               <Link href="/collections" className="text-lg tracking-wider" onClick={() => setIsMenuOpen(false)}>
                 {t('nav.collections')}
               </Link>
-              <Link
-                href="/collections/spring-summer-2024"
-                className="text-lg tracking-wider"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                Spring Summer 2024
-              </Link>
+              {collections.slice(0, 5).map((collection) => (
+                <Link
+                  key={collection.collection_id}
+                  href={`/collections/${collection.slug}`}
+                  className="text-lg tracking-wider"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  {collection.collection_name}
+                </Link>
+              ))}
               <Link href="/about" className="text-lg tracking-wider" onClick={() => setIsMenuOpen(false)}>
                 {t('nav.about')}
               </Link>

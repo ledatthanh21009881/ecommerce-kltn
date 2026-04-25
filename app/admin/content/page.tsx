@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { Search, RefreshCw, FileText, Plus, Calendar, Eye, Edit, Trash2, Send, LayoutList, LayoutGrid, ChevronLeft, ChevronRight } from 'lucide-react'
+import { useState, useEffect, useRef } from 'react'
+import { Search, RefreshCw, Plus, Calendar, Eye, Edit, Trash2, Send, LayoutList, LayoutGrid, ChevronLeft, ChevronRight, ArrowUpDown, FileText } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
@@ -13,7 +13,7 @@ import { getAuthData } from '@/lib/admin-auth'
 import { Content, ContentCategory } from '@/lib/content-types'
 import ContentModal from '@/components/admin/ContentModal'
 import ContentCategoryModal from '@/components/admin/ContentCategoryModal'
-import CollectionsManager from '@/components/admin/CollectionsManager'
+import CollectionsManager, { CollectionsManagerRef } from '@/components/admin/CollectionsManager'
 import { useLanguage } from '@/contexts/LanguageContext'
 
 export default function AdminContentPage() {
@@ -29,13 +29,6 @@ export default function AdminContentPage() {
   const [selectedCategory, setSelectedCategory] = useState<ContentCategory | null>(null)
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<{ type: 'content' | 'category'; id: number } | null>(null)
-  const [stats, setStats] = useState({
-    total: 0,
-    pages: 0,
-    blogs: 0,
-    faqs: 0,
-    published: 0
-  })
   const [page, setPage] = useState(1)
   const [activeTab, setActiveTab] = useState<'contents' | 'collections'>('contents')
   const [limit] = useState(12)
@@ -49,34 +42,15 @@ export default function AdminContentPage() {
     setViewMode(mode)
     if (typeof window !== 'undefined') localStorage.setItem('admin_content_view', mode)
   }
+  const [collectionsViewMode, setCollectionsViewMode] = useState<'list' | 'grid'>(() => {
+    if (typeof window !== 'undefined') return (localStorage.getItem('admin_collections_view') as 'list' | 'grid') || 'list'
+    return 'list'
+  })
+  const collectionsManagerRef = useRef<CollectionsManagerRef | null>(null)
 
-  // Fetch stats
-  const fetchStats = async () => {
-    try {
-      const { token } = getAuthData()
-      if (!token) return
-      
-      const response = await fetch('/api/backend/v1/content/stats', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      })
-      
-      const data = await response.json()
-      
-      if (data.success && data.data) {
-        setStats({
-          total: data.data.total || 0,
-          pages: data.data.pages || 0,
-          blogs: data.data.blogs || 0,
-          faqs: data.data.faqs || 0,
-          published: data.data.published || 0
-        })
-      }
-    } catch (error) {
-      console.error('Error fetching stats:', error)
-    }
+  const setCollectionsViewModeAndStore = (mode: 'list' | 'grid') => {
+    setCollectionsViewMode(mode)
+    if (typeof window !== 'undefined') localStorage.setItem('admin_collections_view', mode)
   }
 
   // Fetch contents
@@ -162,7 +136,6 @@ export default function AdminContentPage() {
   }, [page, searchTerm, typeFilter])
 
   useEffect(() => {
-    fetchStats()
     fetchCategories()
   }, [])
 
@@ -270,7 +243,6 @@ export default function AdminContentPage() {
       if (success) {
         toast.success(t('contentDeletedSuccessfully'))
         fetchContents()
-        fetchStats()
       } else {
         toast.error(t('failedToDeleteContent'))
         console.error('[DELETE] Error response:', {
@@ -314,7 +286,6 @@ export default function AdminContentPage() {
       if (data.success) {
         toast.success(t('contentPublishedSuccessfully'))
         fetchContents()
-        fetchStats()
       } else {
         toast.error(t('failedToPublishContent'))
       }
@@ -390,7 +361,6 @@ export default function AdminContentPage() {
 
   const handleContentSaved = () => {
     fetchContents()
-    fetchStats()
   }
 
   const handleCategorySaved = () => {
@@ -480,95 +450,69 @@ export default function AdminContentPage() {
               </Button>
             </div>
           )}
+          {activeTab === 'collections' && (
+            <div className="flex items-center gap-2 shrink-0 flex-nowrap">
+              <div className="flex rounded-lg border border-slate-200 bg-white/80 overflow-hidden">
+                <Button variant="ghost" size="sm" onClick={() => setCollectionsViewModeAndStore('list')} className={`rounded-none ${collectionsViewMode === 'list' ? 'bg-slate-100' : ''}`} title={t('viewList')}>
+                  <LayoutList className="h-4 w-4" />
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => setCollectionsViewModeAndStore('grid')} className={`rounded-none ${collectionsViewMode === 'grid' ? 'bg-slate-100' : ''}`} title={t('viewGrid')}>
+                  <LayoutGrid className="h-4 w-4" />
+                </Button>
+              </div>
+              <Button
+                variant="outline"
+                onClick={() => collectionsManagerRef.current?.refreshCollections()}
+                className="flex items-center gap-2 bg-white/80 backdrop-blur-sm border-slate-200 hover:bg-white"
+              >
+                <RefreshCw className="h-4 w-4" />
+                {t('refresh')}
+              </Button>
+              <Button
+                variant="outline"
+                className="flex items-center gap-2 bg-white/80 backdrop-blur-sm border-slate-200 hover:bg-white"
+                onClick={() => collectionsManagerRef.current?.openSortModal()}
+              >
+                <ArrowUpDown className="h-4 w-4" />
+                {t('sortCollections')}
+              </Button>
+              <Button className="flex items-center gap-2" onClick={() => collectionsManagerRef.current?.openCreateModal()}>
+                <Plus className="h-4 w-4" />
+                {t('createCollection')}
+              </Button>
+            </div>
+          )}
         </div>
 
-        <div className="mb-6 flex items-center gap-2">
-          <Button
-            variant={activeTab === 'contents' ? 'default' : 'outline'}
-            onClick={() => setActiveTab('contents')}
-          >
-            Noi dung CMS
-          </Button>
-          <Button
-            variant={activeTab === 'collections' ? 'default' : 'outline'}
-            onClick={() => setActiveTab('collections')}
-          >
-            Collections
-          </Button>
+        <div className="mb-6 border-b border-slate-200">
+          <div className="flex items-center gap-6">
+            <button
+              type="button"
+              onClick={() => setActiveTab('contents')}
+              className={`relative pb-3 text-sm font-medium transition-colors ${
+                activeTab === 'contents' ? 'text-slate-900' : 'text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              {t('cmsContentTab')}
+              {activeTab === 'contents' && <span className="absolute inset-x-0 -bottom-px h-0.5 bg-slate-900 rounded-full" />}
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('collections')}
+              className={`relative pb-3 text-sm font-medium transition-colors ${
+                activeTab === 'collections' ? 'text-slate-900' : 'text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              {t('collectionsTab')}
+              {activeTab === 'collections' && <span className="absolute inset-x-0 -bottom-px h-0.5 bg-slate-900 rounded-full" />}
+            </button>
+          </div>
         </div>
 
         {activeTab === 'collections' ? (
-          <CollectionsManager isVisible />
+          <CollectionsManager ref={collectionsManagerRef} isVisible viewMode={collectionsViewMode} />
         ) : (
           <>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
-          <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-slate-600 mb-1">{t('totalContent')}</p>
-                  <p className="text-3xl font-bold text-slate-900">{stats.total}</p>
-                </div>
-                <div className="h-12 w-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg">
-                  <FileText className="h-6 w-6 text-white" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-slate-600 mb-1">{t('contentPages')}</p>
-                  <p className="text-3xl font-bold text-slate-900">{stats.pages}</p>
-                </div>
-                <div className="h-12 w-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
-                  <FileText className="h-6 w-6 text-white" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-slate-600 mb-1">{t('blogPosts')}</p>
-                  <p className="text-3xl font-bold text-slate-900">{stats.blogs}</p>
-                </div>
-                <div className="h-12 w-12 bg-gradient-to-br from-emerald-500 to-green-600 rounded-xl flex items-center justify-center shadow-lg">
-                  <FileText className="h-6 w-6 text-white" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-slate-600 mb-1">{t('faqs')}</p>
-                  <p className="text-3xl font-bold text-slate-900">{stats.faqs}</p>
-                </div>
-                <div className="h-12 w-12 bg-gradient-to-br from-purple-500 to-violet-600 rounded-xl flex items-center justify-center shadow-lg">
-                  <FileText className="h-6 w-6 text-white" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-slate-600 mb-1">{t('contentPublished')}</p>
-                  <p className="text-3xl font-bold text-slate-900">{stats.published}</p>
-                </div>
-                <div className="h-12 w-12 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl flex items-center justify-center shadow-lg">
-                  <FileText className="h-6 w-6 text-white" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
         <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg mb-6">
           <CardContent className="p-6">
             <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-end justify-between">

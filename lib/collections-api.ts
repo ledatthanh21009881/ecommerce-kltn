@@ -14,7 +14,7 @@ export interface CollectionImage {
 }
 
 export async function fetchCollections(): Promise<Collection[]> {
-  const res = await fetch(`${COLLECTIONS_API_BASE}/api/collections`)
+  const res = await fetch(`${COLLECTIONS_API_BASE}/api/collections?ts=${Date.now()}`, { cache: 'no-store' })
   if (!res.ok) throw new Error('Failed to fetch collections')
   const json = await res.json()
   return json.success ? json.data : json

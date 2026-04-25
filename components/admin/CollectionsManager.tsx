@@ -1,12 +1,16 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
-import { Plus, RefreshCw, Edit, Trash2 } from 'lucide-react'
+import { forwardRef, useEffect, useImperativeHandle, useMemo, useState } from 'react'
+import { Edit, Trash2, Upload, X } from 'lucide-react'
+import { Reorder } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
+import { Switch } from '@/components/ui/switch'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import {
   Dialog,
   DialogContent,
@@ -17,6 +21,7 @@ import {
 import ConfirmModal from '@/components/ui/confirm-modal'
 import { getAuthData } from '@/lib/admin-auth'
 import { toast } from 'sonner'
+import { useLanguage } from '@/contexts/LanguageContext'
 
 interface CollectionListItem {
   collection_id: number
@@ -26,46 +31,72 @@ interface CollectionListItem {
   display_order: number
   is_active: number
   images_count?: number
-  products_count?: number
 }
 
 interface CollectionDetail extends CollectionListItem {
   images?: Array<{ image_url: string; display_order: number; is_active: number }>
-  products?: Array<{ product_id: number; display_order: number }>
+}
+
+interface CollectionImageItem {
+  id: string
+  source: 'existing' | 'new'
+  imageUrl: string
+  file?: File
+}
+
+interface CollectionSortItem {
+  collection_id: number
+  collection_name: string
+  slug: string
+  display_order: number
 }
 
 interface Props {
   isVisible: boolean
+  viewMode: 'list' | 'grid'
+}
+
+export interface CollectionsManagerRef {
+  refreshCollections: () => Promise<void>
+  openCreateModal: () => void
+  openSortModal: () => void
 }
 
 const initialForm = {
   collection_name: '',
   slug: '',
   short_description: '',
-  display_order: '0',
   is_active: true,
-  image_urls: '',
-  product_ids: '',
 }
 
-export default function CollectionsManager({ isVisible }: Props) {
+const CollectionsManager = forwardRef<CollectionsManagerRef, Props>(function CollectionsManager({ isVisible, viewMode }: Props, ref) {
+  const { t } = useLanguage()
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [collections, setCollections] = useState<CollectionListItem[]>([])
   const [searchTerm, setSearchTerm] = useState('')
+  const [statusFilter, setStatusFilter] = useState('all')
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [isSortModalOpen, setIsSortModalOpen] = useState(false)
   const [editingId, setEditingId] = useState<number | null>(null)
   const [form, setForm] = useState(initialForm)
   const [deleteId, setDeleteId] = useState<number | null>(null)
+  const [orderedImages, setOrderedImages] = useState<CollectionImageItem[]>([])
+  const [sortItems, setSortItems] = useState<CollectionSortItem[]>([])
+  const [sortSaving, setSortSaving] = useState(false)
 
   const filteredCollections = useMemo(() => {
     const keyword = searchTerm.trim().toLowerCase()
-    if (!keyword) return collections
-    return collections.filter((item) => (
-      item.collection_name.toLowerCase().includes(keyword)
-      || item.slug.toLowerCase().includes(keyword)
-    ))
-  }, [collections, searchTerm])
+    return collections.filter((item) => {
+      const matchesKeyword = !keyword
+        || item.collection_name.toLowerCase().includes(keyword)
+        || item.slug.toLowerCase().includes(keyword)
+      const matchesStatus = statusFilter === 'all'
+        || (statusFilter === 'active' && Number(item.is_active) === 1)
+        || (statusFilter === 'inactive' && Number(item.is_active) !== 1)
+      return matchesKeyword && matchesStatus
+    })
+  }, [collections, searchTerm, statusFilter])
 
   const authHeaders = () => {
     const { token } = getAuthData()
@@ -80,7 +111,7 @@ export default function CollectionsManager({ isVisible }: Props) {
     try {
       const headers = authHeaders()
       if (!headers) {
-        toast.error('Yeu cau dang nhap')
+        toast.error(t('authenticationRequired'))
         return
       }
       setLoading(true)
@@ -89,11 +120,11 @@ export default function CollectionsManager({ isVisible }: Props) {
       if (data?.success) {
         setCollections(Array.isArray(data.data) ? data.data : [])
       } else {
-        toast.error(data?.message || 'Khong tai duoc danh sach bo suu tap')
+        toast.error(data?.message || t('failedToFetchCollections'))
       }
     } catch (error) {
       console.error('Fetch collections error:', error)
-      toast.error('Khong tai duoc danh sach bo suu tap')
+      toast.error(t('failedToFetchCollections'))
     } finally {
       setLoading(false)
     }
@@ -106,8 +137,14 @@ export default function CollectionsManager({ isVisible }: Props) {
   }, [isVisible])
 
   const resetForm = () => {
+    orderedImages.forEach((item) => {
+      if (item.source === 'new') {
+        URL.revokeObjectURL(item.imageUrl)
+      }
+    })
     setForm(initialForm)
     setEditingId(null)
+    setOrderedImages([])
   }
 
   const openCreateModal = () => {
@@ -119,13 +156,13 @@ export default function CollectionsManager({ isVisible }: Props) {
     try {
       const headers = authHeaders()
       if (!headers) {
-        toast.error('Yeu cau dang nhap')
+        toast.error(t('authenticationRequired'))
         return
       }
       const response = await fetch(`/api/backend/v1/collections/${id}`, { headers })
       const data = await response.json()
       if (!data?.success || !data?.data) {
-        toast.error(data?.message || 'Khong tai duoc chi tiet bo suu tap')
+        toast.error(data?.message || t('failedToFetchCollectionDetails'))
         return
       }
       const detail = data.data as CollectionDetail
@@ -133,27 +170,25 @@ export default function CollectionsManager({ isVisible }: Props) {
         .filter((img) => Number(img.is_active ?? 1) === 1)
         .sort((a, b) => Number(a.display_order) - Number(b.display_order))
         .map((img) => img.image_url)
-        .join('\n')
-
-      const productIds = (detail.products || [])
-        .sort((a, b) => Number(a.display_order) - Number(b.display_order))
-        .map((item) => item.product_id)
-        .join(', ')
+      setOrderedImages(
+        imageUrls.map((imageUrl, index) => ({
+          id: `existing-${id}-${index}`,
+          source: 'existing',
+          imageUrl,
+        })),
+      )
 
       setEditingId(id)
       setForm({
         collection_name: detail.collection_name || '',
         slug: detail.slug || '',
         short_description: detail.short_description || '',
-        display_order: String(detail.display_order ?? 0),
         is_active: Number(detail.is_active) === 1,
-        image_urls: imageUrls,
-        product_ids: productIds,
       })
       setIsModalOpen(true)
     } catch (error) {
       console.error('Open edit modal error:', error)
-      toast.error('Khong tai duoc chi tiet bo suu tap')
+      toast.error(t('failedToFetchCollectionDetails'))
     }
   }
 
@@ -161,36 +196,46 @@ export default function CollectionsManager({ isVisible }: Props) {
     try {
       const headers = authHeaders()
       if (!headers) {
-        toast.error('Yeu cau dang nhap')
+        toast.error(t('authenticationRequired'))
         return
       }
 
       const collectionName = form.collection_name.trim()
       if (!collectionName) {
-        toast.error('Ten bo suu tap la bat buoc')
+        toast.error(t('collectionNameRequired'))
         return
       }
 
-      const images = form.image_urls
-        .split('\n')
-        .map((line) => line.trim())
-        .filter(Boolean)
-        .map((url, index) => ({ image_url: url, display_order: index + 1, is_active: 1 }))
+      const fileToBase64 = (file: File): Promise<string> => new Promise((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onload = () => resolve(reader.result as string)
+        reader.onerror = (error) => reject(error)
+        reader.readAsDataURL(file)
+      })
 
-      const products = form.product_ids
-        .split(',')
-        .map((id) => Number(id.trim()))
-        .filter((id) => Number.isInteger(id) && id > 0)
-        .map((productId, index) => ({ product_id: productId, display_order: index + 1 }))
+      const images = await Promise.all(
+        orderedImages.map(async (item, index) => {
+          if (item.source === 'new' && item.file) {
+            return {
+              file: await fileToBase64(item.file),
+              display_order: index + 1,
+              is_active: 1,
+            }
+          }
+          return {
+            image_url: item.imageUrl,
+            display_order: index + 1,
+            is_active: 1,
+          }
+        }),
+      )
 
       const payload = {
         collection_name: collectionName,
         slug: form.slug.trim(),
         short_description: form.short_description.trim(),
-        display_order: Number(form.display_order) || 0,
         is_active: form.is_active ? 1 : 0,
         images,
-        products,
       }
 
       setSaving(true)
@@ -203,17 +248,17 @@ export default function CollectionsManager({ isVisible }: Props) {
       })
       const data = await response.json()
       if (!data?.success) {
-        toast.error(data?.message || 'Luu bo suu tap that bai')
+        toast.error(data?.message || t('failedToSaveCollection'))
         return
       }
 
-      toast.success(editingId ? 'Cap nhat bo suu tap thanh cong' : 'Tao bo suu tap thanh cong')
+      toast.success(editingId ? t('collectionUpdatedSuccessfully') : t('collectionCreatedSuccessfully'))
       setIsModalOpen(false)
       resetForm()
       await fetchCollections()
     } catch (error) {
       console.error('Save collection error:', error)
-      toast.error('Luu bo suu tap that bai')
+      toast.error(t('failedToSaveCollection'))
     } finally {
       setSaving(false)
     }
@@ -224,7 +269,7 @@ export default function CollectionsManager({ isVisible }: Props) {
     try {
       const headers = authHeaders()
       if (!headers) {
-        toast.error('Yeu cau dang nhap')
+        toast.error(t('authenticationRequired'))
         return
       }
       const response = await fetch(`/api/backend/v1/collections/${deleteId}`, {
@@ -233,15 +278,71 @@ export default function CollectionsManager({ isVisible }: Props) {
       })
       const data = await response.json()
       if (!data?.success) {
-        toast.error(data?.message || 'Xoa bo suu tap that bai')
+        toast.error(data?.message || t('failedToDeleteCollection'))
         return
       }
-      toast.success('Xoa bo suu tap thanh cong')
+      toast.success(t('collectionDeletedSuccessfully'))
       setDeleteId(null)
       await fetchCollections()
     } catch (error) {
       console.error('Delete collection error:', error)
-      toast.error('Xoa bo suu tap that bai')
+      toast.error(t('failedToDeleteCollection'))
+    }
+  }
+
+  const openSortModal = () => {
+    setSortItems(
+      [...collections]
+        .sort((a, b) => Number(a.display_order) - Number(b.display_order) || Number(b.collection_id) - Number(a.collection_id))
+        .map((item) => ({
+          collection_id: item.collection_id,
+          collection_name: item.collection_name,
+          slug: item.slug,
+          display_order: item.display_order,
+        })),
+    )
+    setIsSortModalOpen(true)
+  }
+
+  useImperativeHandle(ref, () => ({
+    refreshCollections: fetchCollections,
+    openCreateModal,
+    openSortModal,
+  }))
+
+  const saveSortOrder = async () => {
+    try {
+      const headers = authHeaders()
+      if (!headers) {
+        toast.error(t('authenticationRequired'))
+        return
+      }
+
+      setSortSaving(true)
+      const response = await fetch('/api/backend/v1/collections', {
+        method: 'PUT',
+        headers,
+        body: JSON.stringify({
+          items: sortItems.map((item, index) => ({
+            collection_id: item.collection_id,
+            display_order: index + 1,
+          })),
+        }),
+      })
+      const data = await response.json()
+      if (!data?.success) {
+        toast.error(data?.message || t('failedToReorderCollections'))
+        return
+      }
+
+      toast.success(t('collectionsReorderedSuccessfully'))
+      setIsSortModalOpen(false)
+      await fetchCollections()
+    } catch (error) {
+      console.error('Reorder collections error:', error)
+      toast.error(t('failedToReorderCollections'))
+    } finally {
+      setSortSaving(false)
     }
   }
 
@@ -252,37 +353,39 @@ export default function CollectionsManager({ isVisible }: Props) {
       <Card className="bg-white/80 border-0 shadow-lg">
         <CardContent className="p-6">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex w-full gap-2 sm:max-w-md">
+            <div className="flex w-full gap-2 sm:max-w-2xl">
               <Input
-                placeholder="Tim theo ten hoac slug..."
+                placeholder={t('searchCollectionByNameOrSlug')}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
-              <Button variant="outline" onClick={fetchCollections} disabled={loading}>
-                <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-              </Button>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="min-w-[180px] border-slate-200 bg-white/50 focus:bg-white">
+                  <SelectValue placeholder={t('statusFilter')} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">{t('allStatus')}</SelectItem>
+                  <SelectItem value="active">{t('active')}</SelectItem>
+                  <SelectItem value="inactive">{t('inactive')}</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-            <Button onClick={openCreateModal} className="flex items-center gap-2">
-              <Plus className="h-4 w-4" />
-              Tao collection
-            </Button>
           </div>
         </CardContent>
       </Card>
-
+      {viewMode === 'list' ? (
       <Card className="bg-white/80 border-0 shadow-lg">
         <CardContent className="p-0">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr className="border-b bg-slate-50/80">
-                  <th className="px-4 py-3 text-left text-sm font-semibold">Ten collection</th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold">{t('collectionName')}</th>
                   <th className="px-4 py-3 text-left text-sm font-semibold">Slug</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold">Anh</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold">San pham</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold">Thu tu</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold">Trang thai</th>
-                  <th className="px-4 py-3 text-right text-sm font-semibold">Hanh dong</th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold">{t('collectionImages')}</th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold">{t('displayOrder')}</th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold">{t('status')}</th>
+                  <th className="px-4 py-3 text-right text-sm font-semibold">{t('actions')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -291,9 +394,17 @@ export default function CollectionsManager({ isVisible }: Props) {
                     <td className="px-4 py-3 text-sm font-medium">{item.collection_name}</td>
                     <td className="px-4 py-3 text-sm">{item.slug}</td>
                     <td className="px-4 py-3 text-sm">{item.images_count ?? 0}</td>
-                    <td className="px-4 py-3 text-sm">{item.products_count ?? 0}</td>
                     <td className="px-4 py-3 text-sm">{item.display_order}</td>
-                    <td className="px-4 py-3 text-sm">{Number(item.is_active) === 1 ? 'Hoat dong' : 'Tam an'}</td>
+                    <td className="px-4 py-3 text-sm">
+                      <Badge
+                        className={Number(item.is_active) === 1
+                          ? 'bg-green-100 text-green-700 hover:bg-green-100 border-green-200'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-100 border-gray-200'}
+                        variant="outline"
+                      >
+                        {Number(item.is_active) === 1 ? t('active') : t('inactive')}
+                      </Badge>
+                    </td>
                     <td className="px-4 py-3">
                       <div className="flex justify-end gap-2">
                         <Button variant="outline" size="sm" onClick={() => openEditModal(item.collection_id)}>
@@ -313,8 +424,8 @@ export default function CollectionsManager({ isVisible }: Props) {
                 ))}
                 {!loading && filteredCollections.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="px-4 py-8 text-center text-sm text-slate-500">
-                      Chua co collection nao.
+                    <td colSpan={6} className="px-4 py-8 text-center text-sm text-slate-500">
+                      {t('noCollectionsFound')}
                     </td>
                   </tr>
                 )}
@@ -323,20 +434,74 @@ export default function CollectionsManager({ isVisible }: Props) {
           </div>
         </CardContent>
       </Card>
+      ) : (
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+        {filteredCollections.map((item) => (
+          <Card key={item.collection_id} className="bg-white/80 border-0 shadow-lg">
+            <CardContent className="p-4 space-y-3">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-slate-900 truncate">{item.collection_name}</p>
+                  <p className="text-xs text-slate-500 truncate">{item.slug}</p>
+                </div>
+                <Badge
+                  className={Number(item.is_active) === 1
+                    ? 'bg-green-100 text-green-700 hover:bg-green-100 border-green-200'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-100 border-gray-200'}
+                  variant="outline"
+                >
+                  {Number(item.is_active) === 1 ? t('active') : t('inactive')}
+                </Badge>
+              </div>
+              <div className="grid grid-cols-2 gap-3 text-xs">
+                <div className="rounded-md border bg-slate-50 px-3 py-2">
+                  <p className="text-slate-500">{t('collectionImages')}</p>
+                  <p className="font-semibold text-slate-900">{item.images_count ?? 0}</p>
+                </div>
+                <div className="rounded-md border bg-slate-50 px-3 py-2">
+                  <p className="text-slate-500">{t('displayOrder')}</p>
+                  <p className="font-semibold text-slate-900">{item.display_order}</p>
+                </div>
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" size="sm" onClick={() => openEditModal(item.collection_id)}>
+                  <Edit className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="border-red-200 text-red-600 hover:bg-red-50"
+                  onClick={() => setDeleteId(item.collection_id)}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+        {!loading && filteredCollections.length === 0 && (
+          <Card className="md:col-span-2 xl:col-span-3 bg-white/80 border-0 shadow-lg">
+            <CardContent className="px-4 py-8 text-center text-sm text-slate-500">
+              {t('noCollectionsFound')}
+            </CardContent>
+          </Card>
+        )}
+      </div>
+      )}
 
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <DialogContent className="max-w-3xl">
+        <DialogContent className="w-[95vw] max-w-5xl max-h-[90vh] flex flex-col">
           <DialogHeader>
-            <DialogTitle>{editingId ? 'Cap nhat collection' : 'Tao collection moi'}</DialogTitle>
+            <DialogTitle>{editingId ? t('updateCollection') : t('createNewCollection')}</DialogTitle>
           </DialogHeader>
-          <div className="grid gap-4 py-2">
+          <div className="grid gap-4 py-2 overflow-y-auto pr-1">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label>Ten collection *</Label>
+                <Label>{t('collectionName')} *</Label>
                 <Input
                   value={form.collection_name}
                   onChange={(e) => setForm((prev) => ({ ...prev, collection_name: e.target.value }))}
-                  placeholder="SPRING SUMER 2026"
+                  placeholder={t('collectionNamePlaceholder')}
                 />
               </div>
               <div className="space-y-2">
@@ -349,33 +514,22 @@ export default function CollectionsManager({ isVisible }: Props) {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label>Thu tu hien thi</Label>
-                <Input
-                  type="number"
-                  value={form.display_order}
-                  onChange={(e) => setForm((prev) => ({ ...prev, display_order: e.target.value }))}
+            <div className="space-y-2">
+              <Label>{t('status')}</Label>
+              <div className="flex h-12 items-center gap-3 rounded-md border px-3">
+                <Switch
+                  id="collection-active"
+                  checked={form.is_active}
+                  onCheckedChange={(checked) => setForm((prev) => ({ ...prev, is_active: checked }))}
                 />
-              </div>
-              <div className="space-y-2">
-                <Label>Trang thai</Label>
-                <div className="flex h-10 items-center gap-2 rounded-md border px-3">
-                  <input
-                    id="collection-active"
-                    type="checkbox"
-                    checked={form.is_active}
-                    onChange={(e) => setForm((prev) => ({ ...prev, is_active: e.target.checked }))}
-                  />
-                  <label htmlFor="collection-active" className="text-sm">
-                    Dang hoat dong
-                  </label>
-                </div>
+                <label htmlFor="collection-active" className="text-sm font-medium">
+                  {t('active')}
+                </label>
               </div>
             </div>
 
             <div className="space-y-2">
-              <Label>Mo ta ngan</Label>
+              <Label>{t('shortDescription')}</Label>
               <Textarea
                 value={form.short_description}
                 onChange={(e) => setForm((prev) => ({ ...prev, short_description: e.target.value }))}
@@ -384,30 +538,127 @@ export default function CollectionsManager({ isVisible }: Props) {
             </div>
 
             <div className="space-y-2">
-              <Label>Danh sach URL anh (moi dong 1 URL)</Label>
-              <Textarea
-                value={form.image_urls}
-                onChange={(e) => setForm((prev) => ({ ...prev, image_urls: e.target.value }))}
-                rows={5}
-                placeholder="https://...\nhttps://..."
-              />
-            </div>
+              <Label>{t('uploadCollectionImages')}</Label>
+              <div className="space-y-3 rounded-md border p-3 overflow-x-hidden">
+                <div className="flex items-center gap-3">
+                  <Label
+                    htmlFor="collection-images-upload"
+                    className="inline-flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm font-medium hover:bg-slate-50"
+                  >
+                    <Upload className="h-4 w-4" />
+                    {t('selectImages')}
+                  </Label>
+                  <input
+                    id="collection-images-upload"
+                    type="file"
+                    multiple
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const files = Array.from(e.target.files || [])
+                      if (files.length > 0) {
+                        setOrderedImages((prev) => [
+                          ...prev,
+                          ...files.map((file, index) => ({
+                            id: `new-${file.name}-${Date.now()}-${index}`,
+                            source: 'new' as const,
+                            imageUrl: URL.createObjectURL(file),
+                            file,
+                          })),
+                        ])
+                      }
+                      e.currentTarget.value = ''
+                    }}
+                  />
+                  <span className="text-xs text-slate-500">{t('uploadCollectionImagesHint')}</span>
+                </div>
 
-            <div className="space-y-2">
-              <Label>ID san pham lien ket (cach nhau boi dau phay)</Label>
-              <Input
-                value={form.product_ids}
-                onChange={(e) => setForm((prev) => ({ ...prev, product_ids: e.target.value }))}
-                placeholder="1, 2, 8, 23"
-              />
+                {orderedImages.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-xs font-medium text-slate-600">{t('dragDropToReorder')}</p>
+                    <Reorder.Group
+                      axis="y"
+                      values={orderedImages}
+                      onReorder={setOrderedImages}
+                      className="space-y-2"
+                    >
+                      {orderedImages.map((item, index) => (
+                        <Reorder.Item
+                          key={item.id}
+                          value={item}
+                          className="flex min-w-0 items-center gap-3 rounded border px-2 py-2 bg-white"
+                        >
+                          <span className="w-6 text-center text-xs font-semibold text-slate-500">{index + 1}</span>
+                          <img
+                            src={item.imageUrl}
+                            alt={`Collection image ${index + 1}`}
+                            className="h-14 w-14 rounded object-cover border"
+                          />
+                          <span className="min-w-0 flex-1 truncate text-xs text-slate-600">
+                            {item.source === 'existing' ? item.imageUrl : item.file?.name}
+                          </span>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setOrderedImages((prev) => {
+                                const target = prev.find((img) => img.id === item.id)
+                                if (target?.source === 'new') {
+                                  URL.revokeObjectURL(target.imageUrl)
+                                }
+                                return prev.filter((img) => img.id !== item.id)
+                              })
+                            }}
+                          >
+                            <X className="h-3 w-3" />
+                          </Button>
+                        </Reorder.Item>
+                      ))}
+                    </Reorder.Group>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
-          <DialogFooter>
+          <DialogFooter className="pt-3 border-t bg-white">
             <Button variant="outline" onClick={() => setIsModalOpen(false)} disabled={saving}>
-              Huy
+              {t('cancel')}
             </Button>
             <Button onClick={saveCollection} disabled={saving}>
-              {saving ? 'Dang luu...' : editingId ? 'Cap nhat' : 'Tao moi'}
+              {saving ? t('saving') : editingId ? t('update') : t('create')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isSortModalOpen} onOpenChange={setIsSortModalOpen}>
+        <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle>{t('sortCollections')}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 overflow-y-auto pr-1">
+            <p className="text-xs text-slate-500">{t('dragDropCollectionsToReorder')}</p>
+            <Reorder.Group axis="y" values={sortItems} onReorder={setSortItems} className="space-y-2">
+              {sortItems.map((item, index) => (
+                <Reorder.Item
+                  key={item.collection_id}
+                  value={item}
+                  className="flex items-center gap-3 rounded-md border bg-white px-3 py-2"
+                >
+                  <span className="w-7 text-center text-xs font-semibold text-slate-500">{index + 1}</span>
+                  <span className="flex-1 text-sm font-medium text-slate-900 truncate">{item.collection_name}</span>
+                  <span className="text-xs text-slate-500 truncate max-w-[180px]">{item.slug}</span>
+                </Reorder.Item>
+              ))}
+            </Reorder.Group>
+          </div>
+          <DialogFooter className="pt-3 border-t bg-white">
+            <Button variant="outline" onClick={() => setIsSortModalOpen(false)} disabled={sortSaving}>
+              {t('cancel')}
+            </Button>
+            <Button onClick={saveSortOrder} disabled={sortSaving}>
+              {sortSaving ? t('saving') : t('saveOrder')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -417,11 +668,13 @@ export default function CollectionsManager({ isVisible }: Props) {
         isOpen={deleteId !== null}
         onClose={() => setDeleteId(null)}
         onConfirm={deleteCollection}
-        title="Xoa collection"
-        description="Ban co chac chan muon xoa collection nay khong? Tat ca anh va lien ket san pham se bi xoa."
-        confirmText="Xoa"
-        cancelText="Huy"
+        title={t('deleteCollection')}
+        description={t('deleteCollectionConfirm')}
+        confirmText={t('delete')}
+        cancelText={t('cancel')}
       />
     </div>
   )
-}
+})
+
+export default CollectionsManager

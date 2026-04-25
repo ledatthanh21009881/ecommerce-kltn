@@ -37,3 +37,23 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: false, message: 'Failed to create collection' }, { status: 500 })
   }
 }
+
+export async function PUT(request: NextRequest) {
+  try {
+    const token = request.headers.get('authorization')
+    const body = await request.json()
+    const response = await fetch(backendUrl('/api/backend/v1/collections/reorder'), {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: token } : {}),
+      },
+      body: JSON.stringify(body),
+    })
+    const data = await response.json().catch(() => ({ success: false, message: 'Failed to reorder collections' }))
+    return NextResponse.json(data, { status: response.ok ? 200 : response.status })
+  } catch (error) {
+    console.error('Collections PUT proxy error:', error)
+    return NextResponse.json({ success: false, message: 'Failed to reorder collections' }, { status: 500 })
+  }
+}
