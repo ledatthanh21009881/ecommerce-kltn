@@ -1,4 +1,5 @@
 import type React from "react"
+import type { Metadata } from "next"
 import "./globals.css"
 import "react-quill/dist/quill.snow.css"
 import { Inter, Playfair_Display } from "next/font/google"
@@ -24,10 +25,43 @@ const playfair = Playfair_Display({
   variable: "--font-serif",
 })
 
-export const metadata = {
-  title: "VIVIENNE Fashion",
-  description: "Elegant and timeless fashion designs",
-    generator: 'v0.dev'
+const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8000'
+
+type PublicSiteSettings = {
+  site_name?: string
+  site_description?: string
+  favicon_url?: string
+}
+
+async function loadPublicSiteSettings(): Promise<PublicSiteSettings> {
+  try {
+    const response = await fetch(`${BACKEND_URL}/api/v1/public/site-settings`, {
+      cache: 'no-store',
+    })
+    const data = await response.json()
+    if (!response.ok || !data?.success) return {}
+    return (data?.data ?? {}) as PublicSiteSettings
+  } catch {
+    return {}
+  }
+}
+
+export async function generateMetadata(): Promise<Metadata> {
+  const settings = await loadPublicSiteSettings()
+  const siteName = settings.site_name?.trim() || 'VIVIENNE Fashion'
+  const description = settings.site_description?.trim() || 'Elegant and timeless fashion designs'
+  const favicon = settings.favicon_url?.trim() || '/icon.png'
+
+  return {
+    title: siteName,
+    description,
+    generator: 'v0.dev',
+    icons: {
+      icon: favicon,
+      shortcut: favicon,
+      apple: favicon,
+    },
+  }
 }
 
 export default function RootLayout({

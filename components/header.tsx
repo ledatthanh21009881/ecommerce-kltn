@@ -16,6 +16,7 @@ import LogoutModal from "@/components/logout-modal"
 export default function Header() {
   const router = useRouter()
   const { t } = useLanguage()
+  const [siteName, setSiteName] = useState('VIVIENNE')
   const [isScrolled, setIsScrolled] = useState(false)
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false)
@@ -44,6 +45,15 @@ export default function Header() {
 
     checkAuth()
     fetchCollections().then(setCollections).catch(console.error)
+    fetch('/api/site-settings')
+      .then((r) => r.json())
+      .then((d) => {
+        const nextName = d?.data?.site_name
+        if (d?.success && typeof nextName === 'string' && nextName.trim()) {
+          setSiteName(nextName.trim())
+        }
+      })
+      .catch(() => {})
     window.addEventListener("scroll", handleScroll)
     
     return () => window.removeEventListener("scroll", handleScroll)
@@ -109,7 +119,7 @@ export default function Header() {
 
         {/* Logo */}
         <Link href="/" className={`font-serif text-xl tracking-wider ${!isScrolled ? "text-white" : ""}`}>
-          VIVIENNE
+          {siteName}
         </Link>
 
         {/* Desktop Navigation */}
@@ -276,7 +286,7 @@ export default function Header() {
           <div className="container mx-auto px-4">
             <div className="flex h-16 items-center justify-between">
               <Link href="/" className="font-serif text-xl tracking-wider">
-                VIVIENNE
+                {siteName}
               </Link>
               <Button variant="ghost" size="icon" onClick={() => setIsMenuOpen(false)}>
                 <X className="h-6 w-6" />

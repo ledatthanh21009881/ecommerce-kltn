@@ -12,6 +12,7 @@ import { fetchMainCategoriesForNav, type ShopNavCategory } from "@/lib/shop-nav-
 
 export default function ScrollAwareNav() {
   const { t } = useLanguage()
+  const [siteName, setSiteName] = useState('VIVIENNE')
   const [isOverVideo, setIsOverVideo] = useState(true)
   const [isClient, setIsClient] = useState(false)
   const [isShopOpen, setIsShopOpen] = useState(false)
@@ -31,6 +32,15 @@ export default function ScrollAwareNav() {
     setIsLoggedIn(authUtils.isLoggedIn())
     fetchCollections().then(setCollections).catch(console.error)
     fetchMainCategoriesForNav().then(setShopCategories).catch(console.error)
+    fetch('/api/site-settings')
+      .then((r) => r.json())
+      .then((d) => {
+        const nextName = d?.data?.site_name
+        if (d?.success && typeof nextName === 'string' && nextName.trim()) {
+          setSiteName(nextName.trim())
+        }
+      })
+      .catch(() => {})
   }, [])
 
   // Keep collection dropdown open when on a collection page
@@ -103,7 +113,7 @@ export default function ScrollAwareNav() {
              {/* Brand Name */}
        <div className="mb-8">
          <Link href="/" className={`text-lg font-bold uppercase tracking-wider ${textColorClass} hover:opacity-80 transition-opacity`}>
-           VIVIENNE
+           {siteName}
          </Link>
        </div>
 
