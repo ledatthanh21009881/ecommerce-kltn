@@ -249,7 +249,7 @@ export default function AssignShipperModal({ isOpen, onClose, order, onShipperAs
                             <div className="flex items-center gap-4">
                               <Badge 
                                 variant="outline" 
-                                className="bg-emerald-50 text-emerald-700 border-emerald-200"
+                                className="bg-green-100 text-green-800 border-green-200"
                               >
                                 {shipper.on_time_delivery_pct}% {t('onTime')}
                               </Badge>
@@ -308,7 +308,7 @@ export default function AssignShipperModal({ isOpen, onClose, order, onShipperAs
                     <div className="text-right">
                       <Badge 
                         variant="outline" 
-                        className="bg-emerald-50 text-emerald-700 border-emerald-200"
+                        className="bg-green-100 text-green-800 border-green-200"
                       >
                         {selectedShipper.on_time_delivery_pct}% {t('onTime')}
                       </Badge>

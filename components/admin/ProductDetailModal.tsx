@@ -4,6 +4,7 @@ import { X, Star, Package, Tag, DollarSign, Users, Calendar } from 'lucide-react
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Product } from '@/lib/types'
+import { useLanguage } from '@/contexts/LanguageContext'
 
 interface ProductDetailModalProps {
   isOpen: boolean
@@ -13,6 +14,7 @@ interface ProductDetailModalProps {
 }
 
 export default function ProductDetailModal({ isOpen, onClose, product, onEdit }: ProductDetailModalProps) {
+  const { t } = useLanguage()
   if (!isOpen || !product) return null
 
   // Debug logs
@@ -49,6 +51,20 @@ export default function ProductDetailModal({ isOpen, onClose, product, onEdit }:
     return product.images.filter(img => !(img.is_main === 1 || img.is_main === true))
   }
 
+  const getProductStatusLabel = (status?: string) => {
+    if (status === 'active') return t('productStatusActive')
+    if (status === 'inactive') return t('productStatusInactive')
+    if (status === 'draft') return t('productStatusDraft')
+    return status || '-'
+  }
+
+  const getVariantStatusLabel = (status?: string) => {
+    if (status === 'in_stock') return t('inStock')
+    if (status === 'out_of_stock') return t('outOfStock')
+    if (status === 'low_stock') return t('lowStock')
+    return status || '-'
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* Backdrop */}
@@ -58,10 +74,10 @@ export default function ProductDetailModal({ isOpen, onClose, product, onEdit }:
       <div className="relative bg-white rounded-lg shadow-xl max-w-6xl w-full mx-4 max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b">
-          <h2 className="text-xl font-semibold">Product Details</h2>
+          <h2 className="text-xl font-semibold">{t('productDetails')}</h2>
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={onEdit}>
-              Edit Product
+              {t('editProduct')}
             </Button>
             <Button variant="ghost" size="sm" onClick={onClose}>
               <X className="h-4 w-4" />
@@ -74,7 +90,7 @@ export default function ProductDetailModal({ isOpen, onClose, product, onEdit }:
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             {/* Images Section */}
             <div className="space-y-4">
-              <h3 className="text-lg font-medium">Product Images</h3>
+              <h3 className="text-lg font-medium">{t('productImagesTitle')}</h3>
               
               {/* Main Image */}
               <div className="aspect-square rounded-lg border overflow-hidden">
@@ -91,7 +107,7 @@ export default function ProductDetailModal({ isOpen, onClose, product, onEdit }:
               {/* Gallery Images */}
               {getGalleryImages().length > 0 && (
                 <div>
-                  <h4 className="text-sm font-medium text-gray-600 mb-2">Gallery Images</h4>
+                  <h4 className="text-sm font-medium text-gray-600 mb-2">{t('productGalleryImages')}</h4>
                   <div className="grid grid-cols-4 gap-2">
                     {getGalleryImages().map((image, index) => (
                       <div key={index} className="aspect-square rounded border overflow-hidden">
@@ -120,11 +136,14 @@ export default function ProductDetailModal({ isOpen, onClose, product, onEdit }:
                     {product.is_featured && (
                       <Badge variant="secondary" className="flex items-center gap-1">
                         <Star className="h-3 w-3" />
-                        Featured
+                        {t('featuredProductLabel')}
                       </Badge>
                     )}
-                    <Badge variant={product.status === 'active' ? 'default' : 'secondary'}>
-                      {product.status}
+                    <Badge
+                      variant="outline"
+                      className={product.status === 'active' ? 'bg-green-100 text-green-800 border-green-200' : 'bg-slate-50 text-slate-600 border-slate-200'}
+                    >
+                      {getProductStatusLabel(product.status)}
                     </Badge>
                   </div>
                 </div>
@@ -143,7 +162,7 @@ export default function ProductDetailModal({ isOpen, onClose, product, onEdit }:
                         {formatPrice(product.compare_at_price)}
                       </span>
                       <Badge variant="destructive">
-                        {Math.round(((product.compare_at_price - product.list_price) / product.compare_at_price) * 100)}% OFF
+                        {Math.round(((product.compare_at_price - product.list_price) / product.compare_at_price) * 100)}%
                       </Badge>
                     </div>
                   )}
@@ -154,14 +173,14 @@ export default function ProductDetailModal({ isOpen, onClose, product, onEdit }:
                   <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
                     <Package className="h-4 w-4 text-blue-600" />
                     <div>
-                      <p className="text-sm text-gray-600">Stock</p>
+                      <p className="text-sm text-gray-600">{t('stock')}</p>
                       <p className="font-semibold">{product.stock}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
                     <Tag className="h-4 w-4 text-purple-600" />
                     <div>
-                      <p className="text-sm text-gray-600">Variants</p>
+                      <p className="text-sm text-gray-600">{t('variants')}</p>
                       <p className="font-semibold">{product.variants?.length || 0}</p>
                     </div>
                   </div>
@@ -170,7 +189,7 @@ export default function ProductDetailModal({ isOpen, onClose, product, onEdit }:
 
               {/* Description */}
               <div className="space-y-2">
-                <h3 className="text-lg font-medium">Description</h3>
+                <h3 className="text-lg font-medium">{t('description')}</h3>
                 {product.short_description && (
                   <p className="text-gray-600">{product.short_description}</p>
                 )}
@@ -183,26 +202,26 @@ export default function ProductDetailModal({ isOpen, onClose, product, onEdit }:
 
               {/* Details */}
               <div className="space-y-4">
-                <h3 className="text-lg font-medium">Product Details</h3>
+                <h3 className="text-lg font-medium">{t('productDetails')}</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {product.material && (
                     <div>
-                      <p className="text-sm text-gray-600">Material</p>
+                      <p className="text-sm text-gray-600">{t('material')}</p>
                       <p className="font-medium">{product.material}</p>
                     </div>
                   )}
                   {product.cost_price && (
                     <div>
-                      <p className="text-sm text-gray-600">Cost Price</p>
+                      <p className="text-sm text-gray-600">{t('costPrice')}</p>
                       <p className="font-medium">{formatPrice(product.cost_price)}</p>
                     </div>
                   )}
                   <div>
-                    <p className="text-sm text-gray-600">Category ID</p>
+                    <p className="text-sm text-gray-600">{t('categoryId')}</p>
                     <p className="font-medium">{product.category_id}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-600">Product ID</p>
+                    <p className="text-sm text-gray-600">{t('productId')}</p>
                     <p className="font-medium">{product.product_id}</p>
                   </div>
                 </div>
@@ -211,18 +230,21 @@ export default function ProductDetailModal({ isOpen, onClose, product, onEdit }:
               {/* Variants */}
               {product.variants && product.variants.length > 0 && (
                 <div className="space-y-4">
-                  <h3 className="text-lg font-medium">Variants</h3>
+                  <h3 className="text-lg font-medium">{t('variants')}</h3>
                   <div className="space-y-2">
                     {product.variants.map((variant, index) => (
                       <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
                         <div className="flex items-center gap-4">
-                          <Badge variant="outline">Size {variant.size_name || variant.size_id}</Badge>
+                          <Badge variant="outline">{t('size')} {variant.size_name || variant.size_id}</Badge>
                           {variant.sku && <span className="text-sm text-gray-600">{variant.sku}</span>}
                         </div>
                         <div className="flex items-center gap-4">
-                          <span className="text-sm">Stock: {variant.stock_quantity}</span>
-                          <Badge variant={variant.status === 'in_stock' ? 'default' : 'secondary'}>
-                            {variant.status}
+                          <span className="text-sm">{t('stock')}: {variant.stock_quantity}</span>
+                          <Badge
+                            variant="outline"
+                            className={variant.status === 'in_stock' ? 'bg-green-100 text-green-800 border-green-200' : 'bg-slate-50 text-slate-600 border-slate-200'}
+                          >
+                            {getVariantStatusLabel(variant.status)}
                           </Badge>
                         </div>
                       </div>
@@ -235,12 +257,12 @@ export default function ProductDetailModal({ isOpen, onClose, product, onEdit }:
               <div className="space-y-2 pt-4 border-t">
                 <div className="flex items-center gap-2 text-sm text-gray-600">
                   <Calendar className="h-4 w-4" />
-                  <span>Created: {formatDate(product.created_at)}</span>
+                  <span>{t('created')}: {formatDate(product.created_at)}</span>
                 </div>
                 {product.updated_at && product.updated_at !== product.created_at && (
                   <div className="flex items-center gap-2 text-sm text-gray-600">
                     <Calendar className="h-4 w-4" />
-                    <span>Updated: {formatDate(product.updated_at)}</span>
+                    <span>{t('updated')}: {formatDate(product.updated_at)}</span>
                   </div>
                 )}
               </div>

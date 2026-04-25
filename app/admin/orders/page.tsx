@@ -172,7 +172,7 @@ export default function AdminOrdersPage() {
       case 'shipping':
         return 'bg-purple-50 text-purple-700 border-purple-200'
       case 'completed':
-        return 'bg-emerald-50 text-emerald-700 border-emerald-200'
+        return 'bg-green-100 text-green-800 border-green-200'
       case 'cancelled':
         return 'bg-red-50 text-red-700 border-red-200'
       case 'returned':

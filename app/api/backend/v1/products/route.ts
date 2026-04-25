@@ -8,6 +8,7 @@ export async function GET(request: NextRequest) {
     const page = searchParams.get('page') || '1'
     const category_id = searchParams.get('category_id') || ''
     const search = searchParams.get('search') || ''
+    const status = searchParams.get('status') || ''
 
     const token = request.headers.get('authorization')
     const params = new URLSearchParams()
@@ -15,6 +16,7 @@ export async function GET(request: NextRequest) {
     params.set('page', page)
     if (category_id) params.set('category', category_id)
     if (search) params.set('search', search)
+    if (status) params.set('status', status)
     
     const url = `${backendUrl('/api/v1/products')}?${params.toString()}`
     console.log('🌐 Backend URL:', url)

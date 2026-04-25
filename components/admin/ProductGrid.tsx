@@ -135,9 +135,9 @@ export default function ProductGrid({ products, loading, onEdit, onDelete, onVie
                   </Button>
                   <Button
                     size="sm"
-                    variant="destructive"
+                    variant="outline"
                     onClick={() => onDelete(product.product_id)}
-                    className="bg-red-600 hover:bg-red-700"
+                    className="bg-white border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>

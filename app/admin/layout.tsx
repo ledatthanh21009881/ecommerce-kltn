@@ -90,14 +90,14 @@ function AdminLayoutContent({
         href: '/admin/dashboard'
       },
       {
-        name: t('products'),
-        icon: ShoppingBag,
-        href: '/admin/products'
-      },
-      {
         name: t('categories'),
         icon: FolderOpen,
         href: '/admin/categories'
+      },
+      {
+        name: t('products'),
+        icon: ShoppingBag,
+        href: '/admin/products'
       },
       {
         name: t('orders'),

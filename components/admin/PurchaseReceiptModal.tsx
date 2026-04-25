@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { X, Plus, Trash2, Calculator } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -56,6 +56,8 @@ interface PurchaseReceiptModalProps {
 
 interface ReceiptItem {
   variant_id: number
+  product_id: number
+  size_id: number
   quantity: number
   unit_price: number
   note: string
@@ -71,7 +73,7 @@ export default function PurchaseReceiptModal({ isOpen, onClose, receipt, onSaved
     supplier_id: 0,
     note: '',
     items: [
-      { variant_id: 0, quantity: 1, unit_price: 0, note: '' }
+      { variant_id: 0, product_id: 0, size_id: 0, quantity: 1, unit_price: 0, note: '' }
     ] as ReceiptItem[]
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -98,7 +100,7 @@ export default function PurchaseReceiptModal({ isOpen, onClose, receipt, onSaved
           supplier_id: receipt.supplier_id,
           note: receipt.note || '',
           items: [
-            { variant_id: 0, quantity: 1, unit_price: 0, note: '' }
+            { variant_id: 0, product_id: 0, size_id: 0, quantity: 1, unit_price: 0, note: '' }
           ]
         })
       } else {
@@ -107,7 +109,7 @@ export default function PurchaseReceiptModal({ isOpen, onClose, receipt, onSaved
           supplier_id: 0,
           note: '',
           items: [
-            { variant_id: 0, quantity: 1, unit_price: 0, note: '' }
+            { variant_id: 0, product_id: 0, size_id: 0, quantity: 1, unit_price: 0, note: '' }
           ]
         })
       }
@@ -179,10 +181,39 @@ export default function PurchaseReceiptModal({ isOpen, onClose, receipt, onSaved
     return formData.items.reduce((total, item) => total + calculateSubtotal(item), 0)
   }
 
+  const productOptions = useMemo(() => {
+    const uniqueProducts = new Map<number, string>()
+    variants.forEach((variant) => {
+      if (!uniqueProducts.has(variant.product_id)) {
+        uniqueProducts.set(variant.product_id, variant.product_name)
+      }
+    })
+    return Array.from(uniqueProducts.entries()).map(([product_id, product_name]) => ({
+      product_id,
+      product_name
+    }))
+  }, [variants])
+
+  const getSizesByProductId = (productId: number) => {
+    if (!productId) return []
+    const seenSizes = new Set<number>()
+    return variants
+      .filter((variant) => variant.product_id === productId)
+      .filter((variant) => {
+        if (seenSizes.has(variant.size_id)) return false
+        seenSizes.add(variant.size_id)
+        return true
+      })
+      .map((variant) => ({
+        size_id: variant.size_id,
+        size_name: variant.size_name
+      }))
+  }
+
   const addItem = () => {
     setFormData(prev => ({
       ...prev,
-      items: [...prev.items, { variant_id: 0, quantity: 1, unit_price: 0, note: '' }]
+      items: [...prev.items, { variant_id: 0, product_id: 0, size_id: 0, quantity: 1, unit_price: 0, note: '' }]
     }))
   }
 
@@ -218,6 +249,9 @@ export default function PurchaseReceiptModal({ isOpen, onClose, receipt, onSaved
     formData.items.forEach((item, index) => {
       if (item.variant_id <= 0) {
         newErrors[`item_${index}_variant`] = t('pleaseSelectProduct')
+      }
+      if (item.size_id <= 0) {
+        newErrors[`item_${index}_size`] = t('pleaseSelectSize')
       }
       if (item.quantity <= 0) {
         newErrors[`item_${index}_quantity`] = t('quantityMustBePositive')
@@ -362,22 +396,32 @@ export default function PurchaseReceiptModal({ isOpen, onClose, receipt, onSaved
               {formData.items.map((item, index) => (
                 <Card key={index}>
                   <CardContent className="p-4">
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                       {/* Product Selection */}
                       <div className="space-y-2">
                         <Label>{t('productLabel')} *</Label>
                         <Select
-                          value={item.variant_id.toString()}
-                          onValueChange={(value) => updateItem(index, 'variant_id', parseInt(value))}
+                          value={item.product_id > 0 ? item.product_id.toString() : ''}
+                          onValueChange={(value) => {
+                            const productId = parseInt(value)
+                            setFormData(prev => ({
+                              ...prev,
+                              items: prev.items.map((row, rowIndex) =>
+                                rowIndex === index
+                                  ? { ...row, product_id: productId, size_id: 0, variant_id: 0 }
+                                  : row
+                              )
+                            }))
+                          }}
                         >
                           <SelectTrigger>
                             <SelectValue placeholder={t('selectProduct')} />
                           </SelectTrigger>
                           <SelectContent>
-                            {Array.isArray(variants) && variants.length > 0 ? (
-                              variants.map(variant => (
-                                <SelectItem key={variant.variant_id} value={variant.variant_id.toString()}>
-                                  {variant.display_name} (Stock: {variant.stock_quantity})
+                            {productOptions.length > 0 ? (
+                              productOptions.map((product) => (
+                                <SelectItem key={product.product_id} value={product.product_id.toString()}>
+                                  {product.product_name}
                                 </SelectItem>
                               ))
                             ) : (
@@ -389,6 +433,47 @@ export default function PurchaseReceiptModal({ isOpen, onClose, receipt, onSaved
                         </Select>
                         {errors[`item_${index}_variant`] && (
                           <p className="text-sm text-red-600">{errors[`item_${index}_variant`]}</p>
+                        )}
+                      </div>
+
+                      {/* Size Selection */}
+                      <div className="space-y-2">
+                        <Label>{t('size')} *</Label>
+                        <Select
+                          value={item.size_id > 0 ? item.size_id.toString() : ''}
+                          onValueChange={(value) => {
+                            const sizeId = parseInt(value)
+                            const matchedVariant = variants.find(
+                              (variant) => variant.product_id === item.product_id && variant.size_id === sizeId
+                            )
+                            setFormData(prev => ({
+                              ...prev,
+                              items: prev.items.map((row, rowIndex) =>
+                                rowIndex === index
+                                  ? {
+                                      ...row,
+                                      size_id: sizeId,
+                                      variant_id: matchedVariant?.variant_id ?? 0
+                                    }
+                                  : row
+                              )
+                            }))
+                          }}
+                          disabled={item.product_id <= 0}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder={item.product_id > 0 ? t('selectSize') : t('selectProductFirst')} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {getSizesByProductId(item.product_id).map((sizeOption) => (
+                              <SelectItem key={sizeOption.size_id} value={sizeOption.size_id.toString()}>
+                                {sizeOption.size_name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        {errors[`item_${index}_size`] && (
+                          <p className="text-sm text-red-600">{errors[`item_${index}_size`]}</p>
                         )}
                       </div>
 
@@ -445,9 +530,9 @@ export default function PurchaseReceiptModal({ isOpen, onClose, receipt, onSaved
 
                     {/* Item Note */}
                     <div className="mt-3">
-                      <Label>Item Note (Optional)</Label>
+                      <Label>{t('itemNoteOptional')}</Label>
                       <Input
-                        placeholder="Add note for this item..."
+                        placeholder={t('addNoteForItem')}
                         value={item.note}
                         onChange={(e) => updateItem(index, 'note', e.target.value)}
                       />
@@ -472,10 +557,10 @@ export default function PurchaseReceiptModal({ isOpen, onClose, receipt, onSaved
 
           {/* Note */}
           <div className="space-y-2">
-            <Label htmlFor="note">Receipt Note (Optional)</Label>
+            <Label htmlFor="note">{t('receiptNoteOptional')}</Label>
             <Textarea
               id="note"
-              placeholder="Add a note for this receipt..."
+              placeholder={t('addNoteForReceipt')}
               value={formData.note}
               onChange={(e) => setFormData(prev => ({ ...prev, note: e.target.value }))}
               rows={3}

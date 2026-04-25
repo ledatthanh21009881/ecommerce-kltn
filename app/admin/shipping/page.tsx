@@ -169,12 +169,6 @@ export default function AdminShippingPage() {
     setPage(1)
   }, [searchTerm, statusFilter])
 
-  // Calculate stats
-  const totalMethods = methods.length
-  const activeMethods = methods.filter(m => m.is_active).length
-  const inactiveMethods = methods.filter(m => !m.is_active).length
-  const averageFee = methods.length > 0 ? methods.reduce((sum, m) => sum + m.fee, 0) / methods.length : 0
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 p-6">
       <div className="max-w-7xl mx-auto">
@@ -202,65 +196,6 @@ export default function AdminShippingPage() {
               {t('addShippingMethod')}
             </Button>
           </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <Card className="relative overflow-hidden border-slate-200/80 bg-white/90 shadow-sm backdrop-blur transition hover:shadow-md">
-            <div className="pointer-events-none absolute -right-6 -top-10 h-32 w-32 rounded-full bg-gradient-to-br from-blue-500/15 to-transparent" />
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-slate-600 mb-1">{t('totalShippingMethods')}</p>
-                  <p className="text-3xl font-bold text-slate-900">{totalMethods}</p>
-                </div>
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-500/15 text-blue-700">
-                  <Truck className="h-4 w-4" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="relative overflow-hidden border-slate-200/80 bg-white/90 shadow-sm backdrop-blur transition hover:shadow-md">
-            <div className="pointer-events-none absolute -right-6 -top-10 h-32 w-32 rounded-full bg-gradient-to-br from-emerald-500/15 to-transparent" />
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-slate-600 mb-1">{t('activeShippingMethods')}</p>
-                  <p className="text-3xl font-bold text-slate-900">{activeMethods}</p>
-                </div>
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-700">
-                  <Truck className="h-4 w-4" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="relative overflow-hidden border-slate-200/80 bg-white/90 shadow-sm backdrop-blur transition hover:shadow-md">
-            <div className="pointer-events-none absolute -right-6 -top-10 h-32 w-32 rounded-full bg-gradient-to-br from-slate-500/15 to-transparent" />
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-slate-600 mb-1">{t('inactiveShippingMethods')}</p>
-                  <p className="text-3xl font-bold text-slate-900">{inactiveMethods}</p>
-                </div>
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-500/15 text-slate-700">
-                  <Truck className="h-4 w-4" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="relative overflow-hidden border-slate-200/80 bg-white/90 shadow-sm backdrop-blur transition hover:shadow-md">
-            <div className="pointer-events-none absolute -right-6 -top-10 h-32 w-32 rounded-full bg-gradient-to-br from-amber-500/15 to-transparent" />
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-slate-600 mb-1">{t('averageShippingFee')}</p>
-                  <p className="text-3xl font-bold text-emerald-600">{averageFee.toLocaleString()}đ</p>
-                </div>
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-500/15 text-amber-700">
-                  <Truck className="h-4 w-4" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
         </div>
 
         <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg mb-6">
@@ -336,7 +271,11 @@ export default function AdminShippingPage() {
                             <div className="text-xs text-slate-500">ID: {method.shipping_method_id}</div>
                           </div>
                         </div>
-                        <Badge variant={method.is_active ? 'default' : 'secondary'} className="cursor-pointer" onClick={() => handleToggleStatus(method.shipping_method_id)}>
+                        <Badge
+                          variant="outline"
+                          className={`cursor-pointer ${method.is_active ? 'bg-green-100 text-green-800 border-green-200 hover:bg-green-100' : 'bg-slate-50 text-slate-600 border-slate-200'}`}
+                          onClick={() => handleToggleStatus(method.shipping_method_id)}
+                        >
                           {method.is_active ? t('active') : t('inactive')}
                         </Badge>
                       </div>
@@ -404,9 +343,9 @@ export default function AdminShippingPage() {
                           </div>
                         </td>
                         <td className="py-4 px-4">
-                          <Badge 
-                            variant={method.is_active ? 'default' : 'secondary'}
-                            className="cursor-pointer"
+                          <Badge
+                            variant="outline"
+                            className={`cursor-pointer ${method.is_active ? 'bg-green-100 text-green-800 border-green-200 hover:bg-green-100' : 'bg-slate-50 text-slate-600 border-slate-200'}`}
                             onClick={() => handleToggleStatus(method.shipping_method_id)}
                           >
                             {method.is_active ? t('active') : t('inactive')}

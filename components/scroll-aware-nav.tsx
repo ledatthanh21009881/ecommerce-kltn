@@ -8,6 +8,7 @@ import { toast } from "sonner"
 import { useLanguage } from "@/components/language-provider"
 import { fetchCollections } from "@/lib/collections-api"
 import type { Collection } from "@/lib/collections-api"
+import { fetchMainCategoriesForNav, type ShopNavCategory } from "@/lib/shop-nav-categories"
 
 export default function ScrollAwareNav() {
   const { t } = useLanguage()
@@ -16,6 +17,7 @@ export default function ScrollAwareNav() {
   const [isShopOpen, setIsShopOpen] = useState(false)
   const [isCollectionOpen, setIsCollectionOpen] = useState(false)
   const [collections, setCollections] = useState<Collection[]>([])
+  const [shopCategories, setShopCategories] = useState<ShopNavCategory[]>([])
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const pathname = usePathname()
   const router = useRouter()
@@ -28,6 +30,7 @@ export default function ScrollAwareNav() {
     setIsClient(true)
     setIsLoggedIn(authUtils.isLoggedIn())
     fetchCollections().then(setCollections).catch(console.error)
+    fetchMainCategoriesForNav().then(setShopCategories).catch(console.error)
   }, [])
 
   // Keep collection dropdown open when on a collection page
@@ -120,24 +123,15 @@ export default function ScrollAwareNav() {
             <Link href="/all-products" className={`block text-xs font-bold uppercase tracking-wider ${textColorClass} ${hoverColorClass} transition-colors py-0.5`}>
               {t('nav.shopAll')}
             </Link>
-            <Link href="/category/tops" className={`block text-xs font-bold uppercase tracking-wider ${textColorClass} ${hoverColorClass} transition-colors py-0.5`}>
-              {t('nav.shopTops')}
-            </Link>
-            <Link href="/category/shirts" className={`block text-xs font-bold uppercase tracking-wider ${textColorClass} ${hoverColorClass} transition-colors py-0.5`}>
-              {t('nav.shopShirts')}
-            </Link>
-            <Link href="/category/jackets" className={`block text-xs font-bold uppercase tracking-wider ${textColorClass} ${hoverColorClass} transition-colors py-0.5`}>
-              {t('nav.shopJackets')}
-            </Link>
-            <Link href="/category/skirts" className={`block text-xs font-bold uppercase tracking-wider ${textColorClass} ${hoverColorClass} transition-colors py-0.5`}>
-              {t('nav.shopSkirts')}
-            </Link>
-            <Link href="/category/pants" className={`block text-xs font-bold uppercase tracking-wider ${textColorClass} ${hoverColorClass} transition-colors py-0.5`}>
-              {t('nav.shopPants')}
-            </Link>
-            <Link href="/category/accessories" className={`block text-xs font-bold uppercase tracking-wider ${textColorClass} ${hoverColorClass} transition-colors py-0.5`}>
-              {t('nav.shopAccessories')}
-            </Link>
+            {shopCategories.map((cat) => (
+              <Link
+                key={cat.category_id}
+                href={`/category/${encodeURIComponent(cat.slug)}`}
+                className={`block text-xs font-bold uppercase tracking-wider ${textColorClass} ${hoverColorClass} transition-colors py-0.5`}
+              >
+                {cat.category_name}
+              </Link>
+            ))}
           </nav>
         )}
       </div>

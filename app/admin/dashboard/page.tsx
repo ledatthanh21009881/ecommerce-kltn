@@ -8,6 +8,8 @@ import {
   Users,
   DollarSign,
   Package,
+  Wallet,
+  Trophy,
   ArrowUpRight,
   Sparkles,
   BarChart3,
@@ -36,17 +38,32 @@ interface SeriesPoint {
   revenue: number
 }
 
+interface PurchaseCostSeriesPoint {
+  date: string
+  purchase_cost: number
+}
+
 interface DashboardStats {
   total_products: number
   total_orders: number
   total_users: number
   total_revenue: number
+  total_purchase_cost: number
+  gross_profit: number
+  best_selling_product: {
+    product_id: number
+    product_name: string
+    sales_count: number
+    revenue: number
+  } | null
   revenue_series: SeriesPoint[]
+  purchase_cost_series: PurchaseCostSeriesPoint[]
   date_from: string
   date_to: string
   top_date_from: string
   top_date_to: string
   top_products: any[]
+  top_purchased_products: any[]
 }
 
 const TOP_BAR_FILLS = ['#6366f1', '#7c3aed', '#9333ea', '#a855f7', '#c084fc']
@@ -105,12 +122,17 @@ export default function AdminDashboardPage() {
     total_orders: 0,
     total_users: 0,
     total_revenue: 0,
+    total_purchase_cost: 0,
+    gross_profit: 0,
+    best_selling_product: null,
     revenue_series: [],
+    purchase_cost_series: [],
     date_from: initialRange.from,
     date_to: initialRange.to,
     top_date_from: initialRange.from,
     top_date_to: initialRange.to,
     top_products: [],
+    top_purchased_products: [],
   })
   const [loading, setLoading] = useState(true)
 
@@ -136,18 +158,36 @@ export default function AdminDashboardPage() {
                 revenue: Number(row.revenue) || 0,
               }))
             : []
+          const purchaseCostSeries: PurchaseCostSeriesPoint[] = Array.isArray(d.purchase_cost_series)
+            ? d.purchase_cost_series.map((row: any) => ({
+                date: String(row.date),
+                purchase_cost: Number(row.purchase_cost) || 0,
+              }))
+            : []
 
           setStats({
             total_products: d.total_products ?? 0,
             total_orders: d.total_orders ?? 0,
             total_users: d.total_users ?? 0,
             total_revenue: parseFloat(String(d.total_revenue ?? 0)) || 0,
+            total_purchase_cost: parseFloat(String(d.total_purchase_cost ?? 0)) || 0,
+            gross_profit: parseFloat(String(d.gross_profit ?? 0)) || 0,
+            best_selling_product: d.best_selling_product
+              ? {
+                  product_id: Number(d.best_selling_product.product_id) || 0,
+                  product_name: String(d.best_selling_product.product_name || ''),
+                  sales_count: Number(d.best_selling_product.sales_count) || 0,
+                  revenue: Number(d.best_selling_product.revenue) || 0,
+                }
+              : null,
             revenue_series: series,
+            purchase_cost_series: purchaseCostSeries,
             date_from: String(d.date_from ?? revenueRange.from),
             date_to: String(d.date_to ?? revenueRange.to),
             top_date_from: String(d.top_date_from ?? productsRange.from),
             top_date_to: String(d.top_date_to ?? productsRange.to),
             top_products: Array.isArray(d.top_products) ? d.top_products : [],
+            top_purchased_products: Array.isArray(d.top_purchased_products) ? d.top_purchased_products : [],
           })
         } else {
           toast.error(t('dashboardFailedFetchStats'))
@@ -210,6 +250,43 @@ export default function AdminDashboardPage() {
     [productsBarData]
   )
 
+  const purchaseCostChartData = useMemo(() => {
+    return stats.purchase_cost_series.map((row) => ({
+      ...row,
+      label: shortDayLabel(row.date, language),
+    }))
+  }, [stats.purchase_cost_series, language])
+
+  const periodPurchaseCostSum = useMemo(
+    () => stats.purchase_cost_series.reduce((s, r) => s + r.purchase_cost, 0),
+    [stats.purchase_cost_series]
+  )
+
+  const maxDailyPurchaseCost = useMemo(
+    () => Math.max(1, ...purchaseCostChartData.map((d) => d.purchase_cost)),
+    [purchaseCostChartData]
+  )
+
+  const topPurchasedBarData = useMemo(() => {
+    return stats.top_purchased_products.slice(0, 5).map((p: any, i: number) => {
+      const name = String(p.product_name || '')
+      const short = name.length > 18 ? `${name.slice(0, 18)}…` : name
+      return {
+        product_id: p.product_id,
+        shortName: short,
+        fullName: name,
+        quantity: Number(p.purchase_quantity) || 0,
+        purchaseCost: Number(p.purchase_cost) || 0,
+        rank: i + 1,
+      }
+    })
+  }, [stats.top_purchased_products])
+
+  const maxPurchasedQty = useMemo(
+    () => Math.max(1, ...topPurchasedBarData.map((d) => d.quantity)),
+    [topPurchasedBarData]
+  )
+
   const kpiCards = [
     {
       title: t('totalRevenue'),
@@ -220,26 +297,30 @@ export default function AdminDashboardPage() {
       iconBg: 'bg-emerald-500/15 text-emerald-700',
     },
     {
-      title: t('totalOrders'),
-      value: String(stats.total_orders),
+      title: t('dashboardPurchaseCost'),
+      value: formatPrice(stats.total_purchase_cost),
       subtitle: t('dashboardStatsSelectedPeriod'),
-      icon: ShoppingCart,
+      icon: Wallet,
       accent: 'from-sky-500/15 to-transparent',
       iconBg: 'bg-sky-500/15 text-sky-700',
     },
     {
-      title: t('totalProducts'),
-      value: String(stats.total_products),
-      subtitle: t('dashboardStatsAllProducts'),
-      icon: Package,
+      title: t('dashboardGrossProfit'),
+      value: formatPrice(stats.gross_profit),
+      subtitle: t('dashboardStatsSelectedPeriod'),
+      icon: TrendingUp,
       accent: 'from-violet-500/15 to-transparent',
-      iconBg: 'bg-violet-500/15 text-violet-700',
+      iconBg: stats.gross_profit >= 0 ? 'bg-violet-500/15 text-violet-700' : 'bg-rose-500/15 text-rose-700',
     },
     {
-      title: t('totalUsers'),
-      value: String(stats.total_users),
-      subtitle: t('dashboardStatsAllUsers'),
-      icon: Users,
+      title: t('dashboardBestSellingProduct'),
+      value: stats.best_selling_product
+        ? stats.best_selling_product.product_name
+        : t('dashboardBestSellingFallback'),
+      subtitle: stats.best_selling_product
+        ? t('dashboardUnitsSold', { count: String(stats.best_selling_product.sales_count) })
+        : t('dashboardStatsSelectedPeriod'),
+      icon: Trophy,
       accent: 'from-amber-500/15 to-transparent',
       iconBg: 'bg-amber-500/15 text-amber-800',
     },
@@ -466,6 +547,196 @@ export default function AdminDashboardPage() {
                       <Bar dataKey="revenue" radius={[10, 10, 0, 0]} maxBarSize={48}>
                         {productsBarData.map((_, i) => (
                           <Cell key={`c-${i}`} fill={`url(#barGrad${i % TOP_BAR_FILLS.length})`} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <Card className="border-slate-200/80 bg-white/95 shadow-md backdrop-blur">
+            <CardHeader className="pb-3">
+              <div className="flex items-start gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-sky-600 to-cyan-600 text-white shadow-md">
+                  <Wallet className="h-5 w-5" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <CardTitle className="text-lg font-semibold text-slate-900">
+                        {t('dashboardPurchaseCostByDayTitle')}
+                      </CardTitle>
+                      <p className="mt-1 text-xs text-slate-500">{t('dashboardPurchaseCostByDayHint')}</p>
+                      <p className="mt-2 text-xs font-medium text-sky-800">
+                        {formatDisplayDate(stats.date_from, language)} — {formatDisplayDate(stats.date_to, language)}
+                      </p>
+                    </div>
+                    <DashboardChartDateFilter
+                      appliedFrom={revenueRange.from}
+                      appliedTo={revenueRange.to}
+                      onApply={setRevenueRange}
+                      align="end"
+                    />
+                  </div>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {loading ? (
+                <div className="flex h-[320px] items-center justify-center">
+                  <div className="h-9 w-9 animate-spin rounded-full border-2 border-sky-200 border-t-sky-600" />
+                </div>
+              ) : (
+                <>
+                  <div className="h-[300px] w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={purchaseCostChartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                        <defs>
+                          <linearGradient id="fillPurchaseCost" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="#0284c7" stopOpacity={0.45} />
+                            <stop offset="100%" stopColor="#0284c7" stopOpacity={0} />
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                        <XAxis
+                          dataKey="label"
+                          tick={{ fontSize: 10, fill: '#64748b' }}
+                          axisLine={false}
+                          tickLine={false}
+                          interval={xTickInterval}
+                        />
+                        <YAxis
+                          domain={[0, maxDailyPurchaseCost]}
+                          tickFormatter={(v) => compactVnd(Number(v))}
+                          tick={{ fontSize: 11, fill: '#64748b' }}
+                          axisLine={false}
+                          tickLine={false}
+                          width={44}
+                        />
+                        <Tooltip
+                          content={({ active, payload }) => {
+                            if (!active || !payload?.length) return null
+                            const row = payload[0].payload as (typeof purchaseCostChartData)[0]
+                            return (
+                              <div className="rounded-lg border border-slate-200 bg-white px-3 py-2 shadow-lg">
+                                <p className="text-xs font-semibold text-slate-900">
+                                  {formatDisplayDate(row.date, language)}
+                                </p>
+                                <p className="text-sm font-medium text-sky-700">{formatPrice(row.purchase_cost)}</p>
+                              </div>
+                            )
+                          }}
+                        />
+                        <Area
+                          type="monotone"
+                          dataKey="purchase_cost"
+                          stroke="#0284c7"
+                          strokeWidth={2.5}
+                          fillOpacity={1}
+                          fill="url(#fillPurchaseCost)"
+                          dot={
+                            purchaseCostChartData.length <= 45
+                              ? { r: 3, fill: '#0284c7', stroke: '#fff', strokeWidth: 2 }
+                              : false
+                          }
+                          activeDot={{ r: 5 }}
+                        />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                  {periodPurchaseCostSum <= 0 && (
+                    <p className="mt-3 text-center text-xs text-slate-500">{t('dashboardPurchaseCostEmpty')}</p>
+                  )}
+                </>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className="border-slate-200/80 bg-white/95 shadow-md backdrop-blur">
+            <CardHeader className="pb-3">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0 pr-1">
+                  <CardTitle className="text-lg font-semibold text-slate-900">{t('dashboardTopPurchasedProductsTitle')}</CardTitle>
+                  <p className="mt-1 text-xs text-slate-500">{t('dashboardTopPurchasedProductsHint')}</p>
+                  <p className="mt-1 text-xs text-sky-700/90">{t('dashboardTopProductsPeriodHint')}</p>
+                  <p className="mt-2 text-xs font-medium text-slate-600">
+                    {formatDisplayDate(stats.top_date_from, language)} —{' '}
+                    {formatDisplayDate(stats.top_date_to, language)}
+                  </p>
+                </div>
+                <DashboardChartDateFilter
+                  appliedFrom={productsRange.from}
+                  appliedTo={productsRange.to}
+                  onApply={setProductsRange}
+                  align="end"
+                />
+              </div>
+            </CardHeader>
+            <CardContent>
+              {loading ? (
+                <div className="flex h-[320px] items-center justify-center">
+                  <div className="h-9 w-9 animate-spin rounded-full border-2 border-sky-200 border-t-sky-600" />
+                </div>
+              ) : topPurchasedBarData.length === 0 ? (
+                <div className="flex h-[300px] flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50/50">
+                  <Package className="mb-3 h-12 w-12 text-slate-300" />
+                  <p className="text-sm text-slate-500">{t('dashboardNoProductsData')}</p>
+                </div>
+              ) : (
+                <div className="h-[320px] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={topPurchasedBarData} margin={{ top: 12, right: 8, left: 8, bottom: 52 }}>
+                      <defs>
+                        {TOP_BAR_FILLS.map((color, i) => (
+                          <linearGradient key={i} id={`barQtyGrad${i}`} x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor={color} stopOpacity={0.95} />
+                            <stop offset="100%" stopColor={color} stopOpacity={0.55} />
+                          </linearGradient>
+                        ))}
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
+                      <XAxis
+                        dataKey="shortName"
+                        tick={{ fontSize: 10, fill: '#475569' }}
+                        axisLine={false}
+                        tickLine={false}
+                        interval={0}
+                        height={48}
+                        angle={-28}
+                        textAnchor="end"
+                      />
+                      <YAxis
+                        domain={[0, maxPurchasedQty]}
+                        tick={{ fontSize: 11, fill: '#64748b' }}
+                        axisLine={false}
+                        tickLine={false}
+                        width={44}
+                      />
+                      <Tooltip
+                        cursor={{ fill: 'rgba(2, 132, 199, 0.06)' }}
+                        content={({ active, payload }) => {
+                          if (!active || !payload?.length) return null
+                          const row = payload[0].payload as (typeof topPurchasedBarData)[0]
+                          return (
+                            <div className="max-w-[260px] rounded-lg border border-slate-200 bg-white px-3 py-2 shadow-lg">
+                              <p className="text-xs font-semibold leading-snug text-slate-900">{row.fullName}</p>
+                              <p className="mt-1 text-sm font-medium text-sky-700">{row.quantity}</p>
+                              <p className="text-xs text-slate-500">
+                                {language === 'vi'
+                                  ? `Chi phí nhập: ${formatPrice(row.purchaseCost)}`
+                                  : `Purchase cost: ${formatPrice(row.purchaseCost)}`}
+                              </p>
+                            </div>
+                          )
+                        }}
+                      />
+                      <Bar dataKey="quantity" radius={[10, 10, 0, 0]} maxBarSize={48}>
+                        {topPurchasedBarData.map((_, i) => (
+                          <Cell key={`q-${i}`} fill={`url(#barQtyGrad${i % TOP_BAR_FILLS.length})`} />
                         ))}
                       </Bar>
                     </BarChart>

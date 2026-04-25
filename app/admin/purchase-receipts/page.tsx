@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Search, RefreshCw, FileText, Plus, CheckCircle, XCircle, Clock, Building2, Eye, Edit, Trash2, LayoutList, LayoutGrid, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Search, RefreshCw, FileText, Plus, CheckCircle, XCircle, Clock, Building2, Eye, Edit, Trash2, LayoutList, LayoutGrid, ChevronLeft, ChevronRight, Wallet } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
@@ -45,6 +45,7 @@ export default function AdminPurchaseReceiptsPage() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
   const [selectedReceipt, setSelectedReceipt] = useState<PurchaseReceipt | null>(null)
   const [deletingReceipt, setDeletingReceipt] = useState<PurchaseReceipt | null>(null)
+  const [confirmingReceipt, setConfirmingReceipt] = useState<PurchaseReceipt | null>(null)
 
   const setViewModeAndStore = (mode: 'list' | 'grid') => {
     setViewMode(mode)
@@ -191,6 +192,16 @@ export default function AdminPurchaseReceiptsPage() {
     }
   }
 
+  const handleOpenConfirmModal = (receipt: PurchaseReceipt) => {
+    setConfirmingReceipt(receipt)
+  }
+
+  const handleConfirmApprove = async () => {
+    if (!confirmingReceipt) return
+    await handleConfirm(confirmingReceipt.receipt_id)
+    setConfirmingReceipt(null)
+  }
+
   // Add Receipt
   const handleAddClick = () => {
     setSelectedReceipt(null)
@@ -283,66 +294,73 @@ export default function AdminPurchaseReceiptsPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-[auto_1fr_1fr_1fr_1fr] gap-6 mb-8">
-          <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300 order-first w-fit max-w-full">
-            <CardContent className="p-6 flex items-center justify-between gap-4">
-              <div className="min-w-0">
-                <p className="text-sm font-medium text-slate-600 mb-1">{t('receiptTotalRevenue')}</p>
-                <p className="text-2xl sm:text-3xl font-bold text-emerald-600 whitespace-nowrap">{formatCurrency(stats.total_amount)}</p>
-              </div>
-              <div className="h-12 w-12 shrink-0 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl flex items-center justify-center shadow-lg">
-                <FileText className="h-6 w-6 text-white" />
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-[minmax(280px,1.25fr)_1fr_1fr_1fr_1fr] gap-6 mb-8">
+          <Card className="relative overflow-hidden border-slate-200/80 bg-white/90 shadow-sm backdrop-blur transition hover:shadow-md">
+            <div className="pointer-events-none absolute -right-6 -top-10 h-32 w-32 rounded-full bg-gradient-to-br from-emerald-500/15 to-transparent" />
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between gap-5">
+                <div className="min-w-0 pr-4">
+                  <p className="text-sm font-medium text-slate-600 mb-1">{t('receiptTotalRevenue')}</p>
+                  <p className="text-2xl sm:text-3xl font-bold text-emerald-600 whitespace-nowrap">{formatCurrency(stats.total_amount)}</p>
+                </div>
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-700">
+                  <Wallet className="h-4 w-4" />
+                </div>
               </div>
             </CardContent>
           </Card>
-          <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300">
-            <CardContent className="p-6">
+          <Card className="relative overflow-hidden border-slate-200/80 bg-white/90 shadow-sm backdrop-blur transition hover:shadow-md">
+            <div className="pointer-events-none absolute -right-6 -top-10 h-32 w-32 rounded-full bg-gradient-to-br from-blue-500/15 to-transparent" />
+            <CardContent className="p-5">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-slate-600 mb-1">{t('receiptTotalReceipts')}</p>
-                  <p className="text-3xl font-bold text-slate-900">{stats.total}</p>
+                  <p className="text-2xl font-bold text-slate-900">{stats.total}</p>
                 </div>
-                <div className="h-12 w-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg shrink-0">
-                  <FileText className="h-6 w-6 text-white" />
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-blue-500/15 text-blue-700">
+                  <FileText className="h-4 w-4" />
                 </div>
               </div>
             </CardContent>
           </Card>
-          <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300">
-            <CardContent className="p-6">
+          <Card className="relative overflow-hidden border-slate-200/80 bg-white/90 shadow-sm backdrop-blur transition hover:shadow-md">
+            <div className="pointer-events-none absolute -right-6 -top-10 h-32 w-32 rounded-full bg-gradient-to-br from-amber-500/15 to-transparent" />
+            <CardContent className="p-5">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-slate-600 mb-1">{t('pending')}</p>
-                  <p className="text-3xl font-bold text-slate-900">{stats.pending}</p>
+                  <p className="text-2xl font-bold text-slate-900">{stats.pending}</p>
                 </div>
-                <div className="h-12 w-12 bg-gradient-to-br from-amber-500 to-yellow-500 rounded-xl flex items-center justify-center shadow-lg shrink-0">
-                  <Clock className="h-6 w-6 text-white" />
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-amber-500/15 text-amber-700">
+                  <Clock className="h-4 w-4" />
                 </div>
               </div>
             </CardContent>
           </Card>
-          <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300">
-            <CardContent className="p-6">
+          <Card className="relative overflow-hidden border-slate-200/80 bg-white/90 shadow-sm backdrop-blur transition hover:shadow-md">
+            <div className="pointer-events-none absolute -right-6 -top-10 h-32 w-32 rounded-full bg-gradient-to-br from-emerald-500/15 to-transparent" />
+            <CardContent className="p-5">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-slate-600 mb-1">{t('confirmed')}</p>
-                  <p className="text-3xl font-bold text-slate-900">{stats.confirmed}</p>
+                  <p className="text-2xl font-bold text-slate-900">{stats.confirmed}</p>
                 </div>
-                <div className="h-12 w-12 bg-gradient-to-br from-emerald-500 to-green-600 rounded-xl flex items-center justify-center shadow-lg shrink-0">
-                  <CheckCircle className="h-6 w-6 text-white" />
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-700">
+                  <CheckCircle className="h-4 w-4" />
                 </div>
               </div>
             </CardContent>
           </Card>
-          <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300">
-            <CardContent className="p-6">
+          <Card className="relative overflow-hidden border-slate-200/80 bg-white/90 shadow-sm backdrop-blur transition hover:shadow-md">
+            <div className="pointer-events-none absolute -right-6 -top-10 h-32 w-32 rounded-full bg-gradient-to-br from-red-500/15 to-transparent" />
+            <CardContent className="p-5">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-slate-600 mb-1">{t('cancelled')}</p>
-                  <p className="text-3xl font-bold text-slate-900">{stats.cancelled}</p>
+                  <p className="text-2xl font-bold text-slate-900">{stats.cancelled}</p>
                 </div>
-                <div className="h-12 w-12 bg-gradient-to-br from-red-500 to-red-600 rounded-xl flex items-center justify-center shadow-lg shrink-0">
-                  <XCircle className="h-6 w-6 text-white" />
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-red-500/15 text-red-700">
+                  <XCircle className="h-4 w-4" />
                 </div>
               </div>
             </CardContent>
@@ -423,7 +441,7 @@ export default function AdminPurchaseReceiptsPage() {
                     {receipt.status === 'pending' && (
                       <>
                         <Button variant="outline" size="sm" onClick={() => handleEditClick(receipt)} className="bg-white/80 border-slate-200 hover:bg-white"><Edit className="h-4 w-4" /></Button>
-                        <Button variant="outline" size="sm" onClick={() => handleConfirm(receipt.receipt_id)} className="text-green-600 border-green-200"><CheckCircle className="h-4 w-4" /></Button>
+                        <Button variant="outline" size="sm" onClick={() => handleOpenConfirmModal(receipt)} className="text-green-600 border-green-200"><CheckCircle className="h-4 w-4" /></Button>
                         <Button variant="outline" size="sm" onClick={() => handleDeleteClick(receipt)} className="text-red-600 border-red-200"><Trash2 className="h-4 w-4" /></Button>
                       </>
                     )}
@@ -499,7 +517,7 @@ export default function AdminPurchaseReceiptsPage() {
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  onClick={() => handleConfirm(receipt.receipt_id)}
+                                  onClick={() => handleOpenConfirmModal(receipt)}
                                   className="text-green-600"
                                 >
                                   <CheckCircle className="h-4 w-4" />
@@ -574,6 +592,17 @@ export default function AdminPurchaseReceiptsPage() {
           title={t('deletePurchaseReceipt')}
           description={t('deletePurchaseReceiptConfirm', { id: String(deletingReceipt?.receipt_id ?? '') })}
           confirmText={t('delete')}
+        />
+
+        <ConfirmModal
+          isOpen={confirmingReceipt !== null}
+          onClose={() => setConfirmingReceipt(null)}
+          onConfirm={handleConfirmApprove}
+          title={t('confirmReceipt')}
+          description={t('confirmPurchaseReceiptPrompt', { id: String(confirmingReceipt?.receipt_id ?? '') })}
+          confirmText={t('confirm')}
+          cancelText={t('cancel')}
+          appearance="neutral"
         />
       </div>
     </div>

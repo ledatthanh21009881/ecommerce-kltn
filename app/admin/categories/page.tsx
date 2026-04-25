@@ -1,13 +1,22 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Plus, Search, RefreshCw, Folder, Edit, Trash2, Eye, LayoutList, LayoutGrid, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Plus, Search, RefreshCw, Folder, Edit, Trash2, Eye, LayoutList, LayoutGrid, ChevronLeft, ChevronRight, ArrowUpDown } from 'lucide-react'
+import { Reorder } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { toast } from 'sonner'
 import ConfirmModal from '@/components/ui/confirm-modal'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog'
 import CategoryModal from '@/components/admin/CategoryModal'
 import { Category } from '@/lib/types'
 import { getAuthData, checkAndRefreshAuth } from '@/lib/admin-auth'
@@ -18,6 +27,7 @@ export default function AdminCategoriesPage() {
   const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all')
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingCategory, setEditingCategory] = useState<Category | null>(null)
@@ -28,6 +38,9 @@ export default function AdminCategoriesPage() {
     if (typeof window !== 'undefined') return (localStorage.getItem('admin_categories_view') as 'list' | 'grid') || 'list'
     return 'list'
   })
+  const [isSortModalOpen, setIsSortModalOpen] = useState(false)
+  const [sortItems, setSortItems] = useState<Category[]>([])
+  const [sortSaving, setSortSaving] = useState(false)
 
   const setViewModeAndStore = (mode: 'list' | 'grid') => {
     setViewMode(mode)
@@ -60,7 +73,11 @@ export default function AdminCategoriesPage() {
   const filteredCategories = categories.filter(category => {
     const matchesSearch = category.category_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          category.slug.toLowerCase().includes(searchTerm.toLowerCase())
-    return matchesSearch
+    const matchesStatus =
+      statusFilter === 'all' ||
+      (statusFilter === 'active' && category.is_active) ||
+      (statusFilter === 'inactive' && !category.is_active)
+    return matchesSearch && matchesStatus
   })
   const totalFiltered = filteredCategories.length
   const totalPages = Math.max(1, Math.ceil(totalFiltered / limit))
@@ -68,7 +85,7 @@ export default function AdminCategoriesPage() {
   const from = totalFiltered === 0 ? 0 : (page - 1) * limit + 1
   const to = Math.min(page * limit, totalFiltered)
 
-  useEffect(() => { setPage(1) }, [searchTerm])
+  useEffect(() => { setPage(1) }, [searchTerm, statusFilter])
 
   // Handle category operations
   const handleViewCategory = (category: Category) => {
@@ -151,7 +168,59 @@ export default function AdminCategoriesPage() {
     }
   }
 
+  const openSortModal = () => {
+    const roots = categories
+      .filter(c => c.parent_id == null)
+      .sort((a, b) => (a.position ?? 0) - (b.position ?? 0) || a.category_id - b.category_id)
+    if (roots.length === 0) {
+      toast.info(t('noMainCategoriesToSort'))
+      return
+    }
+    setSortItems(roots)
+    setIsSortModalOpen(true)
+  }
 
+  const saveSortOrder = async () => {
+    try {
+      const ok = await checkAndRefreshAuth()
+      if (!ok) {
+        if (typeof window !== 'undefined') window.location.href = '/admin-login'
+        return
+      }
+      const { token } = getAuthData()
+      if (!token) {
+        toast.error(t('authenticationFailed'))
+        return
+      }
+      setSortSaving(true)
+      const response = await fetch('/api/backend/v1/categories/reorder', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          categories: sortItems.map((item, index) => ({
+            category_id: item.category_id,
+            position: index + 1,
+          })),
+        }),
+      })
+      const data = await response.json()
+      if (!data?.success) {
+        toast.error(data?.message || t('failedToReorderCategories'))
+        return
+      }
+      toast.success(t('categoriesReorderedSuccessfully'))
+      setIsSortModalOpen(false)
+      await fetchCategories()
+    } catch (e) {
+      console.error(e)
+      toast.error(t('failedToReorderCategories'))
+    } finally {
+      setSortSaving(false)
+    }
+  }
 
   // Calculate stats
   const totalCategories = categories.length
@@ -180,6 +249,15 @@ export default function AdminCategoriesPage() {
             <Button variant="outline" onClick={fetchCategories} disabled={loading} className="flex items-center gap-2 bg-white/80 backdrop-blur-sm border-slate-200 hover:bg-white">
               <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
               {t('refresh')}
+            </Button>
+            <Button
+              variant="outline"
+              type="button"
+              onClick={openSortModal}
+              className="flex items-center gap-2 bg-white/80 backdrop-blur-sm border-slate-200 hover:bg-white"
+            >
+              <ArrowUpDown className="h-4 w-4" />
+              {t('sortCategories')}
             </Button>
             <Button onClick={handleAddCategory} className="flex items-center gap-2">
               <Plus className="h-4 w-4" />
@@ -249,17 +327,32 @@ export default function AdminCategoriesPage() {
 
         <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg mb-6">
           <CardContent className="p-6">
-            <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-end justify-between">
-              <div className="flex flex-col flex-1 max-w-md w-full">
-                <label className="text-xs font-medium text-slate-600 mb-1">{t('search')}</label>
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 h-4 w-4" />
-                  <Input
-                    placeholder={t('searchCategories')}
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10 bg-white/50 border-slate-200 focus:bg-white focus:border-blue-500 transition-all duration-200"
-                  />
+            <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-end justify-between">
+              <div className="flex flex-col sm:flex-row gap-4 flex-1 w-full">
+                <div className="flex flex-col flex-1 max-w-md">
+                  <label className="text-xs font-medium text-slate-600 mb-1">{t('search')}</label>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 h-4 w-4" />
+                    <Input
+                      placeholder={t('searchCategories')}
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="pl-10 bg-white/50 border-slate-200 focus:bg-white focus:border-blue-500 transition-all duration-200"
+                    />
+                  </div>
+                </div>
+                <div className="flex flex-col">
+                  <label className="text-xs font-medium text-slate-600 mb-1">{t('statusFilter')}</label>
+                  <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as 'all' | 'active' | 'inactive')}>
+                    <SelectTrigger className="min-w-[180px] border-slate-200 bg-white/50 focus:bg-white">
+                      <SelectValue placeholder={t('allStatus')} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">{t('allStatus')}</SelectItem>
+                      <SelectItem value="active">{t('active')}</SelectItem>
+                      <SelectItem value="inactive">{t('inactive')}</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
             </div>
@@ -306,7 +399,7 @@ export default function AdminCategoriesPage() {
                             <p className="text-xs text-slate-500">{category.slug}</p>
                           </div>
                         </div>
-                        <Badge variant="outline" className={`shrink-0 ${category.is_active ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-50 text-slate-600 border-slate-200'}`}>
+                        <Badge variant="outline" className={`shrink-0 ${category.is_active ? 'bg-green-100 text-green-800 border-green-200' : 'bg-slate-50 text-slate-600 border-slate-200'}`}>
                           {category.is_active ? t('active') : t('inactive')}
                         </Badge>
                       </div>
@@ -351,7 +444,7 @@ export default function AdminCategoriesPage() {
                         </td>
                         <td className="py-4 px-4 text-slate-600">{category.slug}</td>
                         <td className="py-4 px-4">
-                          <Badge variant="outline" className={category.is_active ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-50 text-slate-600 border-slate-200'}>
+                          <Badge variant="outline" className={category.is_active ? 'bg-green-100 text-green-800 border-green-200' : 'bg-slate-50 text-slate-600 border-slate-200'}>
                             {category.is_active ? t('active') : t('inactive')}
                           </Badge>
                         </td>
@@ -398,6 +491,39 @@ export default function AdminCategoriesPage() {
             </CardContent>
           </Card>
         )}
+
+        <Dialog open={isSortModalOpen} onOpenChange={setIsSortModalOpen}>
+          <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col">
+            <DialogHeader>
+              <DialogTitle>{t('sortCategories')}</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3 overflow-y-auto pr-1">
+              <p className="text-xs text-slate-500">{t('dragDropMainCategoriesToReorder')}</p>
+              <p className="text-xs text-slate-400">{t('sortCategoriesMainOnlyNote')}</p>
+              <Reorder.Group axis="y" values={sortItems} onReorder={setSortItems} className="space-y-2">
+                {sortItems.map((item, index) => (
+                  <Reorder.Item
+                    key={item.category_id}
+                    value={item}
+                    className="flex items-center gap-3 rounded-md border bg-white px-3 py-2 cursor-grab active:cursor-grabbing"
+                  >
+                    <span className="w-7 text-center text-xs font-semibold text-slate-500">{index + 1}</span>
+                    <span className="flex-1 text-sm font-medium text-slate-900 truncate">{item.category_name}</span>
+                    <span className="text-xs text-slate-500 truncate max-w-[180px]">{item.slug}</span>
+                  </Reorder.Item>
+                ))}
+              </Reorder.Group>
+            </div>
+            <DialogFooter className="pt-3 border-t bg-white">
+              <Button variant="outline" onClick={() => setIsSortModalOpen(false)} disabled={sortSaving}>
+                {t('cancel')}
+              </Button>
+              <Button onClick={saveSortOrder} disabled={sortSaving}>
+                {sortSaving ? t('saving') : t('saveOrder')}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {/* Category Modal */}
         <CategoryModal

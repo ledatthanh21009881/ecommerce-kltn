@@ -1,6 +1,6 @@
 'use client'
 
-import { AlertTriangle, X } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, X } from 'lucide-react'
 
 interface ConfirmModalProps {
   isOpen: boolean
@@ -10,6 +10,7 @@ interface ConfirmModalProps {
   description: string
   confirmText?: string
   cancelText?: string
+  appearance?: 'danger' | 'neutral'
 }
 
 export default function ConfirmModal({
@@ -19,7 +20,8 @@ export default function ConfirmModal({
   title,
   description,
   confirmText = 'Confirm',
-  cancelText = 'Cancel'
+  cancelText = 'Cancel',
+  appearance = 'danger',
 }: ConfirmModalProps) {
   if (!isOpen) return null
 
@@ -27,6 +29,8 @@ export default function ConfirmModal({
     onConfirm()
     onClose()
   }
+
+  const isDanger = appearance === 'danger'
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
@@ -40,8 +44,12 @@ export default function ConfirmModal({
       <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full mx-4 overflow-hidden">
         {/* Header */}
         <div className="flex items-center gap-3 p-6 border-b border-gray-200">
-          <div className="h-10 w-10 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
-            <AlertTriangle className="h-5 w-5 text-red-600" />
+          <div className={`h-10 w-10 rounded-full flex items-center justify-center flex-shrink-0 ${isDanger ? 'bg-red-100' : 'bg-slate-100'}`}>
+            {isDanger ? (
+              <AlertTriangle className="h-5 w-5 text-red-600" />
+            ) : (
+              <CheckCircle2 className="h-5 w-5 text-slate-800" />
+            )}
           </div>
           <div className="flex-1">
             <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
@@ -65,7 +73,11 @@ export default function ConfirmModal({
           </button>
           <button
             onClick={handleConfirm}
-            className="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors"
+            className={`px-4 py-2 text-sm font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors ${
+              isDanger
+                ? 'text-white bg-red-600 border border-transparent hover:bg-red-700 focus:ring-red-500'
+                : 'text-white bg-black border border-black hover:bg-white hover:text-black focus:ring-slate-500'
+            }`}
           >
             {confirmText}
           </button>

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { X, CheckCircle, Clock, XCircle, Building2, Calendar, Package, DollarSign } from 'lucide-react'
+import { X, CheckCircle, Clock, XCircle, Building2, Calendar, Package, Wallet } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -171,7 +171,7 @@ export default function PurchaseReceiptDetailModal({ isOpen, onClose, receipt, o
       <div className="bg-white rounded-lg shadow-xl w-full max-w-6xl max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between p-6 border-b">
           <h2 className="text-xl font-semibold">
-            Receipt #{receipt.receipt_id} Details
+            {t('receiptDetailsTitle', { id: String(receipt.receipt_id) })}
           </h2>
           <Button variant="ghost" size="sm" onClick={onClose}>
             <X className="h-4 w-4" />
@@ -196,7 +196,7 @@ export default function PurchaseReceiptDetailModal({ isOpen, onClose, receipt, o
                 <CardContent className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className="text-sm font-medium text-gray-600">Supplier</label>
+                      <label className="text-sm font-medium text-gray-600">{t('receiptSupplierLabel')}</label>
                       <p className="text-lg font-semibold">{receiptDetails?.supplier_name || 'N/A'}</p>
                     </div>
                     <div>
@@ -204,7 +204,11 @@ export default function PurchaseReceiptDetailModal({ isOpen, onClose, receipt, o
                       <div className="mt-1">
                         <Badge className={`${getStatusColor(receiptDetails?.status || 'pending')} flex items-center gap-1 w-fit`}>
                           {getStatusIcon(receiptDetails?.status || 'pending')}
-                          {(receiptDetails?.status || 'pending').charAt(0).toUpperCase() + (receiptDetails?.status || 'pending').slice(1)}
+                          {receiptDetails?.status === 'pending'
+                            ? t('pending')
+                            : receiptDetails?.status === 'confirmed'
+                              ? t('confirmed')
+                              : t('cancelled')}
                         </Badge>
                       </div>
                     </div>
@@ -228,7 +232,7 @@ export default function PurchaseReceiptDetailModal({ isOpen, onClose, receipt, o
                   
                   {receiptDetails?.note && (
                     <div>
-                      <label className="text-sm font-medium text-gray-600">Note</label>
+                      <label className="text-sm font-medium text-gray-600">{t('noteLabel')}</label>
                       <p className="mt-1 p-3 bg-gray-50 rounded-lg">{receiptDetails.note}</p>
                     </div>
                   )}
@@ -247,12 +251,12 @@ export default function PurchaseReceiptDetailModal({ isOpen, onClose, receipt, o
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Product</TableHead>
-                        <TableHead>SKU</TableHead>
-                        <TableHead className="text-right">Quantity</TableHead>
-                        <TableHead className="text-right">Unit Price</TableHead>
-                        <TableHead className="text-right">Subtotal</TableHead>
-                        <TableHead>Note</TableHead>
+                        <TableHead>{t('product')}</TableHead>
+                        <TableHead>{t('sku')}</TableHead>
+                        <TableHead className="text-right">{t('quantity')}</TableHead>
+                        <TableHead className="text-right">{t('unitPriceVnd')}</TableHead>
+                        <TableHead className="text-right">{t('subtotalLabel')}</TableHead>
+                        <TableHead>{t('noteLabel')}</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -297,7 +301,7 @@ export default function PurchaseReceiptDetailModal({ isOpen, onClose, receipt, o
                     </div>
                     <div className="text-center">
                       <div className="flex items-center justify-center gap-2 mb-2">
-                        <DollarSign className="h-5 w-5 text-green-600" />
+                        <Wallet className="h-5 w-5 text-green-600" />
                         <span className="text-sm font-medium text-gray-600">{t('receiptTotalAmountHeader')}</span>
                       </div>
                       <p className="text-2xl font-bold text-green-600">
@@ -325,14 +329,18 @@ export default function PurchaseReceiptDetailModal({ isOpen, onClose, receipt, o
 
           {/* Actions */}
           <div className="flex justify-end space-x-3 pt-4 border-t">
-            <Button variant="outline" onClick={onClose}>
-              {t('close')}
+            <Button
+              variant="outline"
+              onClick={onClose}
+              className="border-slate-800 text-slate-800 hover:bg-slate-100 transition-all duration-200"
+            >
+              {t('cancel')}
             </Button>
             {receiptDetails?.status === 'pending' && (
               <Button 
                 onClick={handleConfirm} 
                 disabled={confirming}
-                className="bg-green-600 hover:bg-green-700"
+                className="bg-black text-white border border-black hover:bg-white hover:text-black transition-all duration-200"
               >
                 {confirming ? t('confirming') : t('confirmReceipt')}
               </Button>

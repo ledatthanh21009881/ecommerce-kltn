@@ -7,6 +7,13 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
 import { Product, ProductFormData, ProductVariant, ProductImage } from '@/lib/types'
@@ -382,20 +389,22 @@ export default function ProductModal({ isOpen, onClose, product, categories, onS
 
               <div>
                 <Label htmlFor="category">{t('productCategory')} *</Label>
-                <select
-                  id="category"
-                  value={formData.category_id}
-                  onChange={(e) => handleInputChange('category_id', parseInt(e.target.value))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  required
+                <Select
+                  value={formData.category_id ? String(formData.category_id) : 'none'}
+                  onValueChange={(value) => handleInputChange('category_id', value === 'none' ? 0 : parseInt(value, 10))}
                 >
-                  <option value="">{t('selectCategory')}</option>
-                  {categories.map((category) => (
-                    <option key={category.category_id} value={category.category_id}>
-                      {category.category_name}
-                    </option>
-                  ))}
-                </select>
+                  <SelectTrigger id="category" className="w-full border-slate-200 bg-white">
+                    <SelectValue placeholder={t('selectCategory')} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">{t('selectCategory')}</SelectItem>
+                    {categories.map((category) => (
+                      <SelectItem key={category.category_id} value={String(category.category_id)}>
+                        {category.category_name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               <div>
@@ -433,8 +442,6 @@ export default function ProductModal({ isOpen, onClose, product, categories, onS
 
             {/* Pricing & Status */}
             <div className="space-y-4">
-              <h3 className="text-lg font-medium">{t('pricingAndStatus')}</h3>
-              
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="list_price">{t('listPrice')} *</Label>
@@ -490,16 +497,19 @@ export default function ProductModal({ isOpen, onClose, product, categories, onS
 
               <div>
                 <Label htmlFor="status">{t('status')}</Label>
-                <select
-                  id="status"
+                <Select
                   value={formData.status}
-                  onChange={(e) => handleInputChange('status', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  onValueChange={(value) => handleInputChange('status', value)}
                 >
-                  <option value="active">{t('productStatusActive')}</option>
-                  <option value="inactive">{t('productStatusInactive')}</option>
-                  <option value="draft">{t('productStatusDraft')}</option>
-                </select>
+                  <SelectTrigger id="status" className="w-full border-slate-200 bg-white">
+                    <SelectValue placeholder={t('status')} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="active">{t('productStatusActive')}</SelectItem>
+                    <SelectItem value="inactive">{t('productStatusInactive')}</SelectItem>
+                    <SelectItem value="draft">{t('productStatusDraft')}</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="flex items-center space-x-2">
@@ -543,16 +553,20 @@ export default function ProductModal({ isOpen, onClose, product, categories, onS
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                   <div>
                     <Label>{t('size')}</Label>
-                    <select
-                      value={variant.size_id}
-                      onChange={(e) => handleVariantChange(index, 'size_id', parseInt(e.target.value))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    <Select
+                      value={String(variant.size_id)}
+                      onValueChange={(value) => handleVariantChange(index, 'size_id', parseInt(value, 10))}
                     >
-                      <option value={1}>S</option>
-                      <option value={2}>M</option>
-                      <option value={3}>L</option>
-                      <option value={4}>XL</option>
-                    </select>
+                      <SelectTrigger className="w-full border-slate-200 bg-white">
+                        <SelectValue placeholder={t('size')} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="1">S</SelectItem>
+                        <SelectItem value="2">M</SelectItem>
+                        <SelectItem value="3">L</SelectItem>
+                        <SelectItem value="4">XL</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div>
                     <Label>{t('sku')}</Label>
@@ -574,15 +588,19 @@ export default function ProductModal({ isOpen, onClose, product, categories, onS
                   </div>
                   <div>
                     <Label>{t('status')}</Label>
-                    <select
+                    <Select
                       value={variant.status}
-                      onChange={(e) => handleVariantChange(index, 'status', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      onValueChange={(value) => handleVariantChange(index, 'status', value)}
                     >
-                      <option value="in_stock">{t('inStock')}</option>
-                      <option value="out_of_stock">{t('productStatusOutOfStock')}</option>
-                      <option value="low_stock">{t('lowStock')}</option>
-                    </select>
+                      <SelectTrigger className="w-full border-slate-200 bg-white">
+                        <SelectValue placeholder={t('status')} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="in_stock">{t('inStock')}</SelectItem>
+                        <SelectItem value="out_of_stock">{t('productStatusOutOfStock')}</SelectItem>
+                        <SelectItem value="low_stock">{t('lowStock')}</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
               </div>

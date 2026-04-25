@@ -149,7 +149,6 @@ export default function InventoryModal({ isOpen, onClose, variant, products, cat
         ? {
             size_id: formData.size_id,
             sku: formData.sku,
-            stock_quantity: formData.stock_quantity,
             status: formData.status
           }
         : formData
@@ -371,10 +370,11 @@ export default function InventoryModal({ isOpen, onClose, variant, products, cat
               placeholder="0"
               min="0"
               className="w-full"
+              disabled={!!variant}
               required
             />
             <p className="text-xs text-gray-500">
-              {t('stockQuantityHelperText')}
+              {variant ? t('stockUpdateViaReceiptsOrAdjustment') : t('stockQuantityHelperText')}
             </p>
           </div>
 

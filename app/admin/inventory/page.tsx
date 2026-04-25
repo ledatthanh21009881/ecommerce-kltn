@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { toast } from 'sonner'
 import ConfirmModal from '@/components/ui/confirm-modal'
 import InventoryModal from '@/components/admin/InventoryModal'
+import { StockAdjustmentsPanel } from '@/app/admin/stock-adjustments/page'
 import { InventoryVariant, Product } from '@/lib/types'
 import { getAuthData } from '@/lib/admin-auth'
 import { useLanguage } from '@/contexts/LanguageContext'
@@ -23,6 +24,8 @@ export default function AdminInventoryPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedProduct, setSelectedProduct] = useState('all')
   const [selectedStatus, setSelectedStatus] = useState('all')
+  const [selectedSize, setSelectedSize] = useState('all')
+  const [activeTab, setActiveTab] = useState<'inventory' | 'adjustments'>('inventory')
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingVariant, setEditingVariant] = useState<InventoryVariant | null>(null)
@@ -130,14 +133,19 @@ export default function AdminInventoryPage() {
     fetchInventory()
     fetchProducts()
     fetchCategories()
-  }, [selectedProduct, selectedStatus])
+  }, [])
+
+  const uniqueSizes = Array.from(new Set(variants.map((variant) => variant.size_name).filter(Boolean)))
 
   // Filter variants based on search term
   const filteredVariants = variants.filter(variant => {
     const matchesSearch = variant.product_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          variant.sku.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          variant.size_name.toLowerCase().includes(searchTerm.toLowerCase())
-    return matchesSearch
+    const matchesProduct = selectedProduct === 'all' || String(variant.product_id) === selectedProduct
+    const matchesStatus = selectedStatus === 'all' || variant.status === selectedStatus
+    const matchesSize = selectedSize === 'all' || variant.size_name === selectedSize
+    return matchesSearch && matchesProduct && matchesStatus && matchesSize
   })
 
   const totalPages = Math.max(1, Math.ceil(filteredVariants.length / limit))
@@ -147,7 +155,7 @@ export default function AdminInventoryPage() {
 
   useEffect(() => {
     setPage(1)
-  }, [searchTerm, selectedProduct, selectedStatus])
+  }, [searchTerm, selectedProduct, selectedStatus, selectedSize])
 
   // Handle inventory operations
   const handleViewVariant = (variant: InventoryVariant) => {
@@ -257,17 +265,74 @@ export default function AdminInventoryPage() {
                 <LayoutGrid className="h-4 w-4" />
               </Button>
             </div>
-            <Button variant="outline" onClick={fetchInventory} disabled={loading} className="flex items-center gap-2 bg-white/80 backdrop-blur-sm border-slate-200 hover:bg-white">
+            <Button
+              variant="outline"
+              onClick={() => {
+                if (activeTab === 'inventory') {
+                  fetchInventory()
+                } else if (typeof window !== 'undefined') {
+                  window.dispatchEvent(new Event('refresh-stock-adjustments'))
+                }
+              }}
+              disabled={loading}
+              className="flex items-center gap-2 bg-white/80 backdrop-blur-sm border-slate-200 hover:bg-white"
+            >
               <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
               {t('refresh')}
             </Button>
-            <Button onClick={handleAddVariant} className="flex items-center gap-2">
-              <Plus className="h-4 w-4" />
-              {t('addInventory')}
-            </Button>
+            {activeTab === 'inventory' && (
+              <Button onClick={handleAddVariant} className="flex items-center gap-2">
+                <Plus className="h-4 w-4" />
+                {t('addInventory')}
+              </Button>
+            )}
+            {activeTab === 'adjustments' && (
+              <Button
+                onClick={() => {
+                  if (typeof window !== 'undefined') {
+                    window.dispatchEvent(new Event('open-stock-adjustment-create'))
+                  }
+                }}
+                className="flex items-center gap-2"
+              >
+                <Plus className="h-4 w-4" />
+                {t('createStockAdjustment')}
+              </Button>
+            )}
           </div>
         </div>
 
+        <div className="mb-6 border-b border-slate-200">
+          <div className="flex items-center gap-6">
+            <button
+              type="button"
+              onClick={() => setActiveTab('inventory')}
+              className={`pb-2 text-sm font-medium border-b-2 transition-colors ${
+                activeTab === 'inventory'
+                  ? 'border-slate-900 text-slate-900'
+                  : 'border-transparent text-slate-500 hover:text-slate-700'
+              }`}
+            >
+              {t('inventory')}
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('adjustments')}
+              className={`pb-2 text-sm font-medium border-b-2 transition-colors ${
+                activeTab === 'adjustments'
+                  ? 'border-slate-900 text-slate-900'
+                  : 'border-transparent text-slate-500 hover:text-slate-700'
+              }`}
+            >
+              {t('stockAdjustments')}
+            </button>
+          </div>
+        </div>
+
+        {activeTab === 'adjustments' ? (
+          <StockAdjustmentsPanel embedded />
+        ) : (
+          <>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <Card className="relative overflow-hidden border-slate-200/80 bg-white/90 shadow-sm backdrop-blur transition hover:shadow-md">
             <div className="pointer-events-none absolute -right-6 -top-10 h-32 w-32 rounded-full bg-gradient-to-br from-blue-500/15 to-transparent" />
@@ -372,6 +437,22 @@ export default function AdminInventoryPage() {
                     </SelectContent>
                   </Select>
                 </div>
+                <div className="flex flex-col">
+                  <label className="text-xs font-medium text-slate-600 mb-1">{t('size')}</label>
+                  <Select value={selectedSize} onValueChange={setSelectedSize}>
+                    <SelectTrigger className="min-w-[140px] border-slate-200 bg-white/50 focus:bg-white">
+                      <SelectValue placeholder={t('allSizes')} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">{t('allSizes')}</SelectItem>
+                      {uniqueSizes.map((sizeName) => (
+                        <SelectItem key={sizeName} value={sizeName}>
+                          {sizeName}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             </div>
           </CardContent>
@@ -420,8 +501,8 @@ export default function AdminInventoryPage() {
                             </div>
                           </div>
                           <Badge
-                            variant={variant.status === 'in_stock' ? 'default' : 'secondary'}
-                            className={variant.status === 'in_stock' ? 'bg-emerald-600 text-white hover:bg-emerald-600' : undefined}
+                            variant={variant.status === 'in_stock' ? 'outline' : 'secondary'}
+                            className={variant.status === 'in_stock' ? 'bg-green-100 text-green-800 border-green-200 hover:bg-green-100' : undefined}
                           >
                             {variant.status === 'in_stock' ? t('inStock') : t('outOfStock')}
                           </Badge>
@@ -439,7 +520,14 @@ export default function AdminInventoryPage() {
                         <div className="flex gap-2">
                           <Button size="sm" variant="outline" onClick={() => handleViewVariant(variant)} className="flex-1"><Eye className="h-4 w-4" /></Button>
                           <Button size="sm" variant="outline" onClick={() => handleEditVariant(variant)} className="flex-1"><Edit className="h-4 w-4" /></Button>
-                          <Button size="sm" variant="destructive" onClick={() => handleDeleteVariant(variant.variant_id)}><Trash2 className="h-4 w-4" /></Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleDeleteVariant(variant.variant_id)}
+                            className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
                         </div>
                       </CardContent>
                     </Card>
@@ -496,8 +584,8 @@ export default function AdminInventoryPage() {
                           </td>
                           <td className="py-4 px-4">
                             <Badge
-                              variant={variant.status === 'in_stock' ? 'default' : 'secondary'}
-                              className={variant.status === 'in_stock' ? 'bg-emerald-600 text-white hover:bg-emerald-600' : undefined}
+                              variant={variant.status === 'in_stock' ? 'outline' : 'secondary'}
+                              className={variant.status === 'in_stock' ? 'bg-green-100 text-green-800 border-green-200 hover:bg-green-100' : undefined}
                             >
                               {variant.status === 'in_stock' ? t('inStock') : t('outOfStock')}
                             </Badge>
@@ -524,9 +612,9 @@ export default function AdminInventoryPage() {
                               </Button>
                               <Button
                                 size="sm"
-                                variant="destructive"
+                                variant="outline"
                                 onClick={() => handleDeleteVariant(variant.variant_id)}
-                                className="bg-red-600 hover:bg-red-700"
+                                className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
                                 title={t('delete')}
                               >
                                 <Trash2 className="h-4 w-4" />
@@ -591,6 +679,8 @@ export default function AdminInventoryPage() {
           confirmText={t('delete')}
           cancelText={t('cancel')}
         />
+          </>
+        )}
       </div>
     </div>
   )

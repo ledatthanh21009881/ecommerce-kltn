@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { toast } from 'sonner'
 import ConfirmModal from '@/components/ui/confirm-modal'
-import { Plus, Edit, Trash2, Search, RefreshCw, Tag, Percent, DollarSign, Calendar, LayoutList, LayoutGrid, ChevronLeft, ChevronRight, Check, X } from 'lucide-react'
+import { Plus, Edit, Trash2, Search, RefreshCw, Tag, Percent, DollarSign, Calendar, LayoutList, LayoutGrid, ChevronLeft, ChevronRight, CheckCircle2, XCircle } from 'lucide-react'
 import { getAuthData } from '@/lib/admin-auth'
 import { useLanguage } from '@/contexts/LanguageContext'
 
@@ -278,54 +278,62 @@ export default function PromotionsPage() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300">
+          <Card className="relative overflow-hidden border-slate-200/80 bg-white/90 shadow-sm backdrop-blur transition hover:shadow-md">
+            <div className="pointer-events-none absolute -right-6 -top-10 h-32 w-32 rounded-full bg-gradient-to-br from-blue-500/15 to-transparent" />
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-slate-600 mb-1">{t('totalVouchers')}</p>
                   <p className="text-3xl font-bold text-slate-900">{totalVouchers}</p>
+                  <p className="text-xs text-slate-500 mt-1">{t('total')}</p>
                 </div>
-                <div className="h-12 w-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg">
-                  <Tag className="h-6 w-6 text-white" />
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-500/15 text-blue-700">
+                  <Tag className="h-4 w-4" />
                 </div>
               </div>
             </CardContent>
           </Card>
-          <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300">
+          <Card className="relative overflow-hidden border-slate-200/80 bg-white/90 shadow-sm backdrop-blur transition hover:shadow-md">
+            <div className="pointer-events-none absolute -right-6 -top-10 h-32 w-32 rounded-full bg-gradient-to-br from-emerald-500/15 to-transparent" />
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-slate-600 mb-1">{t('active')}</p>
                   <p className="text-3xl font-bold text-slate-900">{activeVouchers}</p>
+                  <p className="text-xs text-slate-500 mt-1">{t('onThisPage')}</p>
                 </div>
-                <div className="h-12 w-12 bg-gradient-to-br from-emerald-500 to-green-600 rounded-xl flex items-center justify-center shadow-lg">
-                  <Check className="h-6 w-6 text-white" />
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-700">
+                  <CheckCircle2 className="h-4 w-4" />
                 </div>
               </div>
             </CardContent>
           </Card>
-          <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300">
+          <Card className="relative overflow-hidden border-slate-200/80 bg-white/90 shadow-sm backdrop-blur transition hover:shadow-md">
+            <div className="pointer-events-none absolute -right-6 -top-10 h-32 w-32 rounded-full bg-gradient-to-br from-slate-500/15 to-transparent" />
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-slate-600 mb-1">{t('inactive')}</p>
                   <p className="text-3xl font-bold text-slate-900">{inactiveVouchers}</p>
+                  <p className="text-xs text-slate-500 mt-1">{t('onThisPage')}</p>
                 </div>
-                <div className="h-12 w-12 bg-gradient-to-br from-slate-500 to-slate-600 rounded-xl flex items-center justify-center shadow-lg">
-                  <X className="h-6 w-6 text-white" />
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-500/15 text-slate-700">
+                  <XCircle className="h-4 w-4" />
                 </div>
               </div>
             </CardContent>
           </Card>
-          <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300">
+          <Card className="relative overflow-hidden border-slate-200/80 bg-white/90 shadow-sm backdrop-blur transition hover:shadow-md">
+            <div className="pointer-events-none absolute -right-6 -top-10 h-32 w-32 rounded-full bg-gradient-to-br from-amber-500/15 to-transparent" />
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-slate-600 mb-1">{t('percentage')}</p>
                   <p className="text-3xl font-bold text-slate-900">{percentageVouchers}</p>
+                  <p className="text-xs text-slate-500 mt-1">{t('onThisPage')}</p>
                 </div>
-                <div className="h-12 w-12 bg-gradient-to-br from-amber-500 to-orange-500 rounded-xl flex items-center justify-center shadow-lg">
-                  <Percent className="h-6 w-6 text-white" />
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-500/15 text-amber-700">
+                  <Percent className="h-4 w-4" />
                 </div>
               </div>
             </CardContent>
@@ -526,7 +534,7 @@ export default function PromotionsPage() {
                             </p>
                           </div>
                         </div>
-                        <Badge variant="outline" className={voucher.status === 'active' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-50 text-slate-600 border-slate-200'}>
+                        <Badge variant="outline" className={voucher.status === 'active' ? 'bg-green-100 text-green-800 border-green-200' : 'bg-slate-50 text-slate-600 border-slate-200'}>
                           {voucher.status === 'active' ? t('active') : t('inactive')}
                         </Badge>
                       </div>
@@ -595,7 +603,10 @@ export default function PromotionsPage() {
                           </div>
                         </td>
                         <td className="py-4 px-4 whitespace-nowrap">
-                          <Badge variant={voucher.status === 'active' ? 'default' : 'secondary'} className="whitespace-nowrap">
+                          <Badge
+                            variant="outline"
+                            className={`whitespace-nowrap ${voucher.status === 'active' ? 'bg-green-100 text-green-800 border-green-200' : 'bg-slate-50 text-slate-600 border-slate-200'}`}
+                          >
                             {voucher.status === 'active' ? t('active') : t('inactive')}
                           </Badge>
                         </td>

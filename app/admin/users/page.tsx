@@ -608,7 +608,12 @@ export default function AdminUsersPage() {
                               )}
                         </td>
                         <td className="py-4 px-4">
-                          <Badge variant={user.is_active ? 'default' : 'secondary'}>{user.is_active ? t('active') : t('inactive')}</Badge>
+                          <Badge
+                            variant="outline"
+                            className={user.is_active ? 'bg-green-100 text-green-800 border-green-200' : 'bg-slate-50 text-slate-600 border-slate-200'}
+                          >
+                            {user.is_active ? t('active') : t('inactive')}
+                          </Badge>
                         </td>
                         <td className="py-4 px-4 text-right">
                           <div className="flex justify-end gap-2">
@@ -660,7 +665,10 @@ export default function AdminUsersPage() {
                             {t(user.roles as any) || user.roles.charAt(0).toUpperCase() + user.roles.slice(1)}
                           </Badge>
                         )}
-                        <Badge variant={user.is_active ? 'default' : 'secondary'}>
+                        <Badge
+                          variant="outline"
+                          className={user.is_active ? 'bg-green-100 text-green-800 border-green-200' : 'bg-slate-50 text-slate-600 border-slate-200'}
+                        >
                           {user.is_active ? t('active') : t('inactive')}
                         </Badge>
                     </div>

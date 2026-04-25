@@ -53,7 +53,7 @@ export default function OrderDetailModal({ isOpen, onClose, order, onStatusUpdat
       case 'shipping':
         return 'bg-purple-50 text-purple-700 border-purple-200'
       case 'completed':
-        return 'bg-emerald-50 text-emerald-700 border-emerald-200'
+        return 'bg-green-100 text-green-800 border-green-200'
       case 'cancelled':
         return 'bg-red-50 text-red-700 border-red-200'
       case 'returned':
@@ -365,7 +365,7 @@ export default function OrderDetailModal({ isOpen, onClose, order, onStatusUpdat
                           <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">{t('status')}</p>
                           <Badge 
                             variant="outline" 
-                            className={orderDetails.payment.status === 'confirmed' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-700 border-amber-200'}
+                            className={orderDetails.payment.status === 'confirmed' ? 'bg-green-100 text-green-800 border-green-200' : 'bg-amber-50 text-amber-700 border-amber-200'}
                           >
                             {t(orderDetails.payment.status as any) || orderDetails.payment.status}
                           </Badge>

@@ -23,6 +23,7 @@ export default function AdminProductsPage() {
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('')
+  const [statusFilter, setStatusFilter] = useState('')
   const [page, setPage] = useState(1)
   const [limit] = useState(20)
   const [pagination, setPagination] = useState<{ total: number; per_page: number; current_page: number; last_page: number; from: number; to: number } | null>(null)
@@ -54,6 +55,7 @@ export default function AdminProductsPage() {
       params.set('limit', String(limit))
       if (selectedCategory) params.set('category_id', selectedCategory)
       if (searchTerm) params.set('search', searchTerm)
+      if (statusFilter) params.set('status', statusFilter)
       const response = await fetch(`/api/backend/v1/products?${params.toString()}`)
       const data = await response.json()
       
@@ -96,11 +98,11 @@ export default function AdminProductsPage() {
 
   useEffect(() => {
     setPage(1)
-  }, [selectedCategory, searchTerm])
+  }, [selectedCategory, searchTerm, statusFilter])
 
   useEffect(() => {
     fetchProducts()
-  }, [page, selectedCategory, searchTerm])
+  }, [page, selectedCategory, searchTerm, statusFilter])
 
   useEffect(() => {
     fetchCategories()
@@ -217,7 +219,7 @@ const formatPrice = (price: string | number) => {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'active': return 'bg-green-50 text-green-700 border-green-200'
+      case 'active': return 'bg-green-100 text-green-800 border-green-200'
       case 'inactive': return 'bg-gray-50 text-gray-700 border-gray-200'
       case 'draft': return 'bg-yellow-50 text-yellow-700 border-yellow-200'
       default: return 'bg-gray-50 text-gray-700 border-gray-200'
@@ -346,6 +348,20 @@ const formatPrice = (price: string | number) => {
                     </SelectContent>
                   </Select>
                 </div>
+                <div className="flex flex-col">
+                  <label className="text-xs font-medium text-slate-600 mb-1">{t('statusFilter')}</label>
+                  <Select value={statusFilter || 'all'} onValueChange={(value) => setStatusFilter(value === 'all' ? '' : value)}>
+                    <SelectTrigger className="min-w-[180px] border-slate-200 bg-white/50 focus:bg-white">
+                      <SelectValue placeholder={t('allStatus')} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">{t('allStatus')}</SelectItem>
+                      <SelectItem value="active">{t('productStatusActive')}</SelectItem>
+                      <SelectItem value="inactive">{t('productStatusInactive')}</SelectItem>
+                      <SelectItem value="draft">{t('productStatusDraft')}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             </div>
           </CardContent>
@@ -392,7 +408,7 @@ const formatPrice = (price: string | number) => {
                         <div className="flex gap-2">
                           <Button variant="outline" size="sm" onClick={() => handleViewProduct(product)} className="bg-white/80 border-slate-200 hover:bg-white"><Eye className="h-4 w-4" /></Button>
                           <Button variant="outline" size="sm" onClick={() => handleEditProduct(product)} className="bg-white/80 border-slate-200 hover:bg-white"><Edit className="h-4 w-4" /></Button>
-                          <Button variant="outline" size="sm" onClick={() => handleDeleteProduct(product.product_id)} className="bg-white/80 border-slate-200 hover:bg-white text-red-600"><Trash2 className="h-4 w-4" /></Button>
+                          <Button variant="outline" size="sm" onClick={() => handleDeleteProduct(product.product_id)} className="bg-white border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"><Trash2 className="h-4 w-4" /></Button>
                         </div>
                       </div>
                     </div>
