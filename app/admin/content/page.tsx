@@ -6,11 +6,14 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import ConfirmModal from '@/components/ui/confirm-modal'
 import { toast } from 'sonner'
 import { getAuthData } from '@/lib/admin-auth'
 import { Content, ContentCategory } from '@/lib/content-types'
 import ContentModal from '@/components/admin/ContentModal'
 import ContentCategoryModal from '@/components/admin/ContentCategoryModal'
+import CollectionsManager from '@/components/admin/CollectionsManager'
 import { useLanguage } from '@/contexts/LanguageContext'
 
 export default function AdminContentPage() {
@@ -19,11 +22,13 @@ export default function AdminContentPage() {
   const [categories, setCategories] = useState<ContentCategory[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
-  const [typeFilter, setTypeFilter] = useState('')
+  const [typeFilter, setTypeFilter] = useState('all')
   const [contentModalOpen, setContentModalOpen] = useState(false)
   const [selectedContent, setSelectedContent] = useState<Content | null>(null)
   const [categoryModalOpen, setCategoryModalOpen] = useState(false)
   const [selectedCategory, setSelectedCategory] = useState<ContentCategory | null>(null)
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState<{ type: 'content' | 'category'; id: number } | null>(null)
   const [stats, setStats] = useState({
     total: 0,
     pages: 0,
@@ -32,6 +37,7 @@ export default function AdminContentPage() {
     published: 0
   })
   const [page, setPage] = useState(1)
+  const [activeTab, setActiveTab] = useState<'contents' | 'collections'>('contents')
   const [limit] = useState(12)
   const [pagination, setPagination] = useState<{ total: number; current_page: number; last_page: number; from: number; to: number } | null>(null)
   const [viewMode, setViewMode] = useState<'list' | 'grid'>(() => {
@@ -80,7 +86,7 @@ export default function AdminContentPage() {
       const { token } = getAuthData()
       
       if (!token) {
-        toast.error('Authentication required')
+        toast.error(t('authenticationRequired'))
         return
       }
       
@@ -88,7 +94,7 @@ export default function AdminContentPage() {
       params.set('page', String(page))
       params.set('limit', String(limit))
       if (searchTerm) params.set('search', searchTerm)
-      if (typeFilter) params.set('content_type', typeFilter)
+      if (typeFilter !== 'all') params.set('content_type', typeFilter)
       const response = await fetch(`/api/backend/v1/content?${params.toString()}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -112,13 +118,13 @@ export default function AdminContentPage() {
         // Still set empty array to avoid errors
         setContents([])
         if (data.message && !data.message.includes('empty')) {
-          toast.error(data.message || 'Failed to fetch content')
+          toast.error(t('failedToFetchContent'))
         }
       }
     } catch (error) {
       console.error('Error fetching content:', error)
       setContents([])
-      toast.error('Error fetching content')
+      toast.error(t('errorFetchingContent'))
     } finally {
       setLoading(false)
     }
@@ -171,15 +177,11 @@ export default function AdminContentPage() {
     setContentModalOpen(true)
   }
 
-  const handleDeleteContent = async (id: number) => {
-    if (!confirm('Are you sure you want to delete this content? This action cannot be undone.')) {
-      return
-    }
-
+  const confirmDeleteContent = async (id: number) => {
     try {
       const { token } = getAuthData()
       if (!token) {
-        toast.error('Authentication required')
+        toast.error(t('authenticationRequired'))
         return
       }
 
@@ -201,12 +203,12 @@ export default function AdminContentPage() {
       })
 
       // Handle response - support both 204 No Content and JSON response
-      let data: any = { success: false, message: 'Unknown error', status_code: response.status }
+      let data: any = { success: false, message: t('unknownError'), status_code: response.status }
       
       // If status is 204 No Content, assume success (REST standard)
       if (response.status === 204) {
         console.log('[DELETE] Response is 204 No Content - assuming success')
-        data = { success: true, message: 'Content deleted successfully', status_code: 204 }
+        data = { success: true, message: t('contentDeletedSuccessfully'), status_code: 204 }
       } else {
         // Try to parse JSON response
         try {
@@ -221,7 +223,7 @@ export default function AdminContentPage() {
           if (!responseText.trim()) {
             if (response.ok || response.status === 200) {
               console.log('[DELETE] Empty body but status OK - assuming success')
-              data = { success: true, message: 'Content deleted successfully', status_code: response.status }
+              data = { success: true, message: t('contentDeletedSuccessfully'), status_code: response.status }
             } else {
               console.warn('[DELETE] Empty response body with non-OK status')
               data = { success: false, message: `Server returned ${response.status} ${response.statusText || ''}`, status_code: response.status }
@@ -234,12 +236,12 @@ export default function AdminContentPage() {
             // Validate parsed data
             if (typeof data !== 'object' || data === null) {
               console.warn('[DELETE] Parsed data is not an object:', data)
-              data = { success: response.ok || response.status === 200, message: 'Invalid response format', status_code: response.status }
+              data = { success: response.ok || response.status === 200, message: t('invalidResponseFormat'), status_code: response.status }
             } else if (Object.keys(data).length === 0) {
               console.warn('[DELETE] Parsed data is empty object - using status to determine success')
               data = { 
                 success: response.ok || response.status === 200, 
-                message: response.ok || response.status === 200 ? 'Content deleted successfully' : 'Empty response from server', 
+                message: response.ok || response.status === 200 ? t('contentDeletedSuccessfully') : t('emptyResponseFromServer'),
                 status_code: response.status 
               }
             }
@@ -248,11 +250,11 @@ export default function AdminContentPage() {
           console.error('[DELETE] Failed to parse JSON:', parseError)
           // If parsing fails but status is OK, assume success
           if (response.ok || response.status === 200 || response.status === 204) {
-            data = { success: true, message: 'Content deleted successfully', status_code: response.status }
+            data = { success: true, message: t('contentDeletedSuccessfully'), status_code: response.status }
           } else {
             data = {
               success: false,
-              message: `Invalid response format (HTTP ${response.status})`,
+              message: t('invalidResponseFormatWithStatus', { status: String(response.status) }),
               status_code: response.status
             }
           }
@@ -261,16 +263,16 @@ export default function AdminContentPage() {
 
       // Ensure we always have success (boolean) and message (string)
       const success = typeof data?.success === 'boolean' ? data.success : (response.ok || response.status === 200 || response.status === 204)
-      const message = typeof data?.message === 'string' && data.message.trim() 
-        ? data.message.trim() 
-        : (data?.errors || (success ? 'Content deleted successfully' : 'Unknown error occurred'))
+      const message = typeof data?.message === 'string' && data.message.trim()
+        ? data.message.trim()
+        : (data?.errors || (success ? t('contentDeletedSuccessfully') : t('unknownErrorOccurred')))
 
       if (success) {
-        toast.success(message)
+        toast.success(t('contentDeletedSuccessfully'))
         fetchContents()
         fetchStats()
       } else {
-        toast.error(message)
+        toast.error(t('failedToDeleteContent'))
         console.error('[DELETE] Error response:', {
           status: response.status,
           statusText: response.statusText,
@@ -282,15 +284,20 @@ export default function AdminContentPage() {
       }
     } catch (error: any) {
       console.error('[DELETE] Network or other error:', error)
-      toast.error(error?.message || 'Error deleting content. Please check your connection.')
+      toast.error(error?.message || t('errorDeletingContentWithConnection'))
     }
+  }
+
+  const handleDeleteContent = (id: number) => {
+    setDeleteTarget({ type: 'content', id })
+    setIsDeleteModalOpen(true)
   }
 
   const handlePublishContent = async (id: number) => {
     try {
       const { token } = getAuthData()
       if (!token) {
-        toast.error('Authentication required')
+        toast.error(t('authenticationRequired'))
         return
       }
 
@@ -305,15 +312,15 @@ export default function AdminContentPage() {
       const data = await response.json()
 
       if (data.success) {
-        toast.success('Content published successfully')
+        toast.success(t('contentPublishedSuccessfully'))
         fetchContents()
         fetchStats()
       } else {
-        toast.error(data.message || 'Failed to publish content')
+        toast.error(t('failedToPublishContent'))
       }
     } catch (error) {
       console.error('Error publishing content:', error)
-      toast.error('Error publishing content')
+      toast.error(t('errorPublishingContent'))
     }
   }
 
@@ -322,7 +329,7 @@ export default function AdminContentPage() {
     if (content.slug && content.status === 'published') {
       window.open(`/${content.slug}`, '_blank')
     } else {
-      toast.info('Content is not yet published')
+      toast.info(t('contentNotPublishedYet'))
     }
   }
 
@@ -336,15 +343,11 @@ export default function AdminContentPage() {
     setCategoryModalOpen(true)
   }
 
-  const handleDeleteCategory = async (id: number) => {
-    if (!confirm('Are you sure you want to delete this category?')) {
-      return
-    }
-
+  const confirmDeleteCategory = async (id: number) => {
     try {
       const { token } = getAuthData()
       if (!token) {
-        toast.error('Authentication required')
+        toast.error(t('authenticationRequired'))
         return
       }
 
@@ -359,15 +362,30 @@ export default function AdminContentPage() {
       const data = await response.json()
 
       if (data.success) {
-        toast.success('Category deleted successfully')
+        toast.success(t('categoryDeletedSuccessfully'))
         fetchCategories()
       } else {
-        toast.error(data.message || 'Failed to delete category')
+        toast.error(t('failedToDeleteCategory'))
       }
     } catch (error) {
       console.error('Error deleting category:', error)
-      toast.error('Error deleting category')
+      toast.error(t('errorDeletingCategory'))
     }
+  }
+
+  const handleDeleteCategory = (id: number) => {
+    setDeleteTarget({ type: 'category', id })
+    setIsDeleteModalOpen(true)
+  }
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return
+    if (deleteTarget.type === 'content') {
+      await confirmDeleteContent(deleteTarget.id)
+    } else {
+      await confirmDeleteCategory(deleteTarget.id)
+    }
+    setDeleteTarget(null)
   }
 
   const handleContentSaved = () => {
@@ -384,7 +402,7 @@ export default function AdminContentPage() {
     const matchesSearch = 
       content.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       content.content.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesType = !typeFilter || content.content_type === typeFilter
+    const matchesType = typeFilter === 'all' || content.content_type === typeFilter
     return matchesSearch && matchesType
   })
 
@@ -438,36 +456,57 @@ export default function AdminContentPage() {
             <h1 className="admin-page-title mb-2">{t('contentManagement')}</h1>
             <p className="admin-page-description">{t('contentManagementDesc')}</p>
           </div>
-          <div className="flex items-center gap-2 shrink-0 flex-nowrap">
-            <div className="flex rounded-lg border border-slate-200 bg-white/80 overflow-hidden">
-              <Button variant="ghost" size="sm" onClick={() => setViewModeAndStore('list')} className={`rounded-none ${viewMode === 'list' ? 'bg-slate-100' : ''}`} title={t('viewList')}>
-                <LayoutList className="h-4 w-4" />
+          {activeTab === 'contents' && (
+            <div className="flex items-center gap-2 shrink-0 flex-nowrap">
+              <div className="flex rounded-lg border border-slate-200 bg-white/80 overflow-hidden">
+                <Button variant="ghost" size="sm" onClick={() => setViewModeAndStore('list')} className={`rounded-none ${viewMode === 'list' ? 'bg-slate-100' : ''}`} title={t('viewList')}>
+                  <LayoutList className="h-4 w-4" />
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => setViewModeAndStore('grid')} className={`rounded-none ${viewMode === 'grid' ? 'bg-slate-100' : ''}`} title={t('viewGrid')}>
+                  <LayoutGrid className="h-4 w-4" />
+                </Button>
+              </div>
+              <Button variant="outline" onClick={fetchContents} disabled={loading} className="flex items-center gap-2 bg-white/80 backdrop-blur-sm border-slate-200 hover:bg-white">
+                <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                {t('refresh')}
               </Button>
-              <Button variant="ghost" size="sm" onClick={() => setViewModeAndStore('grid')} className={`rounded-none ${viewMode === 'grid' ? 'bg-slate-100' : ''}`} title={t('viewGrid')}>
-                <LayoutGrid className="h-4 w-4" />
+              <Button className="flex items-center gap-2" onClick={handleCreateContent}>
+                <Plus className="h-4 w-4" />
+                {t('createContent')}
+              </Button>
+              <Button variant="outline" className="flex items-center gap-2 bg-white/80 backdrop-blur-sm border-slate-200 hover:bg-white" onClick={handleCreateCategory}>
+                <Plus className="h-4 w-4" />
+                {t('manageCategories')}
               </Button>
             </div>
-            <Button variant="outline" onClick={fetchContents} disabled={loading} className="flex items-center gap-2 bg-white/80 backdrop-blur-sm border-slate-200 hover:bg-white">
-              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-              Refresh
-            </Button>
-            <Button className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white" onClick={handleCreateContent}>
-              <Plus className="h-4 w-4" />
-              Create Content
-            </Button>
-            <Button variant="outline" className="flex items-center gap-2 bg-white/80 backdrop-blur-sm border-slate-200 hover:bg-white" onClick={handleCreateCategory}>
-              <Plus className="h-4 w-4" />
-              Manage Categories
-            </Button>
-          </div>
+          )}
         </div>
 
+        <div className="mb-6 flex items-center gap-2">
+          <Button
+            variant={activeTab === 'contents' ? 'default' : 'outline'}
+            onClick={() => setActiveTab('contents')}
+          >
+            Noi dung CMS
+          </Button>
+          <Button
+            variant={activeTab === 'collections' ? 'default' : 'outline'}
+            onClick={() => setActiveTab('collections')}
+          >
+            Collections
+          </Button>
+        </div>
+
+        {activeTab === 'collections' ? (
+          <CollectionsManager isVisible />
+        ) : (
+          <>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
           <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-slate-600 mb-1">Total Content</p>
+                  <p className="text-sm font-medium text-slate-600 mb-1">{t('totalContent')}</p>
                   <p className="text-3xl font-bold text-slate-900">{stats.total}</p>
                 </div>
                 <div className="h-12 w-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg">
@@ -480,7 +519,7 @@ export default function AdminContentPage() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-slate-600 mb-1">Pages</p>
+                  <p className="text-sm font-medium text-slate-600 mb-1">{t('contentPages')}</p>
                   <p className="text-3xl font-bold text-slate-900">{stats.pages}</p>
                 </div>
                 <div className="h-12 w-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
@@ -493,7 +532,7 @@ export default function AdminContentPage() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-slate-600 mb-1">Blog Posts</p>
+                  <p className="text-sm font-medium text-slate-600 mb-1">{t('blogPosts')}</p>
                   <p className="text-3xl font-bold text-slate-900">{stats.blogs}</p>
                 </div>
                 <div className="h-12 w-12 bg-gradient-to-br from-emerald-500 to-green-600 rounded-xl flex items-center justify-center shadow-lg">
@@ -506,7 +545,7 @@ export default function AdminContentPage() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-slate-600 mb-1">FAQs</p>
+                  <p className="text-sm font-medium text-slate-600 mb-1">{t('faqs')}</p>
                   <p className="text-3xl font-bold text-slate-900">{stats.faqs}</p>
                 </div>
                 <div className="h-12 w-12 bg-gradient-to-br from-purple-500 to-violet-600 rounded-xl flex items-center justify-center shadow-lg">
@@ -519,7 +558,7 @@ export default function AdminContentPage() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-slate-600 mb-1">Published</p>
+                  <p className="text-sm font-medium text-slate-600 mb-1">{t('contentPublished')}</p>
                   <p className="text-3xl font-bold text-slate-900">{stats.published}</p>
                 </div>
                 <div className="h-12 w-12 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl flex items-center justify-center shadow-lg">
@@ -535,11 +574,11 @@ export default function AdminContentPage() {
             <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-end justify-between">
               <div className="flex flex-col sm:flex-row gap-4 flex-1 w-full">
                 <div className="flex flex-col flex-1 max-w-md">
-                  <label className="text-xs font-medium text-slate-600 mb-1">Search</label>
+                  <label className="text-xs font-medium text-slate-600 mb-1">{t('search')}</label>
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 h-4 w-4" />
                     <Input
-                      placeholder="Search content by title or content..."
+                      placeholder={t('searchContentPlaceholder')}
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
                       className="pl-10 bg-white/50 border-slate-200 focus:bg-white focus:border-blue-500 transition-all duration-200"
@@ -548,18 +587,19 @@ export default function AdminContentPage() {
                 </div>
 
                 <div className="flex flex-col">
-                  <label className="text-xs font-medium text-slate-600 mb-1">Type</label>
-                  <select
-                    value={typeFilter}
-                    onChange={(e) => setTypeFilter(e.target.value)}
-                    className="px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white/50 focus:bg-white min-w-[140px]"
-                  >
-                    <option value="">All Types</option>
-                    <option value="page">Pages</option>
-                    <option value="blog">Blog Posts</option>
-                    <option value="faq">FAQs</option>
-                    <option value="policy">Policies</option>
-                  </select>
+                  <label className="text-xs font-medium text-slate-600 mb-1">{t('type')}</label>
+                  <Select value={typeFilter} onValueChange={setTypeFilter}>
+                    <SelectTrigger className="min-w-[170px] border-slate-200 bg-white/50 focus:bg-white">
+                      <SelectValue placeholder={t('allTypes')} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">{t('allTypes')}</SelectItem>
+                      <SelectItem value="page">{t('contentPages')}</SelectItem>
+                      <SelectItem value="blog">{t('blogPosts')}</SelectItem>
+                      <SelectItem value="faq">{t('faqs')}</SelectItem>
+                      <SelectItem value="policy">{t('policies')}</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
             </div>
@@ -585,8 +625,8 @@ export default function AdminContentPage() {
           <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg">
             <CardContent className="p-12 text-center">
               <FileText className="h-12 w-12 text-slate-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-slate-900 mb-2">No content found</h3>
-              <p className="text-slate-500">No content matches your search criteria.</p>
+              <h3 className="text-lg font-medium text-slate-900 mb-2">{t('noContentFound')}</h3>
+              <p className="text-slate-500">{t('noContentMatch')}</p>
             </CardContent>
           </Card>
         ) : viewMode === 'list' ? (
@@ -596,11 +636,11 @@ export default function AdminContentPage() {
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-slate-200 bg-slate-50/80">
-                      <th className="text-left py-3 px-4 font-medium text-slate-900">Title</th>
-                      <th className="text-left py-3 px-4 font-medium text-slate-900">Type</th>
-                      <th className="text-left py-3 px-4 font-medium text-slate-900">Status</th>
-                      <th className="text-left py-3 px-4 font-medium text-slate-900">Created</th>
-                      <th className="text-right py-3 px-4 font-medium text-slate-900">Actions</th>
+                      <th className="text-left py-3 px-4 font-medium text-slate-900">{t('title')}</th>
+                      <th className="text-left py-3 px-4 font-medium text-slate-900">{t('type')}</th>
+                      <th className="text-left py-3 px-4 font-medium text-slate-900">{t('status')}</th>
+                      <th className="text-left py-3 px-4 font-medium text-slate-900">{t('created')}</th>
+                      <th className="text-right py-3 px-4 font-medium text-slate-900">{t('actions')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -611,10 +651,28 @@ export default function AdminContentPage() {
                           <div className="text-xs text-slate-500 line-clamp-1">{truncateContent(content.excerpt || content.content)}</div>
                         </td>
                         <td className="py-4 px-4">
-                          <Badge variant="outline" className={getTypeColor(content.content_type)}>{content.content_type}</Badge>
+                          <Badge variant="outline" className={getTypeColor(content.content_type)}>
+                            {content.content_type === 'page'
+                              ? t('page')
+                              : content.content_type === 'blog'
+                                ? t('blog')
+                                : content.content_type === 'faq'
+                                  ? t('faq')
+                                  : content.content_type === 'policy'
+                                    ? t('policy')
+                                    : content.content_type}
+                          </Badge>
                         </td>
                         <td className="py-4 px-4">
-                          <Badge variant="outline" className={getStatusColor(content.status)}>{content.status}</Badge>
+                          <Badge variant="outline" className={getStatusColor(content.status)}>
+                            {content.status === 'published'
+                                ? t('contentPublished')
+                              : content.status === 'draft'
+                                ? t('draft')
+                                : content.status === 'archived'
+                                  ? t('archived')
+                                  : content.status}
+                          </Badge>
                         </td>
                         <td className="py-4 px-4 text-sm text-slate-600">{formatDate(content.created_at)}</td>
                         <td className="py-4 px-4 text-right">
@@ -649,13 +707,31 @@ export default function AdminContentPage() {
                           variant="outline" 
                           className={`flex items-center gap-1 ${getTypeColor(content.content_type)}`}
                         >
-                          {content.content_type.charAt(0).toUpperCase() + content.content_type.slice(1)}
+                          {content.content_type === 'page'
+                            ? t('page')
+                            : content.content_type === 'blog'
+                              ? t('blog')
+                              : content.content_type === 'faq'
+                                ? t('faq')
+                                : content.content_type === 'policy'
+                                  ? t('policy')
+                                  : content.content_type === 'editorial'
+                                    ? t('editorial')
+                                    : content.content_type}
                         </Badge>
                         <Badge 
                           variant="outline" 
                           className={`flex items-center gap-1 ${getStatusColor(content.status)}`}
                         >
-                          {content.status.charAt(0).toUpperCase() + content.status.slice(1)}
+                          {content.status === 'published'
+                            ? t('contentPublished')
+                            : content.status === 'draft'
+                              ? t('draft')
+                              : content.status === 'scheduled'
+                                ? t('scheduled')
+                                : content.status === 'archived'
+                                  ? t('archived')
+                                  : content.status}
                         </Badge>
                       </div>
                     </div>
@@ -667,15 +743,15 @@ export default function AdminContentPage() {
 
                     {/* Meta Info */}
                     <div className="space-y-2 text-sm">
-                      {(content.author || content.author_name) && (
+                      {content.author_name && (
                         <div className="flex justify-between">
-                          <span className="text-gray-600">Author:</span>
-                          <span className="font-medium">{content.author_name || content.author}</span>
+                          <span className="text-gray-600">{t('author')}:</span>
+                          <span className="font-medium">{content.author_name}</span>
                         </div>
                       )}
                       {content.view_count !== undefined && (
                         <div className="flex justify-between">
-                          <span className="text-gray-600">Views:</span>
+                          <span className="text-gray-600">{t('views')}:</span>
                           <span className="font-medium">{content.view_count}</span>
                         </div>
                       )}
@@ -684,12 +760,12 @@ export default function AdminContentPage() {
                     {/* Dates */}
                     <div className="space-y-1 text-xs text-gray-500">
                       <div className="flex justify-between">
-                        <span>Created:</span>
+                        <span>{t('created')}:</span>
                         <span>{formatDate(content.created_at)}</span>
                       </div>
                       {content.updated_at && content.updated_at !== content.created_at && (
                         <div className="flex justify-between">
-                          <span>Updated:</span>
+                          <span>{t('updated')}:</span>
                           <span>{formatDate(content.updated_at)}</span>
                         </div>
                       )}
@@ -704,7 +780,7 @@ export default function AdminContentPage() {
                         onClick={() => handleEditContent(content)}
                       >
                         <Edit className="h-4 w-4 mr-2" />
-                        Edit
+                        {t('edit')}
                       </Button>
                       <Button
                         variant="outline"
@@ -781,6 +857,21 @@ export default function AdminContentPage() {
           category={selectedCategory}
           onSaved={handleCategorySaved}
         />
+
+        <ConfirmModal
+          isOpen={isDeleteModalOpen}
+          onClose={() => {
+            setIsDeleteModalOpen(false)
+            setDeleteTarget(null)
+          }}
+          onConfirm={confirmDelete}
+          title={deleteTarget?.type === 'category' ? t('deleteCategory') : t('delete')}
+          description={deleteTarget?.type === 'category' ? t('deleteCategoryConfirmShort') : t('deleteContentConfirm')}
+          confirmText={t('delete')}
+          cancelText={t('cancel')}
+        />
+        </>
+        )}
       </div>
     </div>
   )

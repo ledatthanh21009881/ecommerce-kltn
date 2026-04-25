@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -82,6 +81,9 @@ export default function AdminLoginPage() {
 
       if (result.success) {
         console.log('Login successful, setting auth data:', result.data)
+        if (result.data?.refresh_token) {
+          localStorage.setItem('refresh_token', result.data.refresh_token)
+        }
         // API returns 'account' instead of 'user'
         setAuthData(result.data.token, result.data.account)
         toast.success(getTranslation('adminLoginSuccess', getAdminUiLanguage()))
@@ -153,20 +155,20 @@ export default function AdminLoginPage() {
               </div>
             </div>
 
-            <Button 
-              type="submit" 
-              className="w-full" 
-              disabled={loading}
-            >
-              {loading ? 'Signing in...' : 'Sign In'}
-            </Button>
+            <div className="relative overflow-hidden border border-black">
+              <button
+                type="submit"
+                className="relative h-10 w-full bg-black text-white text-sm font-normal uppercase tracking-wider transition-all duration-300 ease-in-out hover:bg-white hover:text-black group disabled:cursor-not-allowed disabled:opacity-60"
+                disabled={loading}
+              >
+                <span className="relative z-10 font-sans font-bold uppercase tracking-wider">
+                  {loading ? 'Signing in...' : 'Sign In'}
+                </span>
+                <div className="absolute inset-0 bg-white transform translate-x-full transition-transform duration-300 ease-in-out group-hover:translate-x-0 group-disabled:hidden"></div>
+              </button>
+            </div>
           </form>
 
-          <div className="mt-6 text-center">
-            <p className="text-sm text-gray-600">
-              Default credentials: admin / admin123
-            </p>
-          </div>
         </CardContent>
       </Card>
     </div>

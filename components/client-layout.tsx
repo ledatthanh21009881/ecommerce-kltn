@@ -15,11 +15,12 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
   const isChangePasswordPage = pathname === '/change-password'
   const isForgotPasswordPage = pathname === '/forgot-password'
   const isResetPasswordPage = pathname === '/reset-password'
+  const isRegisterPage = pathname === '/register'
 
   return (
     <div className="relative flex min-h-screen flex-col overflow-x-hidden">
       {/* Show main nav on all pages except admin, login, messenger, order map, change-password */}
-      {!isAdminPage && !isLoginPage && !isMessengerPage && !isOrderMapPage && !isChangePasswordPage && !isForgotPasswordPage && !isResetPasswordPage && (
+      {!isAdminPage && !isLoginPage && !isMessengerPage && !isOrderMapPage && !isChangePasswordPage && !isForgotPasswordPage && !isResetPasswordPage && !isRegisterPage && (
         <ScrollAwareNav />
       )}
 

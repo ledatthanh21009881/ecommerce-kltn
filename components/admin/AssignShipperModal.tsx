@@ -332,7 +332,7 @@ export default function AssignShipperModal({ isOpen, onClose, order, onShipperAs
           <Button
             onClick={handleAssignShipper}
             disabled={!selectedShipper || loading}
-            className="bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 text-white shadow-lg"
+            className="shadow-lg"
           >
             {loading ? t('assigning') : t('assignShipper')}
           </Button>

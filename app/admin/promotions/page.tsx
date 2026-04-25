@@ -6,9 +6,11 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { toast } from 'sonner'
 import ConfirmModal from '@/components/ui/confirm-modal'
-import { Plus, Edit, Trash2, Search, RefreshCw, Tag, Percent, DollarSign, Calendar, LayoutList, LayoutGrid, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Plus, Edit, Trash2, Search, RefreshCw, Tag, Percent, DollarSign, Calendar, LayoutList, LayoutGrid, ChevronLeft, ChevronRight, Check, X } from 'lucide-react'
 import { getAuthData } from '@/lib/admin-auth'
 import { useLanguage } from '@/contexts/LanguageContext'
 
@@ -216,6 +218,12 @@ export default function PromotionsPage() {
     })
   }
 
+  const closeFormModal = () => {
+    setShowForm(false)
+    setEditingVoucher(null)
+    resetForm()
+  }
+
   const filteredVouchers = Array.isArray(vouchers) ? vouchers.filter(voucher => {
     const matchesSearch = voucher.code.toLowerCase().includes(searchTerm.toLowerCase())
     const matchesStatus = statusFilter === 'all' || voucher.status === statusFilter
@@ -262,7 +270,7 @@ export default function PromotionsPage() {
               <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
               {t('refresh')}
             </Button>
-            <Button onClick={() => setShowForm(true)} className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white">
+            <Button onClick={() => setShowForm(true)} className="flex items-center gap-2">
               <Plus className="h-4 w-4" />
               {t('addVoucher')}
             </Button>
@@ -291,7 +299,7 @@ export default function PromotionsPage() {
                   <p className="text-3xl font-bold text-slate-900">{activeVouchers}</p>
                 </div>
                 <div className="h-12 w-12 bg-gradient-to-br from-emerald-500 to-green-600 rounded-xl flex items-center justify-center shadow-lg">
-                  <Tag className="h-6 w-6 text-white" />
+                  <Check className="h-6 w-6 text-white" />
                 </div>
               </div>
             </CardContent>
@@ -304,7 +312,7 @@ export default function PromotionsPage() {
                   <p className="text-3xl font-bold text-slate-900">{inactiveVouchers}</p>
                 </div>
                 <div className="h-12 w-12 bg-gradient-to-br from-slate-500 to-slate-600 rounded-xl flex items-center justify-center shadow-lg">
-                  <Tag className="h-6 w-6 text-white" />
+                  <X className="h-6 w-6 text-white" />
                 </div>
               </div>
             </CardContent>
@@ -343,140 +351,139 @@ export default function PromotionsPage() {
 
                 <div className="flex flex-col">
                   <label className="text-xs font-medium text-slate-600 mb-1">{t('statusFilter')}</label>
-                  <select
-                    value={statusFilter}
-                    onChange={(e) => setStatusFilter(e.target.value)}
-                    className="px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white/50 focus:bg-white min-w-[140px]"
-                  >
-                    <option value="all">{t('all')}</option>
-                    <option value="active">{t('active')}</option>
-                    <option value="inactive">{t('inactive')}</option>
-                  </select>
+                  <Select value={statusFilter} onValueChange={setStatusFilter}>
+                    <SelectTrigger className="min-w-[160px] border-slate-200 bg-white/50 focus:bg-white">
+                      <SelectValue placeholder={t('statusFilter')} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">{t('all')}</SelectItem>
+                      <SelectItem value="active">{t('active')}</SelectItem>
+                      <SelectItem value="inactive">{t('inactive')}</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="flex flex-col">
                   <label className="text-xs font-medium text-slate-600 mb-1">{t('type')}</label>
-                  <select
-                    value={typeFilter}
-                    onChange={(e) => setTypeFilter(e.target.value)}
-                    className="px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white/50 focus:bg-white min-w-[140px]"
-                  >
-                    <option value="all">{t('all')}</option>
-                    <option value="percent">{t('percentage')}</option>
-                    <option value="amount">{t('fixedAmount')}</option>
-                  </select>
+                  <Select value={typeFilter} onValueChange={setTypeFilter}>
+                    <SelectTrigger className="min-w-[160px] border-slate-200 bg-white/50 focus:bg-white">
+                      <SelectValue placeholder={t('type')} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">{t('all')}</SelectItem>
+                      <SelectItem value="percent">{t('percentage')}</SelectItem>
+                      <SelectItem value="amount">{t('fixedAmount')}</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
             </div>
           </CardContent>
         </Card>
 
-      {showForm && (
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle>{editingVoucher ? t('editVoucher') : t('addNewVoucher')}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="code">{t('code')}</Label>
-                  <Input
-                    id="code"
-                    value={formData.code}
-                    onChange={(e) => setFormData({...formData, code: e.target.value})}
-                    required
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="discount_type">{t('discountType')}</Label>
-                  <select
-                    id="discount_type"
-                    value={formData.discount_type}
-                    onChange={(e) => setFormData({...formData, discount_type: e.target.value as 'percent' | 'amount'})}
-                    className="w-full p-2 border border-gray-200 rounded-md"
-                  >
-                    <option value="percent">{t('percentage')}</option>
-                    <option value="amount">{t('fixedAmount')}</option>
-                  </select>
-                </div>
-                <div>
-                  <Label htmlFor="discount_amount">{t('discountAmount')}</Label>
-                  <Input
-                    id="discount_amount"
-                    type="number"
-                    step="0.01"
-                    value={formData.discount_amount}
-                    onChange={(e) => setFormData({...formData, discount_amount: e.target.value})}
-                    required
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="min_order_total">{t('minimumOrderTotal')}</Label>
-                  <Input
-                    id="min_order_total"
-                    type="number"
-                    step="0.01"
-                    value={formData.min_order_total}
-                    onChange={(e) => setFormData({...formData, min_order_total: e.target.value})}
-                    required
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="max_usage">{t('maximumUses')}</Label>
-                  <Input
-                    id="max_usage"
-                    type="number"
-                    value={formData.max_usage}
-                    onChange={(e) => setFormData({...formData, max_usage: e.target.value})}
-                    required
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="start_date">{t('startDate')}</Label>
-                  <Input
-                    id="start_date"
-                    type="date"
-                    value={formData.start_date}
-                    onChange={(e) => setFormData({...formData, start_date: e.target.value})}
-                    required
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="end_date">{t('endDate')}</Label>
-                  <Input
-                    id="end_date"
-                    type="date"
-                    value={formData.end_date}
-                    onChange={(e) => setFormData({...formData, end_date: e.target.value})}
-                    required
-                  />
-                </div>
-              </div>
-              <div className="flex items-center space-x-2">
-                <input
-                  type="checkbox"
-                  id="status"
-                  checked={formData.status === 'active'}
-                  onChange={(e) => setFormData({...formData, status: e.target.checked ? 'active' : 'inactive'})}
+      <Dialog open={showForm} onOpenChange={(open) => { if (!open) closeFormModal() }}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>{editingVoucher ? t('editVoucher') : t('addNewVoucher')}</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="code">{t('code')}</Label>
+                <Input
+                  id="code"
+                  value={formData.code}
+                  onChange={(e) => setFormData({...formData, code: e.target.value})}
+                  required
                 />
-                <Label htmlFor="status">{t('active')}</Label>
               </div>
-              <div className="flex space-x-2">
-                <Button type="submit">
-                  {editingVoucher ? t('update') : t('create')} {t('voucher')}
-                </Button>
-                <Button type="button" variant="outline" onClick={() => {
-                  setShowForm(false)
-                  setEditingVoucher(null)
-                  resetForm()
-                }}>
-                  {t('cancel')}
-                </Button>
+              <div>
+                <Label htmlFor="discount_type">{t('discountType')}</Label>
+                <Select
+                  value={formData.discount_type}
+                  onValueChange={(value: 'percent' | 'amount') => setFormData({ ...formData, discount_type: value })}
+                >
+                  <SelectTrigger id="discount_type" className="w-full border-gray-200 bg-white">
+                    <SelectValue placeholder={t('discountType')} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="percent">{t('percentage')}</SelectItem>
+                    <SelectItem value="amount">{t('fixedAmount')}</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-            </form>
-          </CardContent>
-        </Card>
-      )}
+              <div>
+                <Label htmlFor="discount_amount">{t('discountAmount')}</Label>
+                <Input
+                  id="discount_amount"
+                  type="number"
+                  step="0.01"
+                  value={formData.discount_amount}
+                  onChange={(e) => setFormData({...formData, discount_amount: e.target.value})}
+                  required
+                />
+              </div>
+              <div>
+                <Label htmlFor="min_order_total">{t('minimumOrderTotal')}</Label>
+                <Input
+                  id="min_order_total"
+                  type="number"
+                  step="0.01"
+                  value={formData.min_order_total}
+                  onChange={(e) => setFormData({...formData, min_order_total: e.target.value})}
+                  required
+                />
+              </div>
+              <div>
+                <Label htmlFor="max_usage">{t('maximumUses')}</Label>
+                <Input
+                  id="max_usage"
+                  type="number"
+                  value={formData.max_usage}
+                  onChange={(e) => setFormData({...formData, max_usage: e.target.value})}
+                  required
+                />
+              </div>
+              <div>
+                <Label htmlFor="start_date">{t('startDate')}</Label>
+                <Input
+                  id="start_date"
+                  type="date"
+                  value={formData.start_date}
+                  onChange={(e) => setFormData({...formData, start_date: e.target.value})}
+                  required
+                />
+              </div>
+              <div>
+                <Label htmlFor="end_date">{t('endDate')}</Label>
+                <Input
+                  id="end_date"
+                  type="date"
+                  value={formData.end_date}
+                  onChange={(e) => setFormData({...formData, end_date: e.target.value})}
+                  required
+                />
+              </div>
+            </div>
+            <div className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                id="status"
+                checked={formData.status === 'active'}
+                onChange={(e) => setFormData({...formData, status: e.target.checked ? 'active' : 'inactive'})}
+              />
+              <Label htmlFor="status">{t('active')}</Label>
+            </div>
+            <div className="flex space-x-2">
+              <Button type="submit">
+                {editingVoucher ? t('update') : t('create')} {t('voucher')}
+              </Button>
+              <Button type="button" variant="outline" onClick={closeFormModal}>
+                {t('cancel')}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
 
         <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg">
           <CardContent className="p-6">
@@ -538,20 +545,20 @@ export default function PromotionsPage() {
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-slate-200">
-                      <th className="text-left py-3 px-4 font-medium text-gray-900">{t('code')}</th>
-                      <th className="text-left py-3 px-4 font-medium text-gray-900">{t('discountType')}</th>
-                      <th className="text-left py-3 px-4 font-medium text-gray-900">{t('discountAmount')}</th>
-                      <th className="text-left py-3 px-4 font-medium text-gray-900">{t('minimumOrderTotal')}</th>
-                      <th className="text-left py-3 px-4 font-medium text-gray-900">{t('maximumUses')}</th>
-                      <th className="text-left py-3 px-4 font-medium text-gray-900">{t('validPeriod')}</th>
-                      <th className="text-left py-3 px-4 font-medium text-gray-900">{t('status')}</th>
-                      <th className="text-left py-3 px-4 font-medium text-gray-900">{t('actions')}</th>
+                      <th className="w-[20%] text-left py-3 px-4 font-medium text-gray-900">{t('code')}</th>
+                      <th className="w-[13%] text-left py-3 px-4 font-medium text-gray-900">{t('discountType')}</th>
+                      <th className="w-[13%] text-left py-3 px-4 font-medium text-gray-900">{t('discountAmount')}</th>
+                      <th className="w-[14%] text-left py-3 px-4 font-medium text-gray-900">{t('minimumOrderTotal')}</th>
+                      <th className="w-[10%] text-left py-3 px-4 font-medium text-gray-900">{t('maximumUses')}</th>
+                      <th className="w-[20%] text-left py-3 px-4 font-medium text-gray-900">{t('validPeriod')}</th>
+                      <th className="w-[5%] text-left py-3 px-4 font-medium text-gray-900 whitespace-nowrap">{t('status')}</th>
+                      <th className="w-[5%] text-left py-3 px-4 font-medium text-gray-900 whitespace-nowrap">{t('actions')}</th>
                     </tr>
                   </thead>
                   <tbody>
                     {filteredVouchers.map((voucher) => (
                       <tr key={voucher.voucher_id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
-                        <td className="py-4 px-4">
+                        <td className="py-4 px-4 min-w-[220px]">
                           <div className="flex items-center gap-3">
                             <div className="h-8 w-8 bg-blue-100 rounded flex items-center justify-center">
                               <Tag className="h-4 w-4 text-blue-600" />
@@ -562,41 +569,33 @@ export default function PromotionsPage() {
                             </div>
                           </div>
                         </td>
-                        <td className="py-4 px-4">
+                        <td className="py-4 px-4 whitespace-nowrap">
                           <Badge variant="outline">
                             {voucher.discount_type === 'percent' ? t('percentage') : t('fixedAmount')}
                           </Badge>
                         </td>
-                        <td className="py-4 px-4">
-                          <div className="flex items-center gap-2">
-                            {voucher.discount_type === 'percent' ? (
-                              <Percent className="h-4 w-4 text-blue-500" />
-                            ) : (
-                              <DollarSign className="h-4 w-4 text-green-500" />
-                            )}
-                            <span className="font-medium text-gray-900">
-                              {voucher.discount_amount}
-                              {voucher.discount_type === 'percent' ? '%' : 'đ'}
+                        <td className="py-4 px-4 whitespace-nowrap">
+                          <span className="font-medium text-gray-900">
+                            {voucher.discount_amount}
+                            {voucher.discount_type === 'percent' ? '%' : 'đ'}
+                          </span>
+                        </td>
+                        <td className="py-4 px-4 text-gray-600 whitespace-nowrap">
+                          {voucher.min_order_total.toLocaleString()}đ
+                        </td>
+                        <td className="py-4 px-4 text-gray-600 whitespace-nowrap">
+                          {voucher.max_usage}
+                        </td>
+                        <td className="py-4 px-4 min-w-[220px] whitespace-nowrap">
+                          <div className="flex items-center gap-2 text-sm">
+                            <Calendar className="h-4 w-4 text-gray-400" />
+                            <span>
+                              {new Date(voucher.start_date).toLocaleDateString()} - {new Date(voucher.end_date).toLocaleDateString()}
                             </span>
                           </div>
                         </td>
-                        <td className="py-4 px-4 text-gray-600">
-                          {voucher.min_order_total.toLocaleString()}đ
-                        </td>
-                        <td className="py-4 px-4 text-gray-600">
-                          {voucher.max_usage}
-                        </td>
-                        <td className="py-4 px-4">
-                          <div className="flex items-center gap-2">
-                            <Calendar className="h-4 w-4 text-gray-400" />
-                            <div className="text-sm">
-                              <div>{new Date(voucher.start_date).toLocaleDateString()}</div>
-                              <div className="text-gray-500">to {new Date(voucher.end_date).toLocaleDateString()}</div>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="py-4 px-4">
-                          <Badge variant={voucher.status === 'active' ? 'default' : 'secondary'}>
+                        <td className="py-4 px-4 whitespace-nowrap">
+                          <Badge variant={voucher.status === 'active' ? 'default' : 'secondary'} className="whitespace-nowrap">
                             {voucher.status === 'active' ? t('active') : t('inactive')}
                           </Badge>
                         </td>
@@ -604,18 +603,18 @@ export default function PromotionsPage() {
                           <div className="flex items-center gap-2">
                             <Button
                               size="sm"
-                              variant="secondary"
+                              variant="outline"
                               onClick={() => handleEdit(voucher)}
-                              className="bg-white text-gray-900 hover:bg-gray-100"
+                              className="bg-white/80 border-slate-200 hover:bg-white"
                               title={t('edit')}
                             >
                               <Edit className="h-4 w-4" />
                             </Button>
                             <Button
                               size="sm"
-                              variant="destructive"
+                              variant="outline"
                               onClick={() => handleDelete(voucher.voucher_id)}
-                              className="bg-red-600 hover:bg-red-700"
+                              className="text-red-600 border-red-200 hover:bg-red-50"
                               title={t('delete')}
                             >
                               <Trash2 className="h-4 w-4" />

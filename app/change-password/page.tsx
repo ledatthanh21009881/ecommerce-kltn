@@ -147,7 +147,7 @@ export default function ChangePasswordPage() {
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="relative h-10 w-full bg-black text-sm font-normal uppercase tracking-wider text-white transition-all duration-300 ease-in-out hover:bg-white hover:text-black disabled:cursor-not-allowed disabled:opacity-60 group"
+                  className="relative h-10 w-full bg-black text-white text-sm font-normal uppercase tracking-wider transition-all duration-300 ease-in-out hover:bg-white hover:text-black group disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   <span className="relative z-10 font-sans font-bold uppercase tracking-wider">
                     {isLoading ? t('auth.changingPassword') : t('auth.changePassword')}

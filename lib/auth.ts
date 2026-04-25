@@ -248,7 +248,14 @@ export async function registerUser(data: RegisterData): Promise<ApiResponse<Regi
     })
 
     if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`)
+      const errorData = await response.json().catch(() => null) as {
+        message?: string
+        errors?: Record<string, string[]>
+      } | null
+      const firstFieldError = errorData?.errors
+        ? Object.values(errorData.errors)[0]?.[0]
+        : null
+      throw new Error(firstFieldError || errorData?.message || `HTTP error! status: ${response.status}`)
     }
 
     return await response.json()

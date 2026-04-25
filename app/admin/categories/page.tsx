@@ -181,7 +181,7 @@ export default function AdminCategoriesPage() {
               <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
               {t('refresh')}
             </Button>
-            <Button onClick={handleAddCategory} className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white">
+            <Button onClick={handleAddCategory} className="flex items-center gap-2">
               <Plus className="h-4 w-4" />
               {t('addCategory')}
             </Button>

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Search, RefreshCw, Users, UserPlus, Mail, Phone, Calendar, Shield, X, Truck, LayoutList, LayoutGrid, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Search, RefreshCw, Users, UserPlus, Mail, Phone, Calendar, Shield, Truck, LayoutList, LayoutGrid, ChevronLeft, ChevronRight, Edit, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
@@ -11,8 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { toast } from 'sonner'
-import { apiClient } from '@/lib/api-client'
-import { getAuthData, isAuthenticated } from '@/lib/admin-auth'
+import { isAuthenticated } from '@/lib/admin-auth'
 import ConfirmModal from '@/components/ui/confirm-modal'
 import { useLanguage } from '@/contexts/LanguageContext'
 
@@ -70,7 +69,7 @@ export default function AdminUsersPage() {
   })
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
-  const [roleFilter, setRoleFilter] = useState('')
+  const [roleFilter, setRoleFilter] = useState('all')
   const [showAddModal, setShowAddModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
@@ -167,11 +166,11 @@ export default function AdminUsersPage() {
         setUsers(Array.isArray(list) ? list : [])
       } else {
         console.error('❌ Failed to fetch users:', data.message)
-        toast.error('Failed to fetch users')
+        toast.error(t('failedToFetchUsers'))
       }
     } catch (error) {
       console.error('❌ Error fetching users:', error)
-      toast.error('Error fetching users')
+      toast.error(t('failedToFetchUsers'))
     } finally {
       setLoading(false)
     }
@@ -229,7 +228,7 @@ export default function AdminUsersPage() {
       user.account_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
       `${user.first_name} ${user.last_name}`.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesRole = !roleFilter || (Array.isArray(user.roles) ? user.roles.includes(roleFilter) : user.roles === roleFilter)
+    const matchesRole = roleFilter === 'all' || (Array.isArray(user.roles) ? user.roles.includes(roleFilter) : user.roles === roleFilter)
     return matchesSearch && matchesRole
   })
 
@@ -313,7 +312,7 @@ export default function AdminUsersPage() {
     try {
       const token = localStorage.getItem('adminToken')
       if (!token) {
-        toast.error('No admin token found')
+        toast.error(t('authenticationFailed'))
         return
       }
 
@@ -331,15 +330,15 @@ export default function AdminUsersPage() {
 
       const data = await response.json()
       if (data.success) {
-        toast.success('User đã được xóa thành công')
+        toast.success(t('userDeletedSuccessfully'))
         fetchUsers()
         fetchStats()
       } else {
-        toast.error(data.message || 'Xóa user thất bại')
+        toast.error(data.message || t('failedToDeleteUser'))
       }
     } catch (error) {
       console.error('Error deleting user:', error)
-      toast.error('Xóa user thất bại')
+      toast.error(t('failedToDeleteUser'))
     } finally {
       setShowDeleteModal(false)
       setDeletingUserId(null)
@@ -350,7 +349,7 @@ export default function AdminUsersPage() {
     try {
       const token = localStorage.getItem('adminToken')
       if (!token) {
-        toast.error('No admin token found')
+        toast.error(t('authenticationFailed'))
         return
       }
 
@@ -371,14 +370,14 @@ export default function AdminUsersPage() {
 
       const data = await response.json()
       if (data.success) {
-        toast.success(isLocked ? 'User đã được mở khóa' : 'User đã được khóa')
+        toast.success(isLocked ? t('userUnlockedSuccessfully') : t('userLockedSuccessfully'))
         fetchUsers()
       } else {
-        toast.error(data.message || 'Thao tác thất bại')
+        toast.error(data.message || t('operationFailed'))
       }
     } catch (error) {
       console.error('Error toggling user lock:', error)
-      toast.error('Thao tác thất bại')
+      toast.error(t('operationFailed'))
     }
   }
 
@@ -389,7 +388,7 @@ export default function AdminUsersPage() {
         <div className="max-w-7xl mx-auto">
           <div className="text-center">
             <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto"></div>
-            <p className="mt-4 text-lg">Loading...</p>
+              <p className="mt-4 text-lg">{t('loading')}</p>
           </div>
         </div>
       </div>
@@ -418,7 +417,7 @@ export default function AdminUsersPage() {
               <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
               {t('refresh')}
             </Button>
-            <Button className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white" onClick={() => setShowAddModal(true)}>
+            <Button className="flex items-center gap-2" onClick={() => setShowAddModal(true)}>
               <UserPlus className="h-4 w-4" />
               {t('addUser')}
             </Button>
@@ -531,17 +530,19 @@ export default function AdminUsersPage() {
                 </div>
                 <div className="flex flex-col">
                   <label className="text-xs font-medium text-slate-600 mb-1">{t('role')}</label>
-                  <select
-                    value={roleFilter}
-                    onChange={(e) => setRoleFilter(e.target.value)}
-                    className="px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white/50 focus:bg-white min-w-[140px]"
-                  >
-                  <option value="">{t('allRoles')}</option>
-                  <option value="admin">{t('admin')}</option>
-                  <option value="manager">{t('manager')}</option>
-                  <option value="staff">{t('staff')}</option>
-                  <option value="customer">{t('customer')}</option>
-                  </select>
+                  <Select value={roleFilter} onValueChange={setRoleFilter}>
+                    <SelectTrigger className="min-w-[180px] border-slate-200 bg-white/50 focus:bg-white">
+                      <SelectValue placeholder={t('allRoles')} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">{t('allRoles')}</SelectItem>
+                      <SelectItem value="admin">{t('admin')}</SelectItem>
+                      <SelectItem value="manager">{t('manager')}</SelectItem>
+                      <SelectItem value="staff">{t('staff')}</SelectItem>
+                      <SelectItem value="customer">{t('customer')}</SelectItem>
+                      <SelectItem value="shipper">{t('shipper')}</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
             </div>
@@ -567,8 +568,8 @@ export default function AdminUsersPage() {
           <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg">
             <CardContent className="p-12 text-center">
               <Users className="h-12 w-12 text-slate-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-slate-900 mb-2">No users found</h3>
-              <p className="text-slate-500">No users match your search criteria.</p>
+              <h3 className="text-lg font-medium text-slate-900 mb-2">{t('noUsersFound')}</h3>
+              <p className="text-slate-500">{t('noUsersMatchSearchCriteria')}</p>
             </CardContent>
           </Card>
         ) : viewMode === 'list' ? (
@@ -578,11 +579,11 @@ export default function AdminUsersPage() {
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-slate-200 bg-slate-50/80">
-                      <th className="text-left py-3 px-4 font-medium text-slate-900">Name</th>
-                      <th className="text-left py-3 px-4 font-medium text-slate-900">Email</th>
-                      <th className="text-left py-3 px-4 font-medium text-slate-900">Roles</th>
-                      <th className="text-left py-3 px-4 font-medium text-slate-900">Status</th>
-                      <th className="text-right py-3 px-4 font-medium text-slate-900">Actions</th>
+                      <th className="text-left py-3 px-4 font-medium text-slate-900">{t('nameLabel')}</th>
+                      <th className="text-left py-3 px-4 font-medium text-slate-900">{t('emailLabel')}</th>
+                      <th className="text-left py-3 px-4 font-medium text-slate-900">{t('role')}</th>
+                      <th className="text-left py-3 px-4 font-medium text-slate-900">{t('status')}</th>
+                      <th className="text-right py-3 px-4 font-medium text-slate-900">{t('actions')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -594,15 +595,29 @@ export default function AdminUsersPage() {
                         </td>
                         <td className="py-4 px-4 text-sm text-slate-600">{user.email}</td>
                         <td className="py-4 px-4">
-                          {Array.isArray(user.roles) ? user.roles.map((r, i) => <Badge key={i} variant="outline" className={`mr-1 ${getRoleColor(r)}`}>{r}</Badge>) : <Badge variant="outline" className={getRoleColor(user.roles)}>{user.roles}</Badge>}
+                          {Array.isArray(user.roles)
+                            ? user.roles.map((r, i) => (
+                                <Badge key={i} variant="outline" className={`mr-1 ${getRoleColor(r)}`}>
+                                  {t(r as any)}
+                                </Badge>
+                              ))
+                            : (
+                                <Badge variant="outline" className={getRoleColor(user.roles)}>
+                                  {t(user.roles as any)}
+                                </Badge>
+                              )}
                         </td>
                         <td className="py-4 px-4">
                           <Badge variant={user.is_active ? 'default' : 'secondary'}>{user.is_active ? t('active') : t('inactive')}</Badge>
                         </td>
                         <td className="py-4 px-4 text-right">
                           <div className="flex justify-end gap-2">
-                            <Button size="sm" variant="outline" onClick={() => handleEditUser(user)} className="bg-white/80 border-slate-200">{t('edit')}</Button>
-                            <Button size="sm" variant="outline" onClick={() => handleDeleteUser(user.user_id)} className="text-red-600 border-red-200 hover:bg-red-50">{t('delete')}</Button>
+                            <Button size="sm" variant="outline" onClick={() => handleEditUser(user)} className="bg-white/80 border-slate-200 hover:bg-white" title={t('edit')}>
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button size="sm" variant="outline" onClick={() => handleDeleteUser(user.user_id)} className="text-red-600 border-red-200 hover:bg-red-50" title={t('delete')}>
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
                           </div>
                         </td>
                       </tr>
@@ -685,18 +700,20 @@ export default function AdminUsersPage() {
                       <Button
                         variant="outline"
                         size="sm"
-                        className="flex-1"
+                        className="flex-1 bg-white/80 border-slate-200 hover:bg-white"
                         onClick={() => handleEditUser(user)}
+                        title={t('edit')}
                       >
-                        {t('edit')}
+                        <Edit className="h-4 w-4" />
                       </Button>
                       <Button
                         variant="outline"
                         size="sm"
-                        className="flex-1"
+                        className="flex-1 text-red-600 border-red-200 hover:bg-red-50"
                         onClick={() => handleDeleteUser(user.user_id)}
+                        title={t('delete')}
                       >
-                        {t('delete')}
+                        <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
                   </div>
@@ -793,10 +810,10 @@ export default function AdminUsersPage() {
             setDeletingUserId(null)
           }}
           onConfirm={confirmDeleteUser}
-          title="Xóa User"
-          description="Bạn có chắc chắn muốn xóa user này? Hành động này không thể hoàn tác."
-          confirmText="Xóa"
-          cancelText="Cancel"
+          title={t('deleteUser')}
+          description={t('deleteUserConfirm')}
+          confirmText={t('delete')}
+          cancelText={t('cancel')}
         />
       </div>
     </div>
@@ -828,7 +845,7 @@ function AddUserForm({ roles, onSuccess, onCancel }: {
     try {
       const token = localStorage.getItem('adminToken')
       if (!token) {
-        toast.error('No admin token found')
+        toast.error(t('authenticationFailed'))
         return
       }
 
@@ -979,7 +996,7 @@ function EditUserForm({ user, roles, onSuccess, onCancel }: {
     try {
       const token = localStorage.getItem('adminToken')
       if (!token) {
-        toast.error('No admin token found')
+        toast.error(t('authenticationFailed'))
         return
       }
 

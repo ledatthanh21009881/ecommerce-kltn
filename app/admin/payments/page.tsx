@@ -1,13 +1,14 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Search, RefreshCw, CreditCard, DollarSign, CheckCircle, XCircle, Clock, AlertCircle, LayoutList, LayoutGrid, ChevronLeft, ChevronRight, Eye } from 'lucide-react'
+import { Search, RefreshCw, CreditCard, DollarSign, CheckCircle, XCircle, Clock, AlertCircle, LayoutList, LayoutGrid, ChevronLeft, ChevronRight, Eye, TrendingUp } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle } from '@/components/ui/dialog'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { toast } from 'sonner'
 import { getAuthData, checkAndRefreshAuth } from '@/lib/admin-auth'
 import { useLanguage } from '@/contexts/LanguageContext'
@@ -56,8 +57,8 @@ export default function AdminPaymentsPage() {
   const [payments, setPayments] = useState<Payment[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
-  const [statusFilter, setStatusFilter] = useState('')
-  const [methodFilter, setMethodFilter] = useState('')
+  const [statusFilter, setStatusFilter] = useState('all')
+  const [methodFilter, setMethodFilter] = useState('all')
   const [page, setPage] = useState(1)
   const [limit] = useState(12)
   const [viewMode, setViewMode] = useState<'list' | 'grid'>(() => {
@@ -170,7 +171,18 @@ export default function AdminPaymentsPage() {
           (data.errors && typeof data.errors === 'object' && (data.errors.payment ?? Object.values(data.errors)[0])) ||
           data.message ||
           t('failedToApprovePayment')
-        toast.error(typeof errMsg === 'string' ? errMsg : t('failedToApprovePayment'))
+        if (typeof errMsg === 'string') {
+          const normalizedErr = errMsg.toLowerCase()
+          if (normalizedErr.includes('payment has expired')) {
+            toast.error(t('paymentExpired'))
+          } else if (normalizedErr.includes('payment is not pending')) {
+            toast.error(t('paymentIsNotPending'))
+          } else {
+            toast.error(errMsg)
+          }
+        } else {
+          toast.error(t('failedToApprovePayment'))
+        }
       }
     } catch (err) {
       console.error(err)
@@ -184,13 +196,18 @@ export default function AdminPaymentsPage() {
   }
 
   // Filter payments
+  const isCashMethod = (method: string) => {
+    const normalizedMethod = method.toLowerCase()
+    return normalizedMethod === 'cod' || normalizedMethod === 'cash_on_delivery'
+  }
+
   const filteredPayments = payments.filter(payment => {
     const matchesSearch = 
       payment.customer_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       payment.transaction_id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       payment.order_id.toString().includes(searchTerm)
-    const matchesStatus = !statusFilter || payment.status === statusFilter
-    const matchesMethod = !methodFilter || payment.payment_method === methodFilter
+    const matchesStatus = statusFilter === 'all' || payment.status === statusFilter
+    const matchesMethod = methodFilter === 'all' || (methodFilter === 'cash' ? isCashMethod(payment.payment_method) : !isCashMethod(payment.payment_method))
     return matchesSearch && matchesStatus && matchesMethod
   })
 
@@ -238,18 +255,12 @@ export default function AdminPaymentsPage() {
   }
 
   const getMethodColor = (method: string) => {
-    switch (method) {
-      case 'credit_card':
-        return 'bg-blue-100 text-blue-800 border-blue-200'
-      case 'bank_transfer':
-        return 'bg-green-100 text-green-800 border-green-200'
-      case 'cash_on_delivery':
-        return 'bg-orange-100 text-orange-800 border-orange-200'
-      case 'digital_wallet':
-        return 'bg-purple-100 text-purple-800 border-purple-200'
-      default:
-        return 'bg-gray-100 text-gray-800 border-gray-200'
-    }
+    if (isCashMethod(method)) return 'bg-blue-100 text-blue-800 border-blue-200'
+    return 'bg-green-100 text-green-800 border-green-200'
+  }
+
+  const getMethodLabel = (method: string) => {
+    return isCashMethod(method) ? 'Tiền mặt' : 'Chuyển khoản'
   }
 
   const getPaymentStats = () => {
@@ -316,7 +327,7 @@ export default function AdminPaymentsPage() {
               <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
               {t('refresh')}
             </Button>
-            <Button onClick={() => setIsProcessModalOpen(true)} className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white">
+            <Button onClick={() => setIsProcessModalOpen(true)} className="flex items-center gap-2">
               <CreditCard className="h-4 w-4" />
               {t('processPayment')}
             </Button>
@@ -325,65 +336,70 @@ export default function AdminPaymentsPage() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-[auto_1fr_1fr_1fr_1fr] gap-6 mb-8">
           {/* Total Revenue: first, width auto theo số tiền */}
-          <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300 order-first w-fit max-w-full">
+          <Card className="relative overflow-hidden border-slate-200/80 bg-white/90 shadow-sm backdrop-blur transition hover:shadow-md order-first w-fit max-w-full">
+            <div className="pointer-events-none absolute -right-6 -top-10 h-32 w-32 rounded-full bg-gradient-to-br from-emerald-500/15 to-transparent" />
             <CardContent className="p-6 flex items-center justify-between gap-4">
               <div className="min-w-0">
                 <p className="text-sm font-medium text-slate-600 mb-1">{t('totalRevenue')}</p>
                 <p className="text-2xl sm:text-3xl font-bold text-emerald-600 whitespace-nowrap">{formatCurrency(stats.total_amount)}</p>
               </div>
-              <div className="h-12 w-12 shrink-0 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl flex items-center justify-center shadow-lg">
-                <DollarSign className="h-6 w-6 text-white" />
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-700">
+                <TrendingUp className="h-4 w-4" />
               </div>
             </CardContent>
           </Card>
-          <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300">
+          <Card className="relative overflow-hidden border-slate-200/80 bg-white/90 shadow-sm backdrop-blur transition hover:shadow-md">
+            <div className="pointer-events-none absolute -right-6 -top-10 h-32 w-32 rounded-full bg-gradient-to-br from-blue-500/15 to-transparent" />
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-slate-600 mb-1">{t('totalPayments')}</p>
                   <p className="text-3xl font-bold text-slate-900">{stats.total}</p>
                 </div>
-                <div className="h-12 w-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg shrink-0">
-                  <CreditCard className="h-6 w-6 text-white" />
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-500/15 text-blue-700">
+                  <CreditCard className="h-4 w-4" />
                 </div>
               </div>
             </CardContent>
           </Card>
-          <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300">
+          <Card className="relative overflow-hidden border-slate-200/80 bg-white/90 shadow-sm backdrop-blur transition hover:shadow-md">
+            <div className="pointer-events-none absolute -right-6 -top-10 h-32 w-32 rounded-full bg-gradient-to-br from-emerald-500/15 to-transparent" />
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-slate-600 mb-1">{t('completed')}</p>
                   <p className="text-3xl font-bold text-slate-900">{stats.completed}</p>
                 </div>
-                <div className="h-12 w-12 bg-gradient-to-br from-emerald-500 to-green-600 rounded-xl flex items-center justify-center shadow-lg shrink-0">
-                  <CheckCircle className="h-6 w-6 text-white" />
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-700">
+                  <CheckCircle className="h-4 w-4" />
                 </div>
               </div>
             </CardContent>
           </Card>
-          <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300">
+          <Card className="relative overflow-hidden border-slate-200/80 bg-white/90 shadow-sm backdrop-blur transition hover:shadow-md">
+            <div className="pointer-events-none absolute -right-6 -top-10 h-32 w-32 rounded-full bg-gradient-to-br from-amber-500/15 to-transparent" />
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-slate-600 mb-1">{t('pending')}</p>
                   <p className="text-3xl font-bold text-slate-900">{stats.pending}</p>
                 </div>
-                <div className="h-12 w-12 bg-gradient-to-br from-amber-500 to-yellow-500 rounded-xl flex items-center justify-center shadow-lg shrink-0">
-                  <Clock className="h-6 w-6 text-white" />
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-500/15 text-amber-700">
+                  <Clock className="h-4 w-4" />
                 </div>
               </div>
             </CardContent>
           </Card>
-          <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300">
+          <Card className="relative overflow-hidden border-slate-200/80 bg-white/90 shadow-sm backdrop-blur transition hover:shadow-md">
+            <div className="pointer-events-none absolute -right-6 -top-10 h-32 w-32 rounded-full bg-gradient-to-br from-red-500/15 to-transparent" />
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-slate-600 mb-1">{t('failedStatus')}</p>
                   <p className="text-3xl font-bold text-slate-900">{stats.failed}</p>
                 </div>
-                <div className="h-12 w-12 bg-gradient-to-br from-red-500 to-red-600 rounded-xl flex items-center justify-center shadow-lg shrink-0">
-                  <XCircle className="h-6 w-6 text-white" />
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-red-500/15 text-red-700">
+                  <XCircle className="h-4 w-4" />
                 </div>
               </div>
             </CardContent>
@@ -408,32 +424,32 @@ export default function AdminPaymentsPage() {
                 </div>
                 <div className="flex flex-col">
                   <label className="text-xs font-medium text-slate-600 mb-1">{t('status')}</label>
-                  <select
-                    value={statusFilter}
-                    onChange={(e) => setStatusFilter(e.target.value)}
-                    className="px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white/50 focus:bg-white min-w-[140px]"
-                  >
-                    <option value="">{t('allStatus')}</option>
-                    <option value="completed">{t('completed')}</option>
-                    <option value="pending">{t('pending')}</option>
-                    <option value="failed">{t('failedStatus')}</option>
-                    <option value="processing">{t('processingStatus')}</option>
-                    <option value="refunded">{t('refunded')}</option>
-                  </select>
+                  <Select value={statusFilter} onValueChange={setStatusFilter}>
+                    <SelectTrigger className="min-w-[170px] border-slate-200 bg-white/50 focus:bg-white">
+                      <SelectValue placeholder={t('allStatus')} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">{t('allStatus')}</SelectItem>
+                      <SelectItem value="completed">{t('completed')}</SelectItem>
+                      <SelectItem value="pending">{t('pending')}</SelectItem>
+                      <SelectItem value="failed">{t('failedStatus')}</SelectItem>
+                      <SelectItem value="processing">{t('processingStatus')}</SelectItem>
+                      <SelectItem value="refunded">{t('refunded')}</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="flex flex-col">
                   <label className="text-xs font-medium text-slate-600 mb-1">{t('method')}</label>
-                  <select
-                    value={methodFilter}
-                    onChange={(e) => setMethodFilter(e.target.value)}
-                    className="px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white/50 focus:bg-white min-w-[140px]"
-                  >
-                    <option value="">{t('allMethods')}</option>
-                    <option value="credit_card">{t('credit_card')}</option>
-                    <option value="bank_transfer">{t('bank_transfer')}</option>
-                    <option value="cash_on_delivery">{t('cash_on_delivery')}</option>
-                    <option value="digital_wallet">{t('digital_wallet')}</option>
-                  </select>
+                  <Select value={methodFilter} onValueChange={setMethodFilter}>
+                    <SelectTrigger className="min-w-[180px] border-slate-200 bg-white/50 focus:bg-white">
+                      <SelectValue placeholder={t('allMethods')} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">{t('allMethods')}</SelectItem>
+                      <SelectItem value="cash">Tiền mặt</SelectItem>
+                      <SelectItem value="transfer">Chuyển khoản</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
             </div>
@@ -486,7 +502,7 @@ export default function AdminPaymentsPage() {
                         <td className="py-4 px-4 text-slate-600">{payment.customer_name}</td>
                         <td className="py-4 px-4 font-medium text-green-600">{formatCurrency(payment.amount)}</td>
                         <td className="py-4 px-4">
-                          <Badge variant="outline" className={getMethodColor(payment.payment_method)}>{payment.payment_method.replace('_', ' ')}</Badge>
+                          <Badge variant="outline" className={getMethodColor(payment.payment_method)}>{getMethodLabel(payment.payment_method)}</Badge>
                         </td>
                         <td className="py-4 px-4">
                           <Badge variant="outline" className={`${getStatusColor(payment.status)} flex items-center gap-1 w-fit`}>
@@ -537,7 +553,7 @@ export default function AdminPaymentsPage() {
                           variant="outline" 
                           className={`flex items-center gap-1 ${getMethodColor(payment.payment_method)}`}
                         >
-                          {payment.payment_method.replace('_', ' ').toUpperCase()}
+                          {getMethodLabel(payment.payment_method)}
                         </Badge>
                       </div>
 
@@ -693,7 +709,7 @@ export default function AdminPaymentsPage() {
                   <span className="text-slate-500">{t('amountLabel')}</span>
                   <span className="font-semibold text-green-600">{formatCurrency(selectedPayment.amount)}</span>
                   <span className="text-slate-500">{t('method')}</span>
-                  <span>{selectedPayment.payment_method.replace('_', ' ')}</span>
+                  <span>{getMethodLabel(selectedPayment.payment_method)}</span>
                   <span className="text-slate-500">{t('status')}</span>
                   <Badge variant="outline" className={getStatusColor(selectedPayment.status)}>{getStatusLabel(selectedPayment.status)}</Badge>
                   {selectedPayment.transaction_id && (

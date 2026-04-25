@@ -20,6 +20,7 @@ export default function ConditionalLayout({ children }: ConditionalLayoutProps) 
   const isChangePasswordPage = pathname === '/change-password'
   const isForgotPasswordPage = pathname === '/forgot-password'
   const isResetPasswordPage = pathname === '/reset-password'
+  const isRegisterPage = pathname === '/register'
 
   if (
     isAdminRoute ||
@@ -29,7 +30,8 @@ export default function ConditionalLayout({ children }: ConditionalLayoutProps) 
     isLoginPage ||
     isChangePasswordPage ||
     isForgotPasswordPage ||
-    isResetPasswordPage
+    isResetPasswordPage ||
+    isRegisterPage
   ) {
     return <>{children}</>
   }

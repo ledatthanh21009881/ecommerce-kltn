@@ -10,6 +10,7 @@ import { toast } from 'sonner'
 import { ContentCategory } from '@/lib/content-types'
 import { getAuthData } from '@/lib/admin-auth'
 import { generateSlug } from '@/lib/utils'
+import { useLanguage } from '@/contexts/LanguageContext'
 
 interface ContentCategoryModalProps {
   isOpen: boolean
@@ -24,6 +25,7 @@ export default function ContentCategoryModal({
   category,
   onSaved
 }: ContentCategoryModalProps) {
+  const { t } = useLanguage()
   const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState({
     name: '',
@@ -68,7 +70,7 @@ export default function ContentCategoryModal({
     e.preventDefault()
 
     if (!formData.name.trim()) {
-      toast.error('Category name is required')
+      toast.error(t('categoryNameRequired'))
       return
     }
 
@@ -77,7 +79,7 @@ export default function ContentCategoryModal({
     try {
       const { token } = getAuthData()
       if (!token) {
-        toast.error('Authentication required')
+        toast.error(t('authenticationRequired'))
         return
       }
 
@@ -101,23 +103,23 @@ export default function ContentCategoryModal({
       })
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ message: 'Request failed' }))
-        toast.error(errorData.message || 'Failed to save category')
+        const errorData = await response.json().catch(() => ({ message: t('requestFailed') }))
+        toast.error(errorData.message || t('failedToSaveCategory'))
         return
       }
 
       const data = await response.json()
 
       if (data.success) {
-        toast.success(category ? 'Category updated successfully' : 'Category created successfully')
+        toast.success(category ? t('categoryUpdatedSuccessfully') : t('categoryCreatedSuccessfully'))
         onSaved()
         onClose()
       } else {
-        toast.error(data.message || 'Failed to save category')
+        toast.error(data.message || t('failedToSaveCategory'))
       }
     } catch (error) {
       console.error('Error saving category:', error)
-      toast.error(`Error saving category: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      toast.error(`${t('errorSavingCategory')}: ${error instanceof Error ? error.message : t('unknownError')}`)
     } finally {
       setLoading(false)
     }
@@ -142,7 +144,7 @@ export default function ContentCategoryModal({
               <Folder className="h-4 w-4 text-blue-600" />
             </div>
             <h2 className="text-lg font-semibold text-gray-900">
-              {category ? 'Edit Category' : 'Create New Category'}
+              {category ? t('editCategory') : t('createNewCategory')}
             </h2>
           </div>
           <button
@@ -158,13 +160,13 @@ export default function ContentCategoryModal({
           {/* Name */}
           <div className="space-y-2">
             <Label htmlFor="name" className="text-sm font-medium text-gray-700">
-              Category Name *
+              {t('categoryName')} *
             </Label>
             <Input
               id="name"
               value={formData.name}
               onChange={(e) => handleInputChange('name', e.target.value)}
-              placeholder="Enter category name"
+              placeholder={t('enterCategoryName')}
               required
               className="w-full"
             />
@@ -179,22 +181,22 @@ export default function ContentCategoryModal({
               id="slug"
               value={formData.slug}
               onChange={(e) => handleInputChange('slug', e.target.value)}
-              placeholder="category-slug"
+              placeholder={t('categorySlug')}
               className="w-full"
             />
-            <p className="text-xs text-gray-500">URL-friendly version</p>
+            <p className="text-xs text-gray-500">{t('urlFriendlyVersion')}</p>
           </div>
 
           {/* Description */}
           <div className="space-y-2">
             <Label htmlFor="description" className="text-sm font-medium text-gray-700">
-              Description
+              {t('description')}
             </Label>
             <Textarea
               id="description"
               value={formData.description}
               onChange={(e) => handleInputChange('description', e.target.value)}
-              placeholder="Category description (optional)"
+              placeholder={t('categoryDescriptionOptional')}
               rows={3}
               className="w-full"
             />
@@ -203,18 +205,18 @@ export default function ContentCategoryModal({
           {/* Actions */}
           <div className="flex justify-end gap-3 pt-6 border-t">
             <Button type="button" variant="outline" onClick={onClose}>
-              Cancel
+              {t('cancel')}
             </Button>
             <Button type="submit" disabled={loading}>
               {loading ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Saving...
+                  {t('saving')}
                 </>
               ) : (
                 <>
                   <Save className="h-4 w-4 mr-2" />
-                  {category ? 'Update Category' : 'Create Category'}
+                  {category ? t('updateCategory') : t('createCategory')}
                 </>
               )}
             </Button>

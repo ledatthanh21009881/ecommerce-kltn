@@ -291,7 +291,7 @@ export default function OrderStatusModal({ isOpen, onClose, order, onStatusUpdat
             onClick={handleSubmit}
             disabled={!selectedStatus || loading}
             size="sm"
-            className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white shadow-lg"
+            className="shadow-lg"
           >
             {loading ? t('updating') : t('updateStatus')}
           </Button>

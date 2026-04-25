@@ -1,11 +1,12 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Search, RefreshCw, Building2, Phone, Mail, MapPin, Plus, Edit, Eye, Trash2, LayoutList, LayoutGrid, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Search, RefreshCw, Building2, Phone, Mail, MapPin, Plus, Edit, Eye, Trash2, LayoutList, LayoutGrid, ChevronLeft, ChevronRight, Check, X, Pause } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { toast } from 'sonner'
 import { getAuthData, checkAndRefreshAuth } from '@/lib/admin-auth'
 import { useLanguage } from '@/contexts/LanguageContext'
@@ -30,7 +31,7 @@ export default function AdminSuppliersPage() {
   const [suppliers, setSuppliers] = useState<Supplier[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
-  const [statusFilter, setStatusFilter] = useState('')
+  const [statusFilter, setStatusFilter] = useState('all')
   const [page, setPage] = useState(1)
   const [limit] = useState(12)
   const [pagination, setPagination] = useState<{ total: number; per_page: number; current_page: number; last_page: number; from: number; to: number } | null>(null)
@@ -62,7 +63,7 @@ export default function AdminSuppliersPage() {
       params.set('page', String(page))
       params.set('limit', String(limit))
       if (searchTerm) params.append('search', searchTerm)
-      if (statusFilter) params.append('status', statusFilter)
+      if (statusFilter !== 'all') params.append('status', statusFilter)
       const url = `/api/backend/v1/suppliers?${params.toString()}`
       const response = await fetch(url, {
         headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
@@ -207,7 +208,7 @@ export default function AdminSuppliersPage() {
               <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
               {t('refresh')}
             </Button>
-            <Button onClick={handleAddClick} className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white">
+            <Button onClick={handleAddClick} className="flex items-center gap-2">
               <Plus className="h-4 w-4" />
               {t('addSupplier')}
             </Button>
@@ -238,7 +239,7 @@ export default function AdminSuppliersPage() {
                   <p className="text-xs text-slate-500 mt-1">{t('onThisPage')}</p>
                 </div>
                 <div className="h-12 w-12 bg-gradient-to-br from-emerald-500 to-green-600 rounded-xl flex items-center justify-center shadow-lg">
-                  <Building2 className="h-6 w-6 text-white" />
+                  <Check className="h-6 w-6 text-white" />
                 </div>
               </div>
             </CardContent>
@@ -252,7 +253,7 @@ export default function AdminSuppliersPage() {
                   <p className="text-xs text-slate-500 mt-1">{t('onThisPage')}</p>
                 </div>
                 <div className="h-12 w-12 bg-gradient-to-br from-slate-500 to-slate-600 rounded-xl flex items-center justify-center shadow-lg">
-                  <Building2 className="h-6 w-6 text-white" />
+                  <X className="h-6 w-6 text-white" />
                 </div>
               </div>
             </CardContent>
@@ -266,7 +267,7 @@ export default function AdminSuppliersPage() {
                   <p className="text-xs text-slate-500 mt-1">{t('onThisPage')}</p>
                 </div>
                 <div className="h-12 w-12 bg-gradient-to-br from-red-500 to-red-600 rounded-xl flex items-center justify-center shadow-lg">
-                  <Building2 className="h-6 w-6 text-white" />
+                  <Pause className="h-6 w-6 text-white" />
                 </div>
               </div>
             </CardContent>
@@ -291,16 +292,17 @@ export default function AdminSuppliersPage() {
                 </div>
                 <div className="flex flex-col">
                   <label className="text-xs font-medium text-slate-600 mb-1">{t('statusFilter')}</label>
-                  <select
-                    value={statusFilter}
-                    onChange={(e) => setStatusFilter(e.target.value)}
-                    className="px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white/50 focus:bg-white min-w-[140px]"
-                  >
-                    <option value="">{t('allStatus')}</option>
-                    <option value="active">{t('supplierStatusActive')}</option>
-                    <option value="inactive">{t('supplierStatusInactive')}</option>
-                    <option value="suspended">{t('supplierStatusSuspended')}</option>
-                  </select>
+                  <Select value={statusFilter} onValueChange={setStatusFilter}>
+                    <SelectTrigger className="min-w-[180px] border-slate-200 bg-white/50 focus:bg-white">
+                      <SelectValue placeholder={t('allStatus')} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">{t('allStatus')}</SelectItem>
+                      <SelectItem value="active">{t('supplierStatusActive')}</SelectItem>
+                      <SelectItem value="inactive">{t('supplierStatusInactive')}</SelectItem>
+                      <SelectItem value="suspended">{t('supplierStatusSuspended')}</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
             </div>

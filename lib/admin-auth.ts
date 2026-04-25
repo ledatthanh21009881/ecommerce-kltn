@@ -28,6 +28,28 @@ export function getAuthData(): { token: string | null; user: AdminUser | null } 
 export function setAuthData(token: string, user: AdminUser): void {
   localStorage.setItem('adminToken', token)
   localStorage.setItem('adminUser', JSON.stringify(user))
+
+  // Keep shared token store in sync so refresh flow works reliably.
+  try {
+    const parts = token.split('.')
+    let expiresAt = Date.now() + 60 * 60 * 1000
+    if (parts.length === 3) {
+      const payload = JSON.parse(
+        atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')),
+      ) as { exp?: number }
+      if (payload.exp) {
+        expiresAt = payload.exp * 1000
+      }
+    }
+
+    const refreshToken = localStorage.getItem('refresh_token')
+    if (refreshToken) {
+      localStorage.setItem('access_token', token)
+      localStorage.setItem('token_expires_at', expiresAt.toString())
+    }
+  } catch {
+    // Ignore sync errors; adminToken/adminUser are still persisted.
+  }
 }
 
 export function clearAuthData(): void {

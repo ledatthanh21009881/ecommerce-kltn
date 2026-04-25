@@ -1,11 +1,12 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Plus, Search, RefreshCw, Truck, Edit, Trash2, DollarSign, Clock, Calendar, AlertTriangle, LayoutList, LayoutGrid, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Plus, Search, RefreshCw, Truck, Edit, Trash2, Clock, Calendar, AlertTriangle, LayoutList, LayoutGrid, ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { toast } from 'sonner'
 import ConfirmModal from '@/components/ui/confirm-modal'
 import ShippingModal from '@/components/admin/ShippingModal'
@@ -196,7 +197,7 @@ export default function AdminShippingPage() {
               <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
               {t('refresh')}
             </Button>
-            <Button onClick={handleAddMethod} className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white">
+            <Button onClick={handleAddMethod} className="flex items-center gap-2">
               <Plus className="h-4 w-4" />
               {t('addShippingMethod')}
             </Button>
@@ -255,7 +256,7 @@ export default function AdminShippingPage() {
                   <p className="text-3xl font-bold text-emerald-600">{averageFee.toLocaleString()}đ</p>
                 </div>
                 <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-500/15 text-amber-700">
-                  <DollarSign className="h-4 w-4" />
+                  <Truck className="h-4 w-4" />
                 </div>
               </div>
             </CardContent>
@@ -280,15 +281,16 @@ export default function AdminShippingPage() {
                 </div>
                 <div className="flex flex-col">
                   <label className="text-xs font-medium text-slate-600 mb-1">{t('statusFilter')}</label>
-                  <select
-                    value={statusFilter}
-                    onChange={(e) => setStatusFilter(e.target.value)}
-                    className="px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white/50 focus:bg-white min-w-[140px]"
-                  >
-                    <option value="all">{t('all')}</option>
-                    <option value="active">{t('active')}</option>
-                    <option value="inactive">{t('inactive')}</option>
-                  </select>
+                  <Select value={statusFilter} onValueChange={setStatusFilter}>
+                    <SelectTrigger className="min-w-[160px] border-slate-200 bg-white/50 focus:bg-white">
+                      <SelectValue placeholder={t('statusFilter')} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">{t('all')}</SelectItem>
+                      <SelectItem value="active">{t('active')}</SelectItem>
+                      <SelectItem value="inactive">{t('inactive')}</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
             </div>
@@ -339,7 +341,6 @@ export default function AdminShippingPage() {
                         </Badge>
                       </div>
                       <div className="flex items-center gap-2 text-slate-600 mb-2">
-                        <DollarSign className="h-4 w-4 text-green-500" />
                         <span className="font-medium">{method.fee.toLocaleString()}đ</span>
                       </div>
                       <div className="text-sm text-slate-600 mb-3">
@@ -382,12 +383,9 @@ export default function AdminShippingPage() {
                           </div>
                         </td>
                         <td className="py-4 px-4">
-                          <div className="flex items-center gap-2">
-                            <DollarSign className="h-4 w-4 text-green-500" />
-                            <span className="font-medium text-slate-900">
-                              {method.fee.toLocaleString()}đ
-                            </span>
-                          </div>
+                          <span className="font-medium text-slate-900">
+                            {method.fee.toLocaleString()}đ
+                          </span>
                         </td>
                         <td className="py-4 px-4 text-slate-600">
                           {method.estimated_days}
@@ -482,7 +480,7 @@ export default function AdminShippingPage() {
         onClose={() => setIsDeleteModalOpen(false)}
         onConfirm={confirmDelete}
         title={t('deleteShippingMethod')}
-        message={t('areYouSureDeleteShippingMethod')}
+        description={t('areYouSureDeleteShippingMethod')}
         confirmText={t('delete')}
         cancelText={t('cancel')}
       />

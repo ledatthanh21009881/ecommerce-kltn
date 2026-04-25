@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { toast } from 'sonner'
 import ConfirmModal from '@/components/ui/confirm-modal'
 import InventoryModal from '@/components/admin/InventoryModal'
@@ -20,8 +21,8 @@ export default function AdminInventoryPage() {
   const [categories, setCategories] = useState([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
-  const [selectedProduct, setSelectedProduct] = useState('')
-  const [selectedStatus, setSelectedStatus] = useState('')
+  const [selectedProduct, setSelectedProduct] = useState('all')
+  const [selectedStatus, setSelectedStatus] = useState('all')
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingVariant, setEditingVariant] = useState<InventoryVariant | null>(null)
@@ -260,7 +261,7 @@ export default function AdminInventoryPage() {
               <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
               {t('refresh')}
             </Button>
-            <Button onClick={handleAddVariant} className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white">
+            <Button onClick={handleAddVariant} className="flex items-center gap-2">
               <Plus className="h-4 w-4" />
               {t('addInventory')}
             </Button>
@@ -344,28 +345,32 @@ export default function AdminInventoryPage() {
                 </div>
                 <div className="flex flex-col">
                   <label className="text-xs font-medium text-slate-600 mb-1">{t('product')}</label>
-                  <select
-                    value={selectedProduct}
-                    onChange={(e) => setSelectedProduct(e.target.value)}
-                    className="px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white/50 focus:bg-white min-w-[160px]"
-                  >
-                    <option value="">{t('allProducts')}</option>
-                    {products && products.length > 0 && products.map((product) => (
-                      <option key={product.product_id} value={product.product_id}>{product.product_name}</option>
-                    ))}
-                  </select>
+                  <Select value={selectedProduct} onValueChange={setSelectedProduct}>
+                    <SelectTrigger className="min-w-[180px] border-slate-200 bg-white/50 focus:bg-white">
+                      <SelectValue placeholder={t('allProducts')} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">{t('allProducts')}</SelectItem>
+                      {products && products.length > 0 && products.map((product) => (
+                        <SelectItem key={product.product_id} value={String(product.product_id)}>
+                          {product.product_name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="flex flex-col">
                   <label className="text-xs font-medium text-slate-600 mb-1">{t('statusFilter')}</label>
-                  <select
-                    value={selectedStatus}
-                    onChange={(e) => setSelectedStatus(e.target.value)}
-                    className="px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white/50 focus:bg-white min-w-[140px]"
-                  >
-                    <option value="">{t('allStatus')}</option>
-                    <option value="in_stock">{t('inStock')}</option>
-                    <option value="out_of_stock">{t('outOfStock')}</option>
-                  </select>
+                  <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+                    <SelectTrigger className="min-w-[160px] border-slate-200 bg-white/50 focus:bg-white">
+                      <SelectValue placeholder={t('allStatus')} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">{t('allStatus')}</SelectItem>
+                      <SelectItem value="in_stock">{t('inStock')}</SelectItem>
+                      <SelectItem value="out_of_stock">{t('outOfStock')}</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
             </div>

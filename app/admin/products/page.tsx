@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { toast } from 'sonner'
 import ProductModal from '@/components/admin/ProductModal'
 import ProductDetailModal from '@/components/admin/ProductDetailModal'
@@ -240,7 +241,7 @@ const formatPrice = (price: string | number) => {
                 <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
                 {t('refresh')}
               </Button>
-              <Button onClick={handleCreateProduct} className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white">
+              <Button onClick={handleCreateProduct} className="flex items-center gap-2">
                 <Plus className="h-4 w-4" />
                 {t('addProduct')}
               </Button>
@@ -331,16 +332,19 @@ const formatPrice = (price: string | number) => {
                 </div>
                 <div className="flex flex-col">
                   <label className="text-xs font-medium text-slate-600 mb-1">{t('selectCategory')}</label>
-                  <select
-                    value={selectedCategory}
-                    onChange={(e) => setSelectedCategory(e.target.value)}
-                    className="px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white/50 focus:bg-white min-w-[160px]"
-                  >
-                    <option value="">{t('allCategories')}</option>
-                    {categories.map((category: any) => (
-                      <option key={category.category_id} value={category.category_id}>{category.category_name}</option>
-                    ))}
-                  </select>
+                  <Select value={selectedCategory || 'all'} onValueChange={(value) => setSelectedCategory(value === 'all' ? '' : value)}>
+                    <SelectTrigger className="min-w-[180px] border-slate-200 bg-white/50 focus:bg-white">
+                      <SelectValue placeholder={t('allCategories')} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">{t('allCategories')}</SelectItem>
+                      {categories.map((category: any) => (
+                        <SelectItem key={category.category_id} value={String(category.category_id)}>
+                          {category.category_name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
             </div>

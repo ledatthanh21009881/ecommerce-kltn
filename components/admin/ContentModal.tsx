@@ -6,11 +6,13 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { toast } from 'sonner'
 import { Content, ContentCategory } from '@/lib/content-types'
 import { getAuthData } from '@/lib/admin-auth'
 import { generateSlug } from '@/lib/utils'
 import RichTextEditor from './RichTextEditor'
+import { useLanguage } from '@/contexts/LanguageContext'
 
 interface ContentModalProps {
   isOpen: boolean
@@ -27,6 +29,7 @@ export default function ContentModal({
   categories,
   onSaved
 }: ContentModalProps) {
+  const { t } = useLanguage()
   const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState({
     title: '',
@@ -44,6 +47,9 @@ export default function ContentModal({
     meta_keywords: '',
     category_ids: [] as number[]
   })
+
+  const isHomepageVideoContent = formData.slug === 'home-hero-video'
+  const isAboutPageContent = formData.slug === 'about-page'
 
   // Initialize form data when content changes
   useEffect(() => {
@@ -115,19 +121,26 @@ export default function ContentModal({
 
     // Validation
     if (!formData.title.trim()) {
-      toast.error('Title is required')
+      toast.error(t('contentTitleRequired'))
       return
     }
 
-    // Check content: strip HTML tags and check if there's actual text
-    const contentText = formData.content.replace(/<[^>]*>/g, '').trim()
-    if (!contentText) {
-      toast.error('Content is required')
+    // Home hero only needs video URL; other pages still require content body
+    if (!isHomepageVideoContent) {
+      const contentText = formData.content.replace(/<[^>]*>/g, '').trim()
+      if (!contentText) {
+        toast.error(t('contentBodyRequired'))
+        return
+      }
+    }
+
+    if (isHomepageVideoContent && !formData.featured_image.trim()) {
+      toast.error(t('featuredImageUrl'))
       return
     }
 
     if (!formData.content_type) {
-      toast.error('Content type is required')
+      toast.error(t('contentTypeRequired'))
       return
     }
 
@@ -136,7 +149,7 @@ export default function ContentModal({
     try {
       const { token } = getAuthData()
       if (!token) {
-        toast.error('Authentication required')
+        toast.error(t('authenticationRequired'))
         return
       }
 
@@ -157,6 +170,13 @@ export default function ContentModal({
         meta_title: formData.meta_title,
         meta_description: formData.meta_description,
         meta_keywords: formData.meta_keywords
+      }
+
+      if (isHomepageVideoContent) {
+        requestBody.content = JSON.stringify({
+          videoUrl: formData.featured_image,
+        })
+        requestBody.excerpt = formData.excerpt || 'Homepage hero video'
       }
 
       // Add publish_at if set
@@ -187,16 +207,16 @@ export default function ContentModal({
       })
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ message: 'Request failed' }))
+        const errorData = await response.json().catch(() => ({ message: t('requestFailed') }))
         
         // Hiển thị chi tiết validation errors nếu có
         if (errorData.errors && typeof errorData.errors === 'object') {
           const errorMessages = Object.entries(errorData.errors)
             .map(([field, message]) => `${field}: ${message}`)
             .join(', ')
-          toast.error(`${errorData.message || 'Validation Error'}: ${errorMessages}`)
+          toast.error(`${errorData.message || t('validationError')}: ${errorMessages}`)
         } else {
-          toast.error(errorData.message || 'Failed to save content')
+          toast.error(errorData.message || t('failedToSaveContent'))
         }
         return
       }
@@ -204,7 +224,7 @@ export default function ContentModal({
       const data = await response.json()
 
       if (data.success) {
-        toast.success(content ? 'Content updated successfully' : 'Content created successfully')
+        toast.success(content ? t('contentUpdatedSuccessfully') : t('contentCreatedSuccessfully'))
         onSaved()
         onClose()
       } else {
@@ -213,14 +233,14 @@ export default function ContentModal({
           const errorMessages = Object.entries(data.errors)
             .map(([field, message]) => `${field}: ${message}`)
             .join(', ')
-          toast.error(`${data.message || 'Validation Error'}: ${errorMessages}`)
+          toast.error(`${data.message || t('validationError')}: ${errorMessages}`)
         } else {
-          toast.error(data.message || 'Failed to save content')
+          toast.error(data.message || t('failedToSaveContent'))
         }
       }
     } catch (error) {
       console.error('Error saving content:', error)
-      toast.error(`Error saving content: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      toast.error(`${t('errorSavingContent')}: ${error instanceof Error ? error.message : t('unknownError')}`)
     } finally {
       setLoading(false)
     }
@@ -247,7 +267,7 @@ export default function ContentModal({
               <FileText className="h-4 w-4 text-blue-600" />
             </div>
             <h2 className="text-lg font-semibold text-gray-900">
-              {content ? 'Edit Content' : 'Create New Content'}
+              {content ? t('editContent') : t('createNewContent')}
             </h2>
           </div>
           <button
@@ -265,13 +285,13 @@ export default function ContentModal({
             {/* Title */}
             <div className="md:col-span-2 space-y-2">
               <Label htmlFor="title" className="text-sm font-medium text-gray-700">
-                Title *
+                {t('title')} *
               </Label>
               <Input
                 id="title"
                 value={formData.title}
                 onChange={(e) => handleInputChange('title', e.target.value)}
-                placeholder="Enter content title"
+                placeholder={t('enterContentTitle')}
                 required
                 className="w-full"
               />
@@ -286,65 +306,72 @@ export default function ContentModal({
                 id="slug"
                 value={formData.slug}
                 onChange={(e) => handleInputChange('slug', e.target.value)}
-                placeholder="url-friendly-slug"
+                placeholder={t('urlFriendlySlug')}
                 className="w-full"
               />
-              <p className="text-xs text-gray-500">URL-friendly version</p>
+              <p className="text-xs text-gray-500">{t('urlFriendlyVersion')}</p>
             </div>
 
             {/* Content Type */}
             <div className="space-y-2">
               <Label htmlFor="content_type" className="text-sm font-medium text-gray-700">
-                Content Type *
+                {t('contentType')} *
               </Label>
-              <select
-                id="content_type"
+              <Select
                 value={formData.content_type}
-                onChange={(e) => handleInputChange('content_type', e.target.value as any)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                onValueChange={(value) => handleInputChange('content_type', value as any)}
                 required
               >
-                <option value="page">Page</option>
-                <option value="blog">Blog Post</option>
-                <option value="faq">FAQ</option>
-                <option value="policy">Policy</option>
-                <option value="editorial">Editorial</option>
-              </select>
+                <SelectTrigger id="content_type" className="w-full border-gray-300 focus:ring-2 focus:ring-blue-500">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="page">{t('page')}</SelectItem>
+                  <SelectItem value="blog">{t('blogPost')}</SelectItem>
+                  <SelectItem value="faq">{t('faq')}</SelectItem>
+                  <SelectItem value="policy">{t('policy')}</SelectItem>
+                  <SelectItem value="editorial">{t('editorial')}</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
           {/* Rich Text Content */}
-          <div className="space-y-2">
-            <Label htmlFor="content" className="text-sm font-medium text-gray-700">
-              Content *
-            </Label>
-            <RichTextEditor
-              key={`editor-${content?.content_id || 'new'}-${isOpen}`}
-              value={formData.content}
-              onChange={(value) => handleInputChange('content', value)}
-              placeholder="Enter content..."
-            />
-          </div>
+          {!isHomepageVideoContent && (
+            <div className="space-y-2">
+              <Label htmlFor="content" className="text-sm font-medium text-gray-700">
+                {t('content')} *
+              </Label>
+              <RichTextEditor
+                key={`editor-${content?.content_id || 'new'}-${isOpen}`}
+                value={formData.content}
+                onChange={(value) => handleInputChange('content', value)}
+                placeholder={isAboutPageContent ? 'Nhập nội dung trang giới thiệu...' : t('enterContentPlaceholder')}
+              />
+            </div>
+          )}
 
           {/* Excerpt */}
-          <div className="space-y-2">
-            <Label htmlFor="excerpt" className="text-sm font-medium text-gray-700">
-              Excerpt
-            </Label>
-            <Textarea
-              id="excerpt"
-              value={formData.excerpt}
-              onChange={(e) => handleInputChange('excerpt', e.target.value)}
-              placeholder="Brief description of the content..."
-              rows={3}
-              className="w-full"
-            />
-          </div>
+          {!isHomepageVideoContent && (
+            <div className="space-y-2">
+              <Label htmlFor="excerpt" className="text-sm font-medium text-gray-700">
+                {t('excerpt')}
+              </Label>
+              <Textarea
+                id="excerpt"
+                value={formData.excerpt}
+                onChange={(e) => handleInputChange('excerpt', e.target.value)}
+                placeholder={t('briefContentDescription')}
+                rows={3}
+                className="w-full"
+              />
+            </div>
+          )}
 
           {/* Featured Image */}
           <div className="space-y-2">
             <Label htmlFor="featured_image" className="text-sm font-medium text-gray-700">
-              Featured Image URL
+              {t('featuredImageUrl')}
             </Label>
             <div className="flex gap-2">
               <ImageIcon className="h-4 w-4 text-gray-400 mt-2" />
@@ -352,11 +379,14 @@ export default function ContentModal({
                 id="featured_image"
                 value={formData.featured_image}
                 onChange={(e) => handleInputChange('featured_image', e.target.value)}
-                placeholder="https://example.com/image.jpg"
+                placeholder={isHomepageVideoContent ? 'https://.../video.mp4' : t('featuredImagePlaceholder')}
                 type="url"
                 className="w-full"
               />
             </div>
+            {isHomepageVideoContent && (
+              <p className="text-xs text-gray-500">Trang chu chi thay doi video, chi can cap nhat URL video o day.</p>
+            )}
           </div>
 
           {/* Status and Publishing */}
@@ -364,25 +394,28 @@ export default function ContentModal({
             {/* Status */}
             <div className="space-y-2">
               <Label htmlFor="status" className="text-sm font-medium text-gray-700">
-                Status
+                {t('status')}
               </Label>
-              <select
-                id="status"
+              <Select
                 value={formData.status}
-                onChange={(e) => handleInputChange('status', e.target.value as any)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                onValueChange={(value) => handleInputChange('status', value as any)}
               >
-                <option value="draft">Draft</option>
-                <option value="published">Published</option>
-                <option value="scheduled">Scheduled</option>
-                <option value="archived">Archived</option>
-              </select>
+                <SelectTrigger id="status" className="w-full border-gray-300 focus:ring-2 focus:ring-blue-500">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="draft">{t('draft')}</SelectItem>
+                  <SelectItem value="published">{t('contentPublished')}</SelectItem>
+                  <SelectItem value="scheduled">{t('scheduled')}</SelectItem>
+                  <SelectItem value="archived">{t('archived')}</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             {/* Publish At */}
             <div className="space-y-2">
               <Label htmlFor="publish_at" className="text-sm font-medium text-gray-700">
-                Publish Date & Time
+                {t('publishDateTime')}
               </Label>
               <Input
                 id="publish_at"
@@ -398,7 +431,7 @@ export default function ContentModal({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="display_start" className="text-sm font-medium text-gray-700">
-                Display Start (Optional)
+                {t('displayStartOptional')}
               </Label>
               <Input
                 id="display_start"
@@ -410,7 +443,7 @@ export default function ContentModal({
             </div>
             <div className="space-y-2">
               <Label htmlFor="display_end" className="text-sm font-medium text-gray-700">
-                Display End (Optional)
+                {t('displayEndOptional')}
               </Label>
               <Input
                 id="display_end"
@@ -426,11 +459,11 @@ export default function ContentModal({
           {showCategories && (
             <div className="space-y-2">
               <Label className="text-sm font-medium text-gray-700">
-                Categories
+                {t('categories')}
               </Label>
               <div className="border border-gray-300 rounded-md p-4 max-h-48 overflow-y-auto">
                 {categories.length === 0 ? (
-                  <p className="text-sm text-gray-500">No categories available</p>
+                  <p className="text-sm text-gray-500">{t('noCategoriesAvailable')}</p>
                 ) : (
                   <div className="space-y-2">
                     {categories.map((category) => (
@@ -454,62 +487,64 @@ export default function ContentModal({
           )}
 
           {/* SEO Fields */}
-          <div className="border-t pt-4 space-y-4">
-            <h3 className="text-sm font-semibold text-gray-900">SEO Settings</h3>
-            <div className="space-y-2">
-              <Label htmlFor="meta_title" className="text-sm font-medium text-gray-700">
-                Meta Title
-              </Label>
-              <Input
-                id="meta_title"
-                value={formData.meta_title}
-                onChange={(e) => handleInputChange('meta_title', e.target.value)}
-                placeholder="SEO title (defaults to content title)"
-                className="w-full"
-              />
+          {!isHomepageVideoContent && (
+            <div className="border-t pt-4 space-y-4">
+              <h3 className="text-sm font-semibold text-gray-900">{t('seoSettings')}</h3>
+              <div className="space-y-2">
+                <Label htmlFor="meta_title" className="text-sm font-medium text-gray-700">
+                  {t('metaTitle')}
+                </Label>
+                <Input
+                  id="meta_title"
+                  value={formData.meta_title}
+                  onChange={(e) => handleInputChange('meta_title', e.target.value)}
+                  placeholder={t('metaTitlePlaceholder')}
+                  className="w-full"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="meta_description" className="text-sm font-medium text-gray-700">
+                  {t('metaDescription')}
+                </Label>
+                <Textarea
+                  id="meta_description"
+                  value={formData.meta_description}
+                  onChange={(e) => handleInputChange('meta_description', e.target.value)}
+                  placeholder={t('metaDescriptionPlaceholder')}
+                  rows={3}
+                  className="w-full"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="meta_keywords" className="text-sm font-medium text-gray-700">
+                  {t('metaKeywords')}
+                </Label>
+                <Input
+                  id="meta_keywords"
+                  value={formData.meta_keywords}
+                  onChange={(e) => handleInputChange('meta_keywords', e.target.value)}
+                  placeholder={t('metaKeywordsPlaceholder')}
+                  className="w-full"
+                />
+              </div>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="meta_description" className="text-sm font-medium text-gray-700">
-                Meta Description
-              </Label>
-              <Textarea
-                id="meta_description"
-                value={formData.meta_description}
-                onChange={(e) => handleInputChange('meta_description', e.target.value)}
-                placeholder="SEO description (recommended: 150-160 characters)"
-                rows={3}
-                className="w-full"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="meta_keywords" className="text-sm font-medium text-gray-700">
-                Meta Keywords
-              </Label>
-              <Input
-                id="meta_keywords"
-                value={formData.meta_keywords}
-                onChange={(e) => handleInputChange('meta_keywords', e.target.value)}
-                placeholder="keyword1, keyword2, keyword3"
-                className="w-full"
-              />
-            </div>
-          </div>
+          )}
 
           {/* Actions */}
           <div className="flex justify-end gap-3 pt-6 border-t">
             <Button type="button" variant="outline" onClick={onClose}>
-              Cancel
+              {t('cancel')}
             </Button>
             <Button type="submit" disabled={loading}>
               {loading ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Saving...
+                  {t('saving')}
                 </>
               ) : (
                 <>
                   <Save className="h-4 w-4 mr-2" />
-                  {content ? 'Update Content' : 'Create Content'}
+                  {content ? t('updateContent') : t('createContent')}
                 </>
               )}
             </Button>

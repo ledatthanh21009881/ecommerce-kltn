@@ -24,9 +24,11 @@ export function TokenRefreshProvider({ children }: TokenRefreshProviderProps) {
               console.error('Failed to refresh token:', refreshError)
               // Nếu refresh thất bại, redirect về login
               tokenStore.clearTokens()
-              // Only redirect nếu chưa ở trang login
-              if (window.location.pathname !== '/login' && window.location.pathname !== '/admin-login') {
-                window.location.href = '/login'
+              // Avoid forcing admin users out if admin session is still valid.
+              const hasAdminSession = !!localStorage.getItem('adminToken')
+              const isAdminPage = window.location.pathname.startsWith('/admin')
+              if (!hasAdminSession && window.location.pathname !== '/login' && window.location.pathname !== '/admin-login') {
+                window.location.href = isAdminPage ? '/admin-login' : '/login'
               }
             }
           } else {

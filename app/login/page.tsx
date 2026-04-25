@@ -115,13 +115,14 @@ export default function LoginPage() {
               <div className="relative overflow-hidden border border-black">
                 <button 
                   type="submit" 
-                  className="relative h-10 w-full bg-black text-white text-sm font-normal uppercase tracking-wider transition-all duration-300 ease-in-out hover:bg-white hover:text-black group"
+                  className="group relative h-10 w-full overflow-hidden bg-black text-sm font-normal uppercase tracking-wider text-white transition-all duration-300 ease-in-out hover:-translate-y-0.5 hover:shadow-md hover:shadow-black/30 hover:bg-white hover:text-black active:translate-y-0 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0 disabled:hover:shadow-none"
                   disabled={isLoading}
                 >
-                  <span className="relative z-10 font-sans font-bold uppercase tracking-wider">
+                  <span className="relative z-10 inline-flex items-center justify-center gap-2 font-sans font-bold uppercase tracking-wider">
+                    {isLoading && <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent group-hover:border-black group-hover:border-t-transparent" />}
                     {isLoading ? t("auth.signingIn") : t("auth.signIn")}
                   </span>
-                  <div className="absolute inset-0 bg-white transform translate-x-full transition-transform duration-300 ease-in-out group-hover:translate-x-0"></div>
+                  <div className="absolute inset-0 translate-x-full transform bg-white transition-transform duration-300 ease-in-out group-hover:translate-x-0 group-disabled:hidden"></div>
                 </button>
               </div>
             </form>

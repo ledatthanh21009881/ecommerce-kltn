@@ -795,24 +795,6 @@ export default function CheckoutPage() {
               <RadioGroup value={selectedPaymentMethod} onValueChange={setSelectedPaymentMethod}>
                 <div className="space-y-2">
                   <div className="flex items-center space-x-2 border rounded p-4">
-                    <RadioGroupItem value="mock_qr" id="payment-mock_qr" />
-                    <Label htmlFor="payment-mock_qr" className="flex-1 cursor-pointer">
-                      Mock Payment QR
-                    </Label>
-                  </div>
-                  <div className="flex items-center space-x-2 border rounded p-4">
-                    <RadioGroupItem value="vietqr" id="payment-vietqr" />
-                    <Label htmlFor="payment-vietqr" className="flex-1 cursor-pointer">
-                      VietQR Bank Mock
-                    </Label>
-                  </div>
-                  <div className="flex items-center space-x-2 border rounded p-4">
-                    <RadioGroupItem value="vnpay" id="payment-vnpay" />
-                    <Label htmlFor="payment-vnpay" className="flex-1 cursor-pointer">
-                      VNPay
-                    </Label>
-                  </div>
-                  <div className="flex items-center space-x-2 border rounded p-4">
                     <RadioGroupItem value="cod" id="payment-cod" />
                     <Label htmlFor="payment-cod" className="flex-1 cursor-pointer">
                       COD (Thanh toán khi nhận hàng)
@@ -821,7 +803,7 @@ export default function CheckoutPage() {
                   <div className="flex items-center space-x-2 border rounded p-4">
                     <RadioGroupItem value="payos" id="payment-payos" />
                     <Label htmlFor="payment-payos" className="flex-1 cursor-pointer">
-                      Chuyển khoản ngân hàng (PayOS)
+                      Chuyển khoản ngân hàng
                     </Label>
                   </div>
                 </div>

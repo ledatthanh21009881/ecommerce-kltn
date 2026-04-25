@@ -5,6 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
 import { Bold, Italic, List, Link as LinkIcon, Heading1, Heading2, Undo, Redo } from 'lucide-react'
+import { useLanguage } from '@/contexts/LanguageContext'
 
 interface RichTextEditorProps {
   value: string
@@ -19,6 +20,7 @@ export default function RichTextEditor({
   placeholder = 'Enter content...',
   className = ''
 }: RichTextEditorProps) {
+  const { t } = useLanguage()
   const [activeTab, setActiveTab] = useState<'edit' | 'preview'>('edit')
 
   // Format text with HTML tags
@@ -109,9 +111,9 @@ export default function RichTextEditor({
       icon: LinkIcon,
       label: 'Link',
       onClick: () => {
-        const url = prompt('Enter URL:')
+        const url = prompt(t('enterUrlPrompt'))
         if (url) {
-          const text = prompt('Enter link text:') || url
+          const text = prompt(t('enterLinkTextPrompt')) || url
           const textarea = document.getElementById('content-editor') as HTMLTextAreaElement
           if (!textarea) return
           const start = textarea.selectionStart
@@ -152,8 +154,8 @@ export default function RichTextEditor({
             })}
             <div className="flex-1"></div>
             <TabsList className="h-8 bg-transparent">
-              <TabsTrigger value="edit" className="h-8 text-xs">Edit</TabsTrigger>
-              <TabsTrigger value="preview" className="h-8 text-xs">Preview</TabsTrigger>
+              <TabsTrigger value="edit" className="h-8 text-xs">{t('edit')}</TabsTrigger>
+              <TabsTrigger value="preview" className="h-8 text-xs">{t('preview')}</TabsTrigger>
             </TabsList>
           </div>
         </div>
@@ -172,13 +174,13 @@ export default function RichTextEditor({
         <TabsContent value="preview" className="mt-0 border border-t-0 border-gray-300 rounded-b-md">
           <div
             className="min-h-[200px] p-4 prose prose-sm max-w-none"
-            dangerouslySetInnerHTML={{ __html: value || '<p class="text-gray-400">Preview will appear here...</p>' }}
+            dangerouslySetInnerHTML={{ __html: value || `<p class="text-gray-400">${t('previewWillAppearHere')}</p>` }}
           />
         </TabsContent>
       </Tabs>
 
       <p className="text-xs text-gray-500 mt-2">
-        Tip: You can write HTML directly or use the toolbar buttons to format text.
+        {t('contentEditorTip')}
       </p>
     </div>
   )

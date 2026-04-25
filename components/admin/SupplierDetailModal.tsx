@@ -1,8 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { X, Building2, FileText, DollarSign, Package, Calendar, Mail, Phone, MapPin, ExternalLink } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { X, Building2, FileText, Calendar, Mail, Phone, MapPin } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
@@ -198,12 +197,6 @@ export default function SupplierDetailModal({ isOpen, onClose, supplier }: Suppl
     })
   }
 
-  const handleViewAllReceipts = () => {
-    if (supplier) {
-      window.open(`/admin/purchase-receipts?supplier_id=${supplier.supplier_id}`, '_blank')
-    }
-  }
-
   if (!isOpen || !supplier) return null
 
   return (
@@ -328,9 +321,6 @@ export default function SupplierDetailModal({ isOpen, onClose, supplier }: Suppl
                         <p className="text-sm font-medium text-gray-600">{t('supplierTotalReceipts')}</p>
                         <p className="text-2xl font-bold text-gray-900">{stats.total_receipts}</p>
                       </div>
-                      <div className="h-10 w-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                        <FileText className="h-5 w-5 text-blue-600" />
-                      </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -341,9 +331,6 @@ export default function SupplierDetailModal({ isOpen, onClose, supplier }: Suppl
                       <div>
                         <p className="text-sm font-medium text-gray-600">{t('supplierTotalAmount')}</p>
                         <p className="text-2xl font-bold text-gray-900">{formatCurrency(stats.total_amount)}</p>
-                      </div>
-                      <div className="h-10 w-10 bg-green-100 rounded-lg flex items-center justify-center">
-                        <DollarSign className="h-5 w-5 text-green-600" />
                       </div>
                     </div>
                   </CardContent>
@@ -356,9 +343,6 @@ export default function SupplierDetailModal({ isOpen, onClose, supplier }: Suppl
                         <p className="text-sm font-medium text-gray-600">{t('productsCount')}</p>
                         <p className="text-2xl font-bold text-gray-900">{stats.total_products}</p>
                       </div>
-                      <div className="h-10 w-10 bg-purple-100 rounded-lg flex items-center justify-center">
-                        <Package className="h-5 w-5 text-purple-600" />
-                      </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -368,18 +352,7 @@ export default function SupplierDetailModal({ isOpen, onClose, supplier }: Suppl
 
           {/* Recent Purchase Receipts */}
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h4 className="text-lg font-medium text-gray-900">Recent Purchase Receipts</h4>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleViewAllReceipts}
-                className="flex items-center gap-2"
-              >
-                <ExternalLink className="h-4 w-4" />
-                View All
-              </Button>
-            </div>
+            <h4 className="text-lg font-medium text-gray-900">{t('recentPurchaseReceipts')}</h4>
 
             {receiptsLoading ? (
               <div className="space-y-3">
@@ -399,7 +372,7 @@ export default function SupplierDetailModal({ isOpen, onClose, supplier }: Suppl
                             <p className="text-sm text-gray-600">{formatDate(receipt.created_at)}</p>
                           </div>
                           <div>
-                            <p className="text-sm text-gray-600">{receipt.item_count} items</p>
+                            <p className="text-sm text-gray-600">{t('itemsCountSuffix', { count: String(receipt.item_count) })}</p>
                             <p className="font-medium text-gray-900">{formatCurrency(receipt.total_amount)}</p>
                           </div>
                         </div>
@@ -407,7 +380,7 @@ export default function SupplierDetailModal({ isOpen, onClose, supplier }: Suppl
                           variant="outline" 
                           className={`${getReceiptStatusColor(receipt.status)}`}
                         >
-                          {receipt.status.charAt(0).toUpperCase() + receipt.status.slice(1)}
+                          {receipt.status === 'pending' ? t('pending') : receipt.status === 'confirmed' ? t('confirmed') : t('cancelled')}
                         </Badge>
                       </div>
                     </CardContent>

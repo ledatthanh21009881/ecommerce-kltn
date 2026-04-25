@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
 import { tokenStore } from '@/lib/tokenStore'
 import { getProductById } from '@/lib/products'
+import { useLanguage } from '@/components/language-provider'
 
 interface CartItem {
   item_id: number
@@ -30,6 +31,7 @@ interface CartData {
 
 export default function CartPage() {
   const router = useRouter()
+  const { t, language } = useLanguage()
   const [cartData, setCartData] = useState<CartData>({
     items: [],
     item_count: 0,
@@ -180,7 +182,7 @@ export default function CartPage() {
         if (data.success) {
           setCartData(data.data)
           setErrorMessage(null) // Clear error on success
-          toast.success('Đã cập nhật giỏ hàng')
+          toast.success(t('cart.updated'))
         } else {
           // Check if it's an insufficient stock error
           if (data.message?.includes('Insufficient stock') || data.message?.includes('Available:')) {
@@ -189,7 +191,7 @@ export default function CartPage() {
             // Auto-hide after 8 seconds
             setTimeout(() => setErrorMessage(null), 8000)
           } else {
-            toast.error(data.message || 'Không thể cập nhật')
+            toast.error(data.message || t('cart.cannotUpdate'))
           }
           // Reload cart to revert changes
           loadCart()
@@ -203,11 +205,11 @@ export default function CartPage() {
         
         localStorage.setItem('guestCart', JSON.stringify(updatedCart))
         loadGuestCart()
-        toast.success('Đã cập nhật giỏ hàng')
+        toast.success(t('cart.updated'))
       }
     } catch (error) {
       console.error('Error updating quantity:', error)
-      toast.error('Không thể cập nhật')
+      toast.error(t('cart.cannotUpdate'))
       // Reload cart on error
       loadCart()
     } finally {
@@ -234,9 +236,9 @@ export default function CartPage() {
         
         if (data.success) {
           setCartData(data.data)
-          toast.success('Đã xóa sản phẩm')
+          toast.success(t('cart.itemRemoved'))
         } else {
-          toast.error(data.message || 'Không thể xóa')
+          toast.error(data.message || t('cart.cannotRemove'))
           // Reload cart on error
           loadCart()
         }
@@ -246,18 +248,18 @@ export default function CartPage() {
         const updatedCart = guestCart.filter((item: any) => item.item_id !== itemId)
         localStorage.setItem('guestCart', JSON.stringify(updatedCart))
         loadGuestCart()
-        toast.success('Đã xóa sản phẩm')
+        toast.success(t('cart.itemRemoved'))
       }
     } catch (error) {
       console.error('Error removing item:', error)
-      toast.error('Không thể xóa')
+      toast.error(t('cart.cannotRemove'))
       // Reload cart on error
       loadCart()
     }
   }
 
   const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('vi-VN', {
+    return new Intl.NumberFormat(language === 'en' ? 'en-US' : 'vi-VN', {
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
     }).format(price) + ' ₫'
@@ -270,9 +272,9 @@ export default function CartPage() {
       const availableMatch = message.match(/Available:\s*(\d+)/i)
       if (availableMatch) {
         const available = availableMatch[1]
-        return `Không đủ hàng trong kho. Số lượng còn lại: ${available}`
+        return `${t('cart.insufficientStock')}. ${t('cart.remainingStock')}: ${available}`
       }
-      return 'Không đủ hàng trong kho'
+      return t('cart.insufficientStock')
     }
     // Return original message if not a stock error
     return message
@@ -281,7 +283,7 @@ export default function CartPage() {
   if (loading) {
     return (
       <div className="p-8 max-w-[85%] ml-[224px] mr-8">
-        <div className="py-12 text-center text-gray-600">Đang tải...</div>
+        <div className="py-12 text-center text-gray-600">{t('common.loading')}</div>
       </div>
     )
   }
@@ -317,12 +319,12 @@ export default function CartPage() {
       <div className="p-8 max-w-[85%] ml-[224px] mr-8">
         {cartData.items.length === 0 ? (
           <div className="flex flex-col items-center justify-center pt-[82px] pb-[82px] text-center">
-            <p className="mb-6 text-lg text-gray-600">Giỏ hàng của bạn trống</p>
+            <p className="mb-6 text-lg text-gray-600">{t('cart.empty')}</p>
             <Link
               href="/all-products"
               className="inline-block border border-black px-8 py-3 text-sm font-medium transition-colors hover:bg-black hover:text-white"
             >
-              Tiếp tục mua sắm
+              {t('cart.continueShopping')}
             </Link>
           </div>
         ) : (
@@ -351,7 +353,7 @@ export default function CartPage() {
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">
-                          No Image
+                          {t('cart.noImage')}
                         </div>
                       )}
                     </div>
@@ -362,11 +364,11 @@ export default function CartPage() {
                         <div>
                           <h3 className="font-serif text-lg font-light mb-1">{item.product_name}</h3>
                           <p className="text-sm text-gray-500 mb-2">
-                            Default Title / {item.size_name}
+                            {t('cart.defaultTitle')} / {item.size_name}
                           </p>
                             {isOutOfStock && (
                               <p className="text-xs text-red-600 mb-2">
-                                Sản phẩm đã hết hàng (Còn lại: {stockStatus?.stock || 0})
+                                {t('cart.outOfStock')} ({t('cart.remainingStock')}: {stockStatus?.stock || 0})
                               </p>
                             )}
                         </div>
@@ -414,19 +416,19 @@ export default function CartPage() {
             {/* Right Column - Order Summary */}
             <div className="lg:col-span-1">
               <div className="sticky top-24 border border-gray-200 rounded-lg p-6 bg-white">
-                <h2 className="text-lg font-semibold mb-6">Order Summary</h2>
+                <h2 className="text-lg font-semibold mb-6">{t('cart.orderSummary')}</h2>
                 
                 <div className="space-y-4 mb-6 pb-6 border-b">
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Subtotal:</span>
+                    <span className="text-gray-600">{t('cart.subtotal')}:</span>
                     <span className="font-medium">{formatPrice(cartData.subtotal)}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Shipping:</span>
-                    <span className="font-medium">Free</span>
+                    <span className="text-gray-600">{t('cart.shipping')}:</span>
+                    <span className="font-medium">{t('cart.free')}</span>
                   </div>
                   <div className="flex justify-between pt-4 border-t">
-                    <span className="text-lg font-semibold">Total:</span>
+                    <span className="text-lg font-semibold">{t('cart.total')}:</span>
                     <span className="text-lg font-semibold">{formatPrice(cartData.subtotal)}</span>
                   </div>
                 </div>
@@ -436,23 +438,23 @@ export default function CartPage() {
                   disabled={hasOutOfStockItems()}
                   onClick={() => {
                     if (hasOutOfStockItems()) {
-                      toast.error('Vui lòng xóa sản phẩm hết hàng trước khi thanh toán')
+                      toast.error(t('cart.removeOutOfStockBeforeCheckout'))
                       return
                     }
                     const token = tokenStore.getAccessToken()
                     if (!token) {
-                      toast.error('Vui lòng đăng nhập để thanh toán')
+                      toast.error(t('cart.loginToCheckout'))
                       router.push('/login')
                       return
                     }
                     router.push('/checkout')
                   }}
                 >
-                  Proceed to Checkout
+                  {t('cart.proceedToCheckout')}
                 </Button>
 
                 <p className="text-xs text-gray-500 text-center">
-                  Free shipping on orders over $100
+                  {t('cart.freeShippingOver100')}
                 </p>
               </div>
             </div>

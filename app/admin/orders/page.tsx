@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { toast } from 'sonner'
 import { Order, OrderStatistics } from '@/lib/types'
 import OrderDetailModal from '@/components/admin/OrderDetailModal'
@@ -32,7 +33,7 @@ export default function AdminOrdersPage() {
   const [statistics, setStatistics] = useState<OrderStatistics | null>(null)
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
-  const [statusFilter, setStatusFilter] = useState('')
+  const [statusFilter, setStatusFilter] = useState('all')
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
   const [page, setPage] = useState(1)
@@ -79,7 +80,7 @@ export default function AdminOrdersPage() {
       const params = new URLSearchParams()
       params.set('page', String(page))
       params.set('limit', String(limit))
-      if (statusFilter) params.append('status', statusFilter)
+      if (statusFilter !== 'all') params.append('status', statusFilter)
       if (searchTerm) params.append('search', searchTerm)
       if (dateFrom) params.append('date_from', dateFrom)
       if (dateTo) params.append('date_to', dateTo)
@@ -158,7 +159,7 @@ export default function AdminOrdersPage() {
       `${order.first_name} ${order.last_name}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
       order.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       order.order_id.toString().includes(searchTerm)
-    const matchesStatus = !statusFilter || order.status === statusFilter
+    const matchesStatus = statusFilter === 'all' || order.status === statusFilter
     return matchesSearch && matchesStatus
   })
 
@@ -312,7 +313,7 @@ export default function AdminOrdersPage() {
   const handleExportOrders = async () => {
     try {
       const params = new URLSearchParams()
-      if (statusFilter) params.append('status', statusFilter)
+      if (statusFilter !== 'all') params.append('status', statusFilter)
       if (dateFrom) params.append('date_from', dateFrom)
       if (dateTo) params.append('date_to', dateTo)
       
@@ -399,7 +400,7 @@ export default function AdminOrdersPage() {
               </Button>
               <Button
                 onClick={() => setIsCreateModalOpen(true)}
-                className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white"
+                className="flex items-center gap-2"
               >
                 <Plus className="h-4 w-4" />
                 {t('createCounterOrder')}
@@ -494,19 +495,20 @@ export default function AdminOrdersPage() {
                 {/* Status Filter */}
                 <div className="flex flex-col">
                   <label className="text-xs font-medium text-slate-600 mb-1">{t('statusFilter')}</label>
-                  <select
-                    value={statusFilter}
-                    onChange={(e) => setStatusFilter(e.target.value)}
-                    className="px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/50 focus:bg-white transition-all duration-200 min-w-[140px]"
-                  >
-                    <option value="">{t('allStatus')}</option>
-                    <option value="pending">{t('pending')}</option>
-                    <option value="processing">{t('processing')}</option>
-                    <option value="shipping">{t('shipping')}</option>
-                    <option value="completed">{t('completed')}</option>
-                    <option value="cancelled">{t('cancelled')}</option>
-                    <option value="returned">{t('returned')}</option>
-                  </select>
+                  <Select value={statusFilter} onValueChange={setStatusFilter}>
+                    <SelectTrigger className="min-w-[180px] border-slate-200 bg-white/50 focus:bg-white">
+                      <SelectValue placeholder={t('allStatus')} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">{t('allStatus')}</SelectItem>
+                      <SelectItem value="pending">{t('pending')}</SelectItem>
+                      <SelectItem value="processing">{t('processing')}</SelectItem>
+                      <SelectItem value="shipping">{t('shipping')}</SelectItem>
+                      <SelectItem value="completed">{t('completed')}</SelectItem>
+                      <SelectItem value="cancelled">{t('cancelled')}</SelectItem>
+                      <SelectItem value="returned">{t('returned')}</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 {/* Date Filters */}
