@@ -1,10 +1,11 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { X, Truck, DollarSign, Clock, AlertCircle } from 'lucide-react'
+import { X, Truck, Coins, Clock, AlertCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Switch } from '@/components/ui/switch'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
@@ -143,7 +144,7 @@ export default function ShippingModal({ isOpen, onClose, onSuccess, editingMetho
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+      <Card className="w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
           <CardTitle className="text-xl font-semibold">
             {editingMethod ? t('editShippingMethod') : t('addShippingMethod')}
@@ -153,8 +154,8 @@ export default function ShippingModal({ isOpen, onClose, onSuccess, editingMetho
           </Button>
         </CardHeader>
 
-        <CardContent>
-          <form noValidate onSubmit={handleSubmit} className="space-y-6">
+        <CardContent className="overflow-y-auto flex-1 min-h-0">
+          <form noValidate onSubmit={handleSubmit} className="space-y-5">
             {/* Method Name */}
             <div className="space-y-2">
               <Label htmlFor="name" className="text-sm font-medium">
@@ -179,83 +180,80 @@ export default function ShippingModal({ isOpen, onClose, onSuccess, editingMetho
               )}
             </div>
 
-            {/* Fee */}
-            <div className="space-y-2">
-              <Label htmlFor="fee" className="text-sm font-medium">
-                {t('shippingFee')} (VND) *
-              </Label>
-              <div className="relative">
-                <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                <Input
-                  id="fee"
-                  type="number"
-                  min="0"
-                  step="1000"
-                  value={formData.fee}
-                  onChange={(e) => handleInputChange('fee', e.target.value)}
-                  className={`pl-10 ${errors.fee ? 'border-red-500' : ''}`}
-                  placeholder="0"
-                />
-              </div>
-              {errors.fee && (
-                <div className="flex items-center gap-2 text-red-600 text-sm">
-                  <AlertCircle className="h-4 w-4" />
-                  {errors.fee}
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-2 md:items-start">
+              {/* Fee */}
+              <div className="space-y-2">
+                <Label htmlFor="fee" className="text-sm font-medium">
+                  {t('shippingFee')} (VND) *
+                </Label>
+                <div className="relative">
+                  <Coins className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                  <Input
+                    id="fee"
+                    type="number"
+                    min="0"
+                    step="1000"
+                    value={formData.fee}
+                    onChange={(e) => handleInputChange('fee', e.target.value)}
+                    className={`pl-10 ${errors.fee ? 'border-red-500' : ''}`}
+                    placeholder="0"
+                  />
                 </div>
-              )}
-              <p className="text-sm text-gray-600">
-                {t('enterShippingFeeInVND')}
-              </p>
+                {errors.fee && (
+                  <div className="flex items-center gap-2 text-red-600 text-sm">
+                    <AlertCircle className="h-4 w-4" />
+                    {errors.fee}
+                  </div>
+                )}
+                <p className="text-sm text-gray-600">
+                  {t('enterShippingFeeInVND')}
+                </p>
+              </div>
+
+              {/* Estimated Days */}
+              <div className="space-y-2">
+                <Label htmlFor="estimated_days" className="text-sm font-medium">
+                  {t('estimatedDays')} *
+                </Label>
+                <div className="relative">
+                  <Clock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                  <Input
+                    id="estimated_days"
+                    type="number"
+                    min="1"
+                    value={formData.estimated_days}
+                    onChange={(e) => handleInputChange('estimated_days', e.target.value)}
+                    className={`pl-10 ${errors.estimated_days ? 'border-red-500' : ''}`}
+                    placeholder="1"
+                  />
+                </div>
+                {errors.estimated_days && (
+                  <div className="flex items-center gap-2 text-red-600 text-sm">
+                    <AlertCircle className="h-4 w-4" />
+                    {errors.estimated_days}
+                  </div>
+                )}
+                <p className="text-sm text-gray-600">
+                  {t('enterEstimatedDeliveryDays')}
+                </p>
+              </div>
             </div>
 
-            {/* Estimated Days */}
-            <div className="space-y-2">
-              <Label htmlFor="estimated_days" className="text-sm font-medium">
-                {t('estimatedDays')} *
-              </Label>
-              <div className="relative">
-                <Clock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                <Input
-                  id="estimated_days"
-                  type="number"
-                  min="1"
-                  value={formData.estimated_days}
-                  onChange={(e) => handleInputChange('estimated_days', e.target.value)}
-                  className={`pl-10 ${errors.estimated_days ? 'border-red-500' : ''}`}
-                  placeholder="1"
-                />
-              </div>
-              {errors.estimated_days && (
-                <div className="flex items-center gap-2 text-red-600 text-sm">
-                  <AlertCircle className="h-4 w-4" />
-                  {errors.estimated_days}
-                </div>
-              )}
-              <p className="text-sm text-gray-600">
-                {t('enterEstimatedDeliveryDays')}
-              </p>
-            </div>
-
-            {/* Status */}
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">
-                {t('status')}
-              </Label>
-              <div className="flex items-center space-x-2">
-                <input
-                  type="checkbox"
-                  id="is_active"
-                  checked={formData.is_active}
-                  onChange={(e) => handleInputChange('is_active', e.target.checked)}
-                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                />
-                <Label htmlFor="is_active" className="text-sm">
+            {/* Status — Switch */}
+            <div className="flex flex-col gap-2 rounded-lg border border-slate-200 bg-slate-50/80 p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="space-y-0.5">
+                <Label htmlFor="is_active" className="text-sm font-medium text-slate-900">
                   {t('active')}
                 </Label>
+                <p className="text-sm text-slate-600">
+                  {t('activeShippingMethodDescription')}
+                </p>
               </div>
-              <p className="text-sm text-gray-600">
-                {t('activeShippingMethodDescription')}
-              </p>
+              <Switch
+                id="is_active"
+                checked={formData.is_active}
+                onCheckedChange={(checked) => handleInputChange('is_active', checked)}
+              />
             </div>
 
             {/* Preview */}
@@ -280,7 +278,14 @@ export default function ShippingModal({ isOpen, onClose, onSuccess, editingMetho
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-gray-600">{t('status')}:</span>
-                  <Badge variant={formData.is_active ? 'default' : 'secondary'}>
+                  <Badge
+                    variant="outline"
+                    className={
+                      formData.is_active
+                        ? 'border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-50'
+                        : 'border-slate-200 bg-slate-100 text-slate-600'
+                    }
+                  >
                     {formData.is_active ? t('active') : t('inactive')}
                   </Badge>
                 </div>
@@ -288,7 +293,7 @@ export default function ShippingModal({ isOpen, onClose, onSuccess, editingMetho
             </div>
 
             {/* Actions */}
-            <div className="flex justify-end space-x-3 pt-4">
+            <div className="flex justify-end space-x-3 pt-1">
               <Button
                 type="button"
                 variant="outline"
@@ -297,11 +302,7 @@ export default function ShippingModal({ isOpen, onClose, onSuccess, editingMetho
               >
                 {t('cancel')}
               </Button>
-              <Button
-                type="submit"
-                disabled={loading}
-                className="bg-blue-600 hover:bg-blue-700"
-              >
+              <Button type="submit" disabled={loading} className="flex items-center gap-2">
                 {loading ? t('saving') : (editingMethod ? t('update') : t('create'))}
               </Button>
             </div>

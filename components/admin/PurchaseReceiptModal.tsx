@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
-import { X, Plus, Trash2, Calculator } from 'lucide-react'
+import { useState, useEffect, useMemo, useRef } from 'react'
+import { X, Plus, Trash2, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -55,6 +55,8 @@ interface PurchaseReceiptModalProps {
 }
 
 interface ReceiptItem {
+  /** Stable id for search state + list keys */
+  _key: number
   variant_id: number
   product_id: number
   size_id: number
@@ -65,15 +67,17 @@ interface ReceiptItem {
 
 export default function PurchaseReceiptModal({ isOpen, onClose, receipt, onSaved }: PurchaseReceiptModalProps) {
   const { t } = useLanguage()
+  const nextItemKeyRef = useRef(1)
   const [loading, setLoading] = useState(false)
   const [variants, setVariants] = useState<ProductVariant[]>([])
   const [suppliers, setSuppliers] = useState<Supplier[]>([])
   const [dataLoading, setDataLoading] = useState(true)
+  const [lineProductQuery, setLineProductQuery] = useState<Record<number, string>>({})
   const [formData, setFormData] = useState({
     supplier_id: 0,
     note: '',
     items: [
-      { variant_id: 0, product_id: 0, size_id: 0, quantity: 1, unit_price: 0, note: '' }
+      { _key: 0, variant_id: 0, product_id: 0, size_id: 0, quantity: 1, unit_price: 0, note: '' }
     ] as ReceiptItem[]
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -86,6 +90,10 @@ export default function PurchaseReceiptModal({ isOpen, onClose, receipt, onSaved
     return []
   }
 
+  useEffect(() => {
+    if (isOpen) setLineProductQuery({})
+  }, [isOpen])
+
   // Fetch data on mount
   useEffect(() => {
     if (isOpen) {
@@ -96,20 +104,21 @@ export default function PurchaseReceiptModal({ isOpen, onClose, receipt, onSaved
       
       // If editing, populate form with receipt data
       if (receipt) {
+        nextItemKeyRef.current = 1
         setFormData({
           supplier_id: receipt.supplier_id,
           note: receipt.note || '',
           items: [
-            { variant_id: 0, product_id: 0, size_id: 0, quantity: 1, unit_price: 0, note: '' }
+            { _key: 0, variant_id: 0, product_id: 0, size_id: 0, quantity: 1, unit_price: 0, note: '' }
           ]
         })
       } else {
-        // Reset form for new receipt
+        nextItemKeyRef.current = 1
         setFormData({
           supplier_id: 0,
           note: '',
           items: [
-            { variant_id: 0, product_id: 0, size_id: 0, quantity: 1, unit_price: 0, note: '' }
+            { _key: 0, variant_id: 0, product_id: 0, size_id: 0, quantity: 1, unit_price: 0, note: '' }
           ]
         })
       }
@@ -211,14 +220,22 @@ export default function PurchaseReceiptModal({ isOpen, onClose, receipt, onSaved
   }
 
   const addItem = () => {
+    const k = nextItemKeyRef.current++
     setFormData(prev => ({
       ...prev,
-      items: [...prev.items, { variant_id: 0, product_id: 0, size_id: 0, quantity: 1, unit_price: 0, note: '' }]
+      items: [...prev.items, { _key: k, variant_id: 0, product_id: 0, size_id: 0, quantity: 1, unit_price: 0, note: '' }]
     }))
   }
 
   const removeItem = (index: number) => {
     if (formData.items.length > 1) {
+      const rowKey = formData.items[index]?._key
+      if (rowKey !== undefined) {
+        setLineProductQuery((prev) => {
+          const { [rowKey]: _, ...rest } = prev
+          return rest
+        })
+      }
       setFormData(prev => ({
         ...prev,
         items: prev.items.filter((_, i) => i !== index)
@@ -287,7 +304,9 @@ export default function PurchaseReceiptModal({ isOpen, onClose, receipt, onSaved
       const payload = {
         supplier_id: formData.supplier_id,
         note: formData.note,
-        items: formData.items.filter(item => item.variant_id > 0)
+        items: formData.items
+          .filter(item => item.variant_id > 0)
+          .map(({ _key, ...item }) => item)
       }
 
       const url = receipt 
@@ -393,18 +412,29 @@ export default function PurchaseReceiptModal({ isOpen, onClose, receipt, onSaved
             )}
 
             <div className="space-y-3">
-              {formData.items.map((item, index) => (
-                <Card key={index}>
+              {formData.items.map((item, index) => {
+                const q = (lineProductQuery[item._key] ?? '').toLowerCase().trim()
+                let lineProducts = !q
+                  ? productOptions
+                  : productOptions.filter((p) => p.product_name.toLowerCase().includes(q))
+                if (item.product_id > 0) {
+                  const sel = productOptions.find((p) => p.product_id === item.product_id)
+                  if (sel && !lineProducts.some((p) => p.product_id === item.product_id)) {
+                    lineProducts = [sel, ...lineProducts]
+                  }
+                }
+                return (
+                <Card key={item._key}>
                   <CardContent className="p-4">
                     <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-                      {/* Product Selection */}
+                      {/* Product Selection (searchable) */}
                       <div className="space-y-2">
                         <Label>{t('productLabel')} *</Label>
                         <Select
-                          value={item.product_id > 0 ? item.product_id.toString() : ''}
+                          value={item.product_id > 0 ? String(item.product_id) : 'none'}
                           onValueChange={(value) => {
-                            const productId = parseInt(value)
-                            setFormData(prev => ({
+                            const productId = value === 'none' ? 0 : parseInt(value, 10)
+                            setFormData((prev) => ({
                               ...prev,
                               items: prev.items.map((row, rowIndex) =>
                                 rowIndex === index
@@ -414,21 +444,47 @@ export default function PurchaseReceiptModal({ isOpen, onClose, receipt, onSaved
                             }))
                           }}
                         >
-                          <SelectTrigger>
+                          <SelectTrigger className="h-10 w-full border-slate-200 bg-white text-left text-sm">
                             <SelectValue placeholder={t('selectProduct')} />
                           </SelectTrigger>
-                          <SelectContent>
-                            {productOptions.length > 0 ? (
-                              productOptions.map((product) => (
-                                <SelectItem key={product.product_id} value={product.product_id.toString()}>
-                                  {product.product_name}
-                                </SelectItem>
-                              ))
-                            ) : (
-                              <SelectItem value="0" disabled>
-                                {dataLoading ? t('loadingVariants') : t('noVariantsAvailable')}
-                              </SelectItem>
-                            )}
+                          <SelectContent className="z-[200] p-0" position="popper" sideOffset={4}>
+                            <div
+                              className="sticky top-0 z-10 border-b border-border bg-popover p-2"
+                              onPointerDown={(e) => e.stopPropagation()}
+                            >
+                              <div className="relative" onPointerDown={(e) => e.stopPropagation()}>
+                                <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                                <Input
+                                  className="h-9 pl-8"
+                                  placeholder={t('searchProducts')}
+                                  value={lineProductQuery[item._key] ?? ''}
+                                  onChange={(e) =>
+                                    setLineProductQuery((prev) => ({
+                                      ...prev,
+                                      [item._key]: e.target.value
+                                    }))
+                                  }
+                                  onPointerDown={(e) => e.stopPropagation()}
+                                  onKeyDown={(e) => e.stopPropagation()}
+                                  onKeyUp={(e) => e.stopPropagation()}
+                                  autoComplete="off"
+                                />
+                              </div>
+                            </div>
+                            <div className="max-h-[min(50vh,14rem)] overflow-y-auto p-1">
+                              <SelectItem value="none">{t('selectProduct')}</SelectItem>
+                              {lineProducts.length === 0 ? (
+                                <div className="px-2 py-3 text-center text-sm text-muted-foreground">
+                                  {t('noProductsFound')}
+                                </div>
+                              ) : (
+                                lineProducts.map((product) => (
+                                  <SelectItem key={product.product_id} value={String(product.product_id)}>
+                                    {product.product_name}
+                                  </SelectItem>
+                                ))
+                              )}
+                            </div>
                           </SelectContent>
                         </Select>
                         {errors[`item_${index}_variant`] && (
@@ -440,9 +496,9 @@ export default function PurchaseReceiptModal({ isOpen, onClose, receipt, onSaved
                       <div className="space-y-2">
                         <Label>{t('size')} *</Label>
                         <Select
-                          value={item.size_id > 0 ? item.size_id.toString() : ''}
+                          value={item.size_id > 0 ? String(item.size_id) : 'none'}
                           onValueChange={(value) => {
-                            const sizeId = parseInt(value)
+                            const sizeId = value === 'none' ? 0 : parseInt(value, 10)
                             const matchedVariant = variants.find(
                               (variant) => variant.product_id === item.product_id && variant.size_id === sizeId
                             )
@@ -461,12 +517,13 @@ export default function PurchaseReceiptModal({ isOpen, onClose, receipt, onSaved
                           }}
                           disabled={item.product_id <= 0}
                         >
-                          <SelectTrigger>
+                          <SelectTrigger className="h-10 w-full border-slate-200 bg-white text-left text-sm">
                             <SelectValue placeholder={item.product_id > 0 ? t('selectSize') : t('selectProductFirst')} />
                           </SelectTrigger>
-                          <SelectContent>
+                          <SelectContent className="z-[200] max-h-72" position="popper" sideOffset={4}>
+                            <SelectItem value="none">{t('selectSize')}</SelectItem>
                             {getSizesByProductId(item.product_id).map((sizeOption) => (
-                              <SelectItem key={sizeOption.size_id} value={sizeOption.size_id.toString()}>
+                              <SelectItem key={sizeOption.size_id} value={String(sizeOption.size_id)}>
                                 {sizeOption.size_name}
                               </SelectItem>
                             ))}
@@ -539,7 +596,8 @@ export default function PurchaseReceiptModal({ isOpen, onClose, receipt, onSaved
                     </div>
                   </CardContent>
                 </Card>
-              ))}
+                )
+              })}
             </div>
           </div>
 
@@ -572,7 +630,7 @@ export default function PurchaseReceiptModal({ isOpen, onClose, receipt, onSaved
             <Button type="button" variant="outline" onClick={onClose}>
               {t('cancel')}
             </Button>
-            <Button type="submit" disabled={loading} className="bg-blue-600 hover:bg-blue-700">
+            <Button type="submit" disabled={loading} className="inline-flex items-center gap-2">
               {loading ? t('saving') : (receipt ? t('updateReceiptButton') : t('createReceipt'))}
             </Button>
           </div>

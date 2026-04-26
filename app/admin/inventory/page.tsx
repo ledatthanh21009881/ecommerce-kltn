@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Plus, Search, RefreshCw, Package, Edit, Trash2, Eye, AlertTriangle, LayoutList, LayoutGrid, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Plus, Search, RefreshCw, Package, Edit, Trash2, AlertTriangle, LayoutList, LayoutGrid, ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
@@ -158,12 +158,6 @@ export default function AdminInventoryPage() {
   }, [searchTerm, selectedProduct, selectedStatus, selectedSize])
 
   // Handle inventory operations
-  const handleViewVariant = (variant: InventoryVariant) => {
-    toast.info(`Inventory: ${variant.product_name} - ${variant.size_name}`, {
-      description: `SKU: ${variant.sku}, Stock: ${variant.stock_quantity}, Status: ${variant.status}`
-    })
-  }
-
   const handleEditVariant = (variant: InventoryVariant) => {
     setEditingVariant(variant)
     setIsModalOpen(true)
@@ -518,7 +512,6 @@ export default function AdminInventoryPage() {
                           </span>
                         </div>
                         <div className="flex gap-2">
-                          <Button size="sm" variant="outline" onClick={() => handleViewVariant(variant)} className="flex-1"><Eye className="h-4 w-4" /></Button>
                           <Button size="sm" variant="outline" onClick={() => handleEditVariant(variant)} className="flex-1"><Edit className="h-4 w-4" /></Button>
                           <Button
                             size="sm"
@@ -592,15 +585,6 @@ export default function AdminInventoryPage() {
                           </td>
                           <td className="py-4 px-4">
                             <div className="flex items-center gap-2">
-                              <Button
-                                size="sm"
-                                variant="secondary"
-                                onClick={() => handleViewVariant(variant)}
-                                className="bg-white text-slate-900 hover:bg-white"
-                                title={t('view')}
-                              >
-                                <Eye className="h-4 w-4" />
-                              </Button>
                               <Button
                                 size="sm"
                                 variant="secondary"

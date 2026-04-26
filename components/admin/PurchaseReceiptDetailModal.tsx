@@ -202,7 +202,10 @@ export default function PurchaseReceiptDetailModal({ isOpen, onClose, receipt, o
                     <div>
                       <label className="text-sm font-medium text-gray-600">{t('receiptStatusHeader')}</label>
                       <div className="mt-1">
-                        <Badge className={`${getStatusColor(receiptDetails?.status || 'pending')} flex items-center gap-1 w-fit`}>
+                        <Badge
+                          variant="outline"
+                          className={`${getStatusColor(receiptDetails?.status || 'pending')} flex items-center gap-1.5 w-fit text-xs [&>svg]:shrink-0`}
+                        >
                           {getStatusIcon(receiptDetails?.status || 'pending')}
                           {receiptDetails?.status === 'pending'
                             ? t('pending')
@@ -313,7 +316,10 @@ export default function PurchaseReceiptDetailModal({ isOpen, onClose, receipt, o
                         <CheckCircle className="h-5 w-5 text-purple-600" />
                         <span className="text-sm font-medium text-gray-600">{t('receiptStatusHeader')}</span>
                       </div>
-                      <Badge className={`${getStatusColor(receiptDetails?.status || 'pending')} text-lg px-3 py-1`}>
+                      <Badge
+                        variant="outline"
+                        className={`${getStatusColor(receiptDetails?.status || 'pending')} text-base font-semibold px-3 py-1.5`}
+                      >
                         {receiptDetails?.status === 'pending' ? t('pending') : receiptDetails?.status === 'confirmed' ? t('confirmed') : t('cancelled')}
                       </Badge>
                     </div>

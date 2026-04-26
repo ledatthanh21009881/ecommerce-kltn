@@ -7,7 +7,8 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import { Switch } from '@/components/ui/switch'
 import { toast } from 'sonner'
 import ConfirmModal from '@/components/ui/confirm-modal'
 import { Plus, Edit, Trash2, Search, RefreshCw, Tag, Percent, DollarSign, Calendar, LayoutList, LayoutGrid, ChevronLeft, ChevronRight, CheckCircle2, XCircle } from 'lucide-react'
@@ -442,16 +443,6 @@ export default function PromotionsPage() {
                 />
               </div>
               <div>
-                <Label htmlFor="max_usage">{t('maximumUses')}</Label>
-                <Input
-                  id="max_usage"
-                  type="number"
-                  value={formData.max_usage}
-                  onChange={(e) => setFormData({...formData, max_usage: e.target.value})}
-                  required
-                />
-              </div>
-              <div>
                 <Label htmlFor="start_date">{t('startDate')}</Label>
                 <Input
                   id="start_date"
@@ -472,23 +463,44 @@ export default function PromotionsPage() {
                 />
               </div>
             </div>
-            <div className="flex items-center space-x-2">
-              <input
-                type="checkbox"
-                id="status"
-                checked={formData.status === 'active'}
-                onChange={(e) => setFormData({...formData, status: e.target.checked ? 'active' : 'inactive'})}
-              />
-              <Label htmlFor="status">{t('active')}</Label>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:items-stretch">
+              <div className="space-y-2">
+                <Label htmlFor="max_usage">{t('maximumUses')}</Label>
+                <Input
+                  id="max_usage"
+                  type="number"
+                  value={formData.max_usage}
+                  onChange={(e) => setFormData({...formData, max_usage: e.target.value})}
+                  required
+                />
+              </div>
+              <div className="flex flex-col justify-center gap-2 rounded-lg border border-slate-200 bg-slate-50/80 p-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="space-y-0.5 min-w-0 pr-2">
+                  <Label htmlFor="voucher-active" className="text-sm font-medium text-slate-900">
+                    {t('active')}
+                  </Label>
+                  <p className="text-sm text-slate-600">
+                    {t('activeVoucherDescription')}
+                  </p>
+                </div>
+                <Switch
+                  id="voucher-active"
+                  checked={formData.status === 'active'}
+                  onCheckedChange={(checked) =>
+                    setFormData({ ...formData, status: checked ? 'active' : 'inactive' })
+                  }
+                  className="shrink-0"
+                />
+              </div>
             </div>
-            <div className="flex space-x-2">
-              <Button type="submit">
-                {editingVoucher ? t('update') : t('create')} {t('voucher')}
-              </Button>
+            <DialogFooter className="gap-2 sm:gap-0">
               <Button type="button" variant="outline" onClick={closeFormModal}>
                 {t('cancel')}
               </Button>
-            </div>
+              <Button type="submit" className="flex items-center gap-2">
+                {editingVoucher ? t('update') : t('create')} {t('voucher')}
+              </Button>
+            </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>

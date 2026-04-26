@@ -58,6 +58,21 @@ const TrackingOrderRoutePreview = dynamic(
   }
 )
 
+/** MySQL DECIMAL / JSON thường là string — cần ép số trước .toFixed */
+function formatShipperRating(rating: unknown): string | null {
+  if (rating == null || rating === '') return null
+  const n = typeof rating === 'number' ? rating : Number(rating)
+  return Number.isFinite(n) ? n.toFixed(1) : null
+}
+
+function formatCoordPair(lat: unknown, lng: unknown, decimals: number): string | null {
+  if (lat == null || lat === '' || lng == null || lng === '') return null
+  const a = typeof lat === 'number' ? lat : Number(lat)
+  const b = typeof lng === 'number' ? lng : Number(lng)
+  if (!Number.isFinite(a) || !Number.isFinite(b)) return null
+  return `${a.toFixed(decimals)}, ${b.toFixed(decimals)}`
+}
+
 /** Đơn đang trong luồng giao (có shipper). */
 const DELIVERY_STATUSES = new Set([
   'assigned',
@@ -676,16 +691,19 @@ export default function OrderTrackingPage() {
                               </Badge>
                             </TableCell>
                             <TableCell>
-                              {order.current_lat != null && order.current_lng != null ? (
+                              {(() => {
+                                const pos = formatCoordPair(order.current_lat, order.current_lng, 4)
+                                return pos ? (
                                 <div className="flex items-center gap-1 whitespace-nowrap">
                                   <MapPin className="h-3 w-3 shrink-0 text-green-600" />
                                   <span className="text-xs font-mono whitespace-nowrap">
-                                    {order.current_lat.toFixed(4)}, {order.current_lng.toFixed(4)}
+                                    {pos}
                                   </span>
                                 </div>
-                              ) : (
+                                ) : (
                                 <span className="text-gray-500">{t('trackingNoLocation')}</span>
-                              )}
+                                )
+                              })()}
                             </TableCell>
                             <TableCell className="text-center">
                               {order.shipper_id != null && DELIVERY_STATUSES.has(order.status) ? (
@@ -772,25 +790,33 @@ export default function OrderTrackingPage() {
                         <TableCell>
                           <div className="flex items-center gap-1">
                             <Star className="h-3 w-3 text-yellow-500" />
-                            {shipper.rating?.toFixed(1) || t('trackingNoRating')}
+                            {formatShipperRating(shipper.rating) ?? t('trackingNoRating')}
                           </div>
                         </TableCell>
                         <TableCell>
-                          <Badge className={shipper.is_available ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}>
+                          <Badge
+                            variant="outline"
+                            className={
+                              shipper.is_available
+                                ? 'border-green-200 bg-green-50 text-green-800 hover:bg-green-50'
+                                : 'border-red-200 bg-red-50 text-red-700 hover:bg-red-50'
+                            }
+                          >
                             {shipper.is_available ? t('trackingShipperAvailable') : t('trackingShipperBusy')}
                           </Badge>
                         </TableCell>
                         <TableCell>
-                          {shipper.current_lat && shipper.current_lng ? (
+                          {(() => {
+                            const pos = formatCoordPair(shipper.current_lat, shipper.current_lng, 4)
+                            return pos ? (
                             <div className="flex items-center gap-1">
                               <MapPin className="h-3 w-3 text-blue-600" />
-                              <span className="text-xs">
-                                {shipper.current_lat.toFixed(4)}, {shipper.current_lng.toFixed(4)}
-                              </span>
+                              <span className="text-xs">{pos}</span>
                             </div>
-                          ) : (
+                            ) : (
                             <span className="text-gray-500">{t('trackingNoLocation')}</span>
-                          )}
+                            )
+                          })()}
                         </TableCell>
                         <TableCell>
                           <Badge variant="outline">

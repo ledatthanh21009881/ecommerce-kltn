@@ -898,9 +898,9 @@ export const UI_TRANSLATIONS = {
     outOfStock: 'Out of Stock',
     lowStock: 'Low Stock',
     searchByProductSkuSize: 'Search by product, SKU, or size...',
-    addInventory: 'Add Inventory',
-    addNewInventory: 'Add New Inventory',
-    editInventory: 'Edit Inventory',
+    addInventory: 'Add variant',
+    addNewInventory: 'Add variant',
+    editInventory: 'Edit variant',
     filterByCategory: 'Filter by Category',
     selectProduct: 'Select Product',
     selectSize: 'Select Size',
@@ -933,8 +933,8 @@ export const UI_TRANSLATIONS = {
     noProductsFound: 'No products found',
     noProductsInThisCategory: 'No products in this category',
     currentAvailabilityStatus: 'Current availability status',
-    createInventory: 'Create Inventory',
-    updateInventory: 'Update Inventory',
+    createInventory: 'Create variant',
+    updateInventory: 'Update variant',
 
     // Promotions Management
     promotionsManagement: 'Promotions Management',
@@ -971,6 +971,7 @@ export const UI_TRANSLATIONS = {
     totalVouchers: 'Total Vouchers',
     validPeriod: 'Valid Period',
     getStartedByCreatingVoucher: 'Get started by creating your first voucher.',
+    activeVoucherDescription: 'Active vouchers can be used by customers at checkout (subject to other conditions).',
 
     // Shipping Management
     shippingManagement: 'Shipping Management',
@@ -1951,9 +1952,9 @@ export const UI_TRANSLATIONS = {
     outOfStock: 'Hết hàng',
     lowStock: 'Sắp hết hàng',
     searchByProductSkuSize: 'Tìm kiếm theo sản phẩm, SKU hoặc kích thước...',
-    addInventory: 'Thêm kho hàng',
-    addNewInventory: 'Thêm kho hàng mới',
-    editInventory: 'Sửa kho hàng',
+    addInventory: 'Thêm biến thể',
+    addNewInventory: 'Thêm biến thể',
+    editInventory: 'Sửa biến thể',
     filterByCategory: 'Lọc theo danh mục',
     selectProduct: 'Chọn sản phẩm',
     selectSize: 'Chọn kích thước',
@@ -1986,8 +1987,8 @@ export const UI_TRANSLATIONS = {
     noProductsFound: 'Không tìm thấy sản phẩm',
     noProductsInThisCategory: 'Không có sản phẩm trong danh mục này',
     currentAvailabilityStatus: 'Trạng thái khả dụng hiện tại',
-    createInventory: 'Tạo kho hàng',
-    updateInventory: 'Cập nhật kho hàng',
+    createInventory: 'Tạo biến thể',
+    updateInventory: 'Cập nhật biến thể',
 
     // Promotions Management
     promotionsManagement: 'Quản lý khuyến mãi',
@@ -2024,6 +2025,7 @@ export const UI_TRANSLATIONS = {
     totalVouchers: 'Tổng voucher',
     validPeriod: 'Thời gian hiệu lực',
     getStartedByCreatingVoucher: 'Bắt đầu bằng cách tạo voucher đầu tiên của bạn.',
+    activeVoucherDescription: 'Voucher đang hoạt động có thể dùng khi thanh toán (nếu còn hiệu lực và đủ điều kiện).',
 
     // Shipping Management
     shippingManagement: 'Quản lý vận chuyển',

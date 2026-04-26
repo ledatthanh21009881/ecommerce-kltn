@@ -1,7 +1,7 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
-import { Plus, RefreshCw, Trash2, CheckCircle2, Package, MinusCircle, Ban } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { Plus, RefreshCw, Trash2, CheckCircle2, Package, MinusCircle, Ban, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -39,6 +39,8 @@ interface ProductVariant {
 }
 
 interface AdjustmentItemInput {
+  /** Stable key for UI (search state, React list) — not sent to API */
+  _rowId: number
   product_id: number
   size_id: number
   variant_id: number
@@ -65,7 +67,12 @@ export function StockAdjustmentsPanel({ embedded = false }: { embedded?: boolean
   const [deletingAdjustment, setDeletingAdjustment] = useState<StockAdjustment | null>(null)
   const [reason, setReason] = useState('')
   const [note, setNote] = useState('')
-  const [items, setItems] = useState<AdjustmentItemInput[]>([{ product_id: 0, size_id: 0, variant_id: 0, quantity_change: 0, note: '' }])
+  const nextRowIdRef = useRef(1)
+  const [items, setItems] = useState<AdjustmentItemInput[]>([
+    { _rowId: 0, product_id: 0, size_id: 0, variant_id: 0, quantity_change: 0, note: '' }
+  ])
+  /** Per line product search (keyed by `_rowId`) inside product Select */
+  const [lineProductQuery, setLineProductQuery] = useState<Record<number, string>>({})
 
   const fetchAdjustments = async () => {
     try {
@@ -132,6 +139,10 @@ export function StockAdjustmentsPanel({ embedded = false }: { embedded?: boolean
     }
   }, [embedded])
 
+  useEffect(() => {
+    if (isCreateOpen) setLineProductQuery({})
+  }, [isCreateOpen])
+
   const uniqueSizes = useMemo(() => {
     return Array.from(new Set(variants.map((variant) => variant.size_name).filter(Boolean)))
   }, [variants])
@@ -149,15 +160,25 @@ export function StockAdjustmentsPanel({ embedded = false }: { embedded?: boolean
   const resetCreateForm = () => {
     setReason('')
     setNote('')
-    setItems([{ product_id: 0, size_id: 0, variant_id: 0, quantity_change: 0, note: '' }])
+    nextRowIdRef.current = 1
+    setLineProductQuery({})
+    setItems([{ _rowId: 0, product_id: 0, size_id: 0, variant_id: 0, quantity_change: 0, note: '' }])
   }
 
   const addItem = () => {
-    setItems((prev) => [...prev, { product_id: 0, size_id: 0, variant_id: 0, quantity_change: 0, note: '' }])
+    const id = nextRowIdRef.current++
+    setItems((prev) => [...prev, { _rowId: id, product_id: 0, size_id: 0, variant_id: 0, quantity_change: 0, note: '' }])
   }
 
   const removeItem = (index: number) => {
     if (items.length <= 1) return
+    const rowId = items[index]?._rowId
+    if (rowId !== undefined) {
+      setLineProductQuery((prev) => {
+        const { [rowId]: _, ...rest } = prev
+        return rest
+      })
+    }
     setItems((prev) => prev.filter((_, i) => i !== index))
   }
 
@@ -193,7 +214,10 @@ export function StockAdjustmentsPanel({ embedded = false }: { embedded?: boolean
     const validItems = items
       .filter((item) => item.variant_id > 0 && item.quantity_change > 0)
       .map((item) => ({
-        ...item,
+        product_id: item.product_id,
+        size_id: item.size_id,
+        variant_id: item.variant_id,
+        note: item.note,
         quantity_change: -Math.abs(item.quantity_change)
       }))
     if (validItems.length === 0) {
@@ -483,8 +507,19 @@ export function StockAdjustmentsPanel({ embedded = false }: { embedded?: boolean
                 </Button>
               </div>
 
-              {items.map((item, index) => (
-                <Card key={index} className="border border-slate-200">
+              {items.map((item, index) => {
+                const q = (lineProductQuery[item._rowId] ?? '').toLowerCase().trim()
+                let lineProducts = !q
+                  ? productOptions
+                  : productOptions.filter((p) => p.product_name.toLowerCase().includes(q))
+                if (item.product_id > 0) {
+                  const sel = productOptions.find((p) => p.product_id === item.product_id)
+                  if (sel && !lineProducts.some((p) => p.product_id === item.product_id)) {
+                    lineProducts = [sel, ...lineProducts]
+                  }
+                }
+                return (
+                <Card key={item._rowId} className="border border-slate-200">
                   <CardContent className="p-3 grid grid-cols-1 md:grid-cols-12 gap-2 items-end">
                     <div className="md:col-span-4 space-y-1">
                       <Label>{t('productLabel')} *</Label>
@@ -495,15 +530,46 @@ export function StockAdjustmentsPanel({ embedded = false }: { embedded?: boolean
                           updateItem(index, { product_id: productId, size_id: 0, variant_id: 0 })
                         }}
                       >
-                        <SelectTrigger>
+                        <SelectTrigger className="border-slate-200 bg-white text-left">
                           <SelectValue placeholder={t('selectProduct')} />
                         </SelectTrigger>
-                        <SelectContent>
-                          {productOptions.map((product) => (
-                            <SelectItem key={product.product_id} value={String(product.product_id)}>
-                              {product.product_name}
-                            </SelectItem>
-                          ))}
+                        <SelectContent className="z-[200] p-0" position="popper" sideOffset={4}>
+                          <div
+                            className="sticky top-0 z-10 border-b border-border bg-popover p-2"
+                            onPointerDown={(e) => e.stopPropagation()}
+                          >
+                            <div className="relative" onPointerDown={(e) => e.stopPropagation()}>
+                              <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                              <Input
+                                className="h-9 pl-8"
+                                placeholder={t('searchProducts')}
+                                value={lineProductQuery[item._rowId] ?? ''}
+                                onChange={(e) =>
+                                  setLineProductQuery((prev) => ({
+                                    ...prev,
+                                    [item._rowId]: e.target.value
+                                  }))
+                                }
+                                onPointerDown={(e) => e.stopPropagation()}
+                                onKeyDown={(e) => e.stopPropagation()}
+                                onKeyUp={(e) => e.stopPropagation()}
+                                autoComplete="off"
+                              />
+                            </div>
+                          </div>
+                          <div className="max-h-[min(50vh,14rem)] overflow-y-auto p-1">
+                            {lineProducts.length === 0 ? (
+                              <div className="px-2 py-3 text-center text-sm text-muted-foreground">
+                                {t('noProductsFound')}
+                              </div>
+                            ) : (
+                              lineProducts.map((product) => (
+                                <SelectItem key={product.product_id} value={String(product.product_id)}>
+                                  {product.product_name}
+                                </SelectItem>
+                              ))
+                            )}
+                          </div>
                         </SelectContent>
                       </Select>
                     </div>
@@ -566,7 +632,8 @@ export function StockAdjustmentsPanel({ embedded = false }: { embedded?: boolean
                     </div>
                   </CardContent>
                 </Card>
-              ))}
+                )
+              })}
             </div>
           </div>
 

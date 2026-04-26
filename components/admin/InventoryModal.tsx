@@ -5,6 +5,7 @@ import { X, Save, Loader2, Package } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { toast } from 'sonner'
 import { InventoryVariant, InventoryFormData, Product } from '@/lib/types'
 import { getAuthData } from '@/lib/admin-auth'
@@ -219,7 +220,7 @@ export default function InventoryModal({ isOpen, onClose, variant, products, cat
       />
       
       {/* Modal */}
-      <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto">
+      <div className="relative bg-white rounded-lg shadow-xl w-full max-w-4xl mx-4 max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <div className="flex items-center gap-3">
@@ -239,7 +240,9 @@ export default function InventoryModal({ isOpen, onClose, variant, products, cat
         </div>
         
         {/* Form */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+        <form onSubmit={handleSubmit} className="p-6">
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 md:items-start">
+            <div className="space-y-6">
           {/* Category Filter */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
@@ -250,22 +253,30 @@ export default function InventoryModal({ isOpen, onClose, variant, products, cat
                 {filteredProducts.length} {t('products')}
               </span>
             </div>
-            <select
-              id="category_filter"
-              value={selectedCategory}
-              onChange={(e) => setSelectedCategory(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            <Select
+              value={selectedCategory === '' ? 'all' : String(selectedCategory)}
+              onValueChange={(v) => setSelectedCategory(v === 'all' ? '' : v)}
             >
-              <option value="">{t('allCategories')} ({Array.isArray(products) ? products.length : 0} {t('products')})</option>
-              {categories && categories.length > 0 && categories.map((category) => {
-                const categoryProductCount = Array.isArray(products) ? products.filter(p => p.category_id.toString() === category.category_id.toString()).length : 0
-                return (
-                  <option key={category.category_id} value={category.category_id}>
-                    {category.category_name} ({categoryProductCount} {t('products')})
-                  </option>
-                )
-              })}
-            </select>
+              <SelectTrigger id="category_filter" className="h-10 w-full border-slate-200 bg-white text-left text-sm">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="z-[200] max-h-72" position="popper" sideOffset={4}>
+                <SelectItem value="all">
+                  {t('allCategories')} ({Array.isArray(products) ? products.length : 0} {t('products')})
+                </SelectItem>
+                {categories && categories.length > 0
+                  && categories.map((category) => {
+                    const categoryProductCount = Array.isArray(products)
+                      ? products.filter(p => p.category_id.toString() === category.category_id.toString()).length
+                      : 0
+                    return (
+                      <SelectItem key={category.category_id} value={String(category.category_id)}>
+                        {category.category_name} ({categoryProductCount} {t('products')})
+                      </SelectItem>
+                    )
+                  })}
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Product Selection */}
@@ -273,24 +284,28 @@ export default function InventoryModal({ isOpen, onClose, variant, products, cat
             <Label htmlFor="product_id" className="text-sm font-medium text-gray-700">
               {t('product')} *
             </Label>
-            <select
-              id="product_id"
-              value={formData.product_id || ''}
-              onChange={(e) => handleProductChange(parseInt(e.target.value) || 0)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              required
+            <Select
+              value={formData.product_id > 0 ? String(formData.product_id) : 'none'}
+              onValueChange={(v) => handleProductChange(v === 'none' ? 0 : parseInt(v, 10))}
             >
-              <option value="">{t('selectProduct')}</option>
-              {filteredProducts && filteredProducts.length > 0 ? (
-                filteredProducts.map((product) => (
-                  <option key={product.product_id} value={product.product_id}>
-                    {product.product_name}
-                  </option>
-                ))
-              ) : (
-                <option value="" disabled>{t('noProductsFound')}</option>
-              )}
-            </select>
+              <SelectTrigger id="product_id" className="h-10 w-full border-slate-200 bg-white text-left text-sm">
+                <SelectValue placeholder={t('selectProduct')} />
+              </SelectTrigger>
+              <SelectContent className="z-[200] max-h-72" position="popper" sideOffset={4}>
+                <SelectItem value="none">{t('selectProduct')}</SelectItem>
+                {filteredProducts && filteredProducts.length > 0
+                  ? filteredProducts.map((product) => (
+                      <SelectItem key={product.product_id} value={String(product.product_id)}>
+                        {product.product_name}
+                      </SelectItem>
+                    ))
+                  : (
+                      <SelectItem value="_empty" disabled>
+                        {selectedCategory ? t('noProductsInThisCategory') : t('noProductsFound')}
+                      </SelectItem>
+                    )}
+              </SelectContent>
+            </Select>
             {filteredProducts.length === 0 && selectedCategory && (
               <p className="text-xs text-gray-500">{t('noProductsInThisCategory')}</p>
             )}
@@ -313,21 +328,25 @@ export default function InventoryModal({ isOpen, onClose, variant, products, cat
             <Label htmlFor="size_id" className="text-sm font-medium text-gray-700">
               {t('size')} *
             </Label>
-            <select
-              id="size_id"
-              value={formData.size_id || ''}
-              onChange={(e) => handleInputChange('size_id', parseInt(e.target.value) || 0)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              required
+            <Select
+              value={formData.size_id > 0 ? String(formData.size_id) : 'none'}
+              onValueChange={(v) => handleInputChange('size_id', v === 'none' ? 0 : parseInt(v, 10))}
             >
-              <option value="">{t('selectSize')}</option>
-              <option value={1}>S</option>
-              <option value={2}>M</option>
-              <option value={3}>L</option>
-              <option value={4}>XL</option>
-            </select>
+              <SelectTrigger id="size_id" className="h-10 w-full border-slate-200 bg-white text-left text-sm">
+                <SelectValue placeholder={t('selectSize')} />
+              </SelectTrigger>
+              <SelectContent className="z-[200]" position="popper" sideOffset={4}>
+                <SelectItem value="none">{t('selectSize')}</SelectItem>
+                <SelectItem value="1">S</SelectItem>
+                <SelectItem value="2">M</SelectItem>
+                <SelectItem value="3">L</SelectItem>
+                <SelectItem value="4">XL</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
+            </div>
 
+            <div className="space-y-6">
           {/* SKU */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
@@ -383,23 +402,27 @@ export default function InventoryModal({ isOpen, onClose, variant, products, cat
             <Label htmlFor="status" className="text-sm font-medium text-gray-700">
               {t('status')} *
             </Label>
-            <select
-              id="status"
+            <Select
               value={formData.status}
-              onChange={(e) => handleInputChange('status', e.target.value as 'in_stock' | 'out_of_stock')}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              required
+              onValueChange={(v) => handleInputChange('status', v as 'in_stock' | 'out_of_stock')}
             >
-              <option value="in_stock">{t('inStock')}</option>
-              <option value="out_of_stock">{t('outOfStock')}</option>
-            </select>
+              <SelectTrigger id="status" className="h-10 w-full border-slate-200 bg-white text-left text-sm">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="z-[200]" position="popper" sideOffset={4}>
+                <SelectItem value="in_stock">{t('inStock')}</SelectItem>
+                <SelectItem value="out_of_stock">{t('outOfStock')}</SelectItem>
+              </SelectContent>
+            </Select>
             <p className="text-xs text-gray-500">
               {t('currentAvailabilityStatus')}
             </p>
           </div>
+            </div>
+          </div>
 
           {/* Actions */}
-          <div className="flex justify-end gap-3 pt-6 border-t">
+          <div className="mt-6 flex justify-end gap-3 border-t pt-6">
             <Button type="button" variant="outline" onClick={onClose}>
               {t('cancel')}
             </Button>

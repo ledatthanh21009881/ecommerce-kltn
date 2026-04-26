@@ -5,6 +5,7 @@ import { X, Save, Loader2, Building2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { toast } from 'sonner'
 import { getAuthData } from '@/lib/admin-auth'
 import { useLanguage } from '@/contexts/LanguageContext'
@@ -257,20 +258,23 @@ export default function SupplierModal({ isOpen, onClose, supplier, onSaved }: Su
             </div>
 
             {/* Status */}
-            <div className="space-y-2">
+            <div className="space-y-2 md:col-span-2">
               <Label htmlFor="status" className="text-sm font-medium text-gray-700">
                 {t('status')}
               </Label>
-              <select
-                id="status"
+              <Select
                 value={formData.status}
-                onChange={(e) => handleInputChange('status', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                onValueChange={(v) => handleInputChange('status', v)}
               >
-                <option value="active">{t('supplierStatusActive')}</option>
-                <option value="inactive">{t('supplierStatusInactive')}</option>
-                <option value="suspended">{t('supplierStatusSuspended')}</option>
-              </select>
+                <SelectTrigger id="status" className="h-10 w-full border-slate-200 bg-white text-left text-sm">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="z-[200]" position="popper" sideOffset={4}>
+                  <SelectItem value="active">{t('supplierStatusActive')}</SelectItem>
+                  <SelectItem value="inactive">{t('supplierStatusInactive')}</SelectItem>
+                  <SelectItem value="suspended">{t('supplierStatusSuspended')}</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
@@ -299,19 +303,15 @@ export default function SupplierModal({ isOpen, onClose, supplier, onSaved }: Su
             >
               {t('cancel')}
             </Button>
-            <Button
-              type="submit"
-              disabled={loading}
-              className="bg-blue-600 hover:bg-blue-700"
-            >
+            <Button type="submit" disabled={loading} className="inline-flex items-center gap-2">
               {loading ? (
                 <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
                   {supplier ? t('supplierUpdating') : t('supplierCreating')}
                 </>
               ) : (
                 <>
-                  <Save className="h-4 w-4 mr-2" />
+                  <Save className="h-4 w-4 shrink-0" />
                   {supplier ? t('updateSupplier') : t('createSupplier')}
                 </>
               )}
