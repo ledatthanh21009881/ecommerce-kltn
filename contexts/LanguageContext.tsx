@@ -39,9 +39,14 @@ export const LanguageProvider: React.FC<LanguageProviderProps> = ({ children }) 
     if (user?.preferred_locale === 'vi' || user?.preferred_locale === 'en') {
       next = user.preferred_locale
     } else {
-      const saved = localStorage.getItem(ADMIN_LANG_KEY) as Language
-      if (saved === 'en' || saved === 'vi') {
-        next = saved
+      const adminSaved = localStorage.getItem(ADMIN_LANG_KEY) as Language
+      if (adminSaved === 'en' || adminSaved === 'vi') {
+        next = adminSaved
+      } else {
+        const siteLang = localStorage.getItem('language') as Language
+        if (siteLang === 'en' || siteLang === 'vi') {
+          next = siteLang
+        }
       }
     }
     setLanguageState(next)

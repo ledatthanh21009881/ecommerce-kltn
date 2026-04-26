@@ -104,7 +104,7 @@ function AdminLayoutContent({
   const handleLogout = () => {
     clearAuthData()
     router.push('/admin-login')
-    toast.success('Logged out successfully')
+    toast.success(t('adminLogoutSuccess'))
   }
 
       const menuItems = [
@@ -306,6 +306,7 @@ function AdminLayoutContent({
                 userEmail={user.account_name ? `${user.account_name}@example.com` : 'admin@example.com'}
                 onLogout={handleLogout}
                 messengerLabel={t('messenger')}
+                logoutLabel={t('logout')}
               />
             </div>
           </div>

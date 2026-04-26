@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useMemo, type ChangeEvent } from 'react'
-import { Save, Settings, Bell, Palette } from 'lucide-react'
+import { Save, Settings, Bell, Palette, KeyRound } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -52,9 +52,9 @@ export default function AdminSettingsPage() {
   const { t } = useLanguage()
   const [settings, setSettings] = useState<SettingsData>({
     general: {
-      site_name: 'ShopSwift',
+      site_name: 'VIVIENNE',
       site_description: 'Your premium fashion destination',
-      contact_email: 'contact@shopswift.com',
+      contact_email: 'contact@vivienne.com',
       contact_phone: '+84 123 456 789',
       address: '123 Fashion Street, District 1, Ho Chi Minh City',
       timezone: 'Asia/Ho_Chi_Minh',
@@ -68,10 +68,16 @@ export default function AdminSettingsPage() {
     }
   })
   const [loading, setLoading] = useState(false)
+  const [changePasswordLoading, setChangePasswordLoading] = useState(false)
   const [faviconUploading, setFaviconUploading] = useState(false)
   const [activeTab, setActiveTab] = useState('general')
   const [inventoryRows, setInventoryRows] = useState<InventoryVariant[]>([])
   const [inventoryLoading, setInventoryLoading] = useState(false)
+  const [changePasswordData, setChangePasswordData] = useState({
+    current_password: '',
+    new_password: '',
+    confirm_password: '',
+  })
 
   // Fetch settings
   const fetchSettings = async () => {
@@ -180,7 +186,8 @@ export default function AdminSettingsPage() {
   const tabs = [
     { id: 'general', label: t('settingsTabGeneral'), icon: Settings },
     { id: 'notifications', label: t('settingsTabNotifications'), icon: Bell },
-    { id: 'appearance', label: t('settingsTabAppearance'), icon: Palette }
+    { id: 'appearance', label: t('settingsTabAppearance'), icon: Palette },
+    { id: 'security', label: t('settingsTabSecurity'), icon: KeyRound },
   ]
   const faviconPreviewSrc = settings.appearance.favicon_url?.trim() || '/icon.png'
 
@@ -305,6 +312,62 @@ export default function AdminSettingsPage() {
       toast.error(t('settingsFaviconUploadFailed'))
     } finally {
       setFaviconUploading(false)
+    }
+  }
+
+  const handleChangePassword = async () => {
+    const current = changePasswordData.current_password.trim()
+    const next = changePasswordData.new_password.trim()
+    const confirm = changePasswordData.confirm_password.trim()
+
+    if (!current || !next || !confirm) {
+      toast.error(t('settingsChangePasswordFailed'))
+      return
+    }
+    if (next !== confirm) {
+      toast.error(t('settingsPasswordMismatch'))
+      return
+    }
+
+    try {
+      setChangePasswordLoading(true)
+      const { token } = getAuthData()
+      if (!token) {
+        toast.error(t('authenticationFailed'))
+        return
+      }
+      const response = await fetch('/api/backend/v1/auth/change-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          current_password: current,
+          new_password: next,
+          confirm_password: confirm,
+        }),
+      })
+      const data = await response.json()
+      if (!response.ok || data?.success === false) {
+        const firstError =
+          data?.errors && typeof data.errors === 'object'
+            ? Object.values(data.errors).flat().find(Boolean)
+            : null
+        toast.error(firstError || data?.message || t('settingsChangePasswordFailed'))
+        return
+      }
+      toast.success(t('settingsChangePasswordSuccess'))
+      setChangePasswordData({
+        current_password: '',
+        new_password: '',
+        confirm_password: '',
+      })
+    } catch (error) {
+      console.error('Change password error:', error)
+      toast.error(t('settingsChangePasswordFailed'))
+    } finally {
+      setChangePasswordLoading(false)
     }
   }
 
@@ -449,6 +512,7 @@ export default function AdminSettingsPage() {
                             })}
                           />
                         </div>
+
                       </div>
                     )}
 
@@ -676,17 +740,88 @@ export default function AdminSettingsPage() {
                       </div>
                     )}
 
-                    {/* Save Button */}
-                    <div className="flex justify-end pt-6 border-t">
-                      <Button
-                        onClick={saveSettings}
-                        disabled={loading}
-                        className="flex items-center gap-2"
-                      >
-                        <Save className="h-4 w-4" />
-                        {loading ? t('saving') : t('settingsSaveButton')}
-                      </Button>
-                    </div>
+                    {/* Security Settings */}
+                    {activeTab === 'security' && (
+                      <div className="space-y-6">
+                        <div className="rounded-lg border border-slate-200 bg-slate-50/80 p-4">
+                          <div className="mb-4 flex items-center gap-2">
+                            <KeyRound className="h-4 w-4 text-slate-700" />
+                            <h3 className="text-sm font-semibold text-slate-800">
+                              {t('settingsChangePasswordTitle')}
+                            </h3>
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div className="space-y-2">
+                              <Label htmlFor="current_password">{t('settingsCurrentPassword')}</Label>
+                              <Input
+                                id="current_password"
+                                type="password"
+                                value={changePasswordData.current_password}
+                                onChange={(e) =>
+                                  setChangePasswordData((prev) => ({
+                                    ...prev,
+                                    current_password: e.target.value,
+                                  }))
+                                }
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="new_password">{t('settingsNewPassword')}</Label>
+                              <Input
+                                id="new_password"
+                                type="password"
+                                value={changePasswordData.new_password}
+                                onChange={(e) =>
+                                  setChangePasswordData((prev) => ({
+                                    ...prev,
+                                    new_password: e.target.value,
+                                  }))
+                                }
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="confirm_password">{t('settingsConfirmPassword')}</Label>
+                              <Input
+                                id="confirm_password"
+                                type="password"
+                                value={changePasswordData.confirm_password}
+                                onChange={(e) =>
+                                  setChangePasswordData((prev) => ({
+                                    ...prev,
+                                    confirm_password: e.target.value,
+                                  }))
+                                }
+                              />
+                            </div>
+                          </div>
+                          <div className="mt-4 flex justify-end">
+                            <Button
+                              type="button"
+                              onClick={handleChangePassword}
+                              disabled={changePasswordLoading}
+                              className="flex items-center gap-2"
+                            >
+                              <KeyRound className="h-4 w-4" />
+                              {changePasswordLoading ? t('saving') : t('settingsChangePasswordButton')}
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Save Button (not needed in Security tab) */}
+                    {activeTab !== 'security' && (
+                      <div className="flex justify-end pt-6 border-t">
+                        <Button
+                          onClick={saveSettings}
+                          disabled={loading}
+                          className="flex items-center gap-2"
+                        >
+                          <Save className="h-4 w-4" />
+                          {loading ? t('saving') : t('settingsSaveButton')}
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 )}
               </CardContent>

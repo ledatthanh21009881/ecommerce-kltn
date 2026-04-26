@@ -60,6 +60,7 @@ export interface ForgotPasswordData {
 export interface ForgotPasswordResponse {
   ok: boolean
   message: string
+  errorCode?: string
 }
 
 export interface ChangePasswordData {
@@ -439,6 +440,7 @@ export const forgotPassword = async (data: ForgotPasswordData): Promise<ForgotPa
       return {
         ok: false,
         message: result?.message || 'Failed to send reset password email',
+        errorCode: result?.error_code as string | undefined,
       }
     }
 

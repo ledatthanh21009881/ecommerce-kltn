@@ -29,11 +29,15 @@ export default function ForgotPasswordPage() {
     setIsLoading(false)
 
     if (!res.ok) {
-      toast.error(res.message || t('auth.resetError'))
+      if (res.errorCode === 'EMAIL_NOT_REGISTERED') {
+        toast.error(t('auth.emailNotRegistered'))
+      } else {
+        toast.error(res.message || t('auth.resetError'))
+      }
       return
     }
 
-    toast.success(res.message || t('auth.resetLinkSent'))
+    toast.success(t('auth.resetLinkSent'))
     setTimeout(() => {
       router.push('/login')
     }, 1200)

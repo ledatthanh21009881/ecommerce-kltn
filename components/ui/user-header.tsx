@@ -13,6 +13,7 @@ interface UserHeaderProps {
   userEmail?: string
   onLogout?: () => void
   messengerLabel?: string
+  logoutLabel?: string
 }
 
 export default function UserHeader({ 
@@ -20,6 +21,7 @@ export default function UserHeader({
   userEmail = "admin@example.com",
   onLogout,
   messengerLabel = 'Messenger',
+  logoutLabel = 'Logout',
 }: UserHeaderProps) {
   const [showDropdown, setShowDropdown] = useState(false)
   const pathname = usePathname()
@@ -89,7 +91,7 @@ export default function UserHeader({
               className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
             >
               <LogOut className="h-4 w-4" />
-              Logout
+              {logoutLabel}
             </button>
           </div>
         )}
