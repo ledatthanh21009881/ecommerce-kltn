@@ -21,6 +21,12 @@ export const UI_TRANSLATIONS = {
     logout: 'Logout',
     adminLoginSuccess: 'Login successful!',
 
+    notifTitle: 'Notifications',
+    notifEmpty: 'No notifications yet',
+    notifMarkAll: 'Mark all as read',
+    notifViewOrders: 'Open orders',
+    notifLoadError: 'Could not load notifications',
+
     // Page Titles & Headers
     orderManagement: 'Order Management',
     orderManagementDesc: 'Track and manage customer orders with real-time updates',
@@ -1058,6 +1064,12 @@ export const UI_TRANSLATIONS = {
     settings: 'Cài đặt',
     logout: 'Đăng xuất',
     adminLoginSuccess: 'Đăng nhập thành công!',
+
+    notifTitle: 'Thông báo',
+    notifEmpty: 'Chưa có thông báo',
+    notifMarkAll: 'Đánh dấu đã đọc tất cả',
+    notifViewOrders: 'Mở danh sách đơn hàng',
+    notifLoadError: 'Không tải được thông báo',
 
     // Page Titles & Headers
     orderManagement: 'Quản lý đơn hàng',

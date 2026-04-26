@@ -1,11 +1,12 @@
 'use client'
 
-import { Bell, LogOut, User, MessageSquare } from 'lucide-react'
+import { LogOut, User, MessageSquare } from 'lucide-react'
 import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import { useAdminMessengerUnreadCount } from '@/hooks/useAdminMessengerUnreadCount'
+import AdminNotificationBell from '@/components/admin/AdminNotificationBell'
 
 interface UserHeaderProps {
   userName?: string
@@ -60,14 +61,7 @@ export default function UserHeader({
         )}
       </Link>
 
-      {/* Notification Bell — có thể gắn API thông báo sau */}
-      <button
-        type="button"
-        className="relative p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-full transition-colors"
-        aria-label="Notifications"
-      >
-        <Bell className="h-5 w-5" />
-      </button>
+      <AdminNotificationBell />
 
       {/* User Profile */}
       <div className="relative">

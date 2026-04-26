@@ -177,6 +177,21 @@ export const analyticsApi = {
 };
 
 /** Thống kê trang admin — from/to (doanh thu); top_from/top_to (top SP, tùy chọn). */
+export const adminNotificationsApi = {
+  list: (params?: { limit?: number; page?: number; is_read?: 0 | 1 }) => {
+    const qs = new URLSearchParams();
+    if (params?.limit != null) qs.set('limit', String(params.limit));
+    if (params?.page != null) qs.set('page', String(params.page));
+    if (params?.is_read != null) qs.set('is_read', String(params.is_read));
+    const q = qs.toString();
+    return apiFetch(`api/backend/v1/notifications${q ? `?${q}` : ''}`);
+  },
+  markRead: (id: number) =>
+    apiFetch(`api/backend/v1/notifications/${id}/read`, { method: 'PUT' }),
+  markAllRead: () =>
+    apiFetch('api/backend/v1/notifications/mark-all-read', { method: 'PUT' }),
+};
+
 export const adminApi = {
   getDashboard: (range?: { from: string; to: string; topFrom?: string; topTo?: string }) => {
     if (!range?.from || !range?.to) {

@@ -193,6 +193,8 @@ export type NotificationType =
   | 'order_delayed'
   | 'shipper_offline'
   | 'system_alert'
+  | 'new_order'
+  | 'payment_update'
 
 export interface NotificationStats {
   total_notifications: number
@@ -510,5 +512,15 @@ export const NOTIFICATION_TYPE_CONFIG: Record<NotificationType, StatusConfig> = 
     label: 'Cảnh báo hệ thống',
     color: 'bg-purple-100 text-purple-800',
     icon: '🚨'
+  },
+  new_order: {
+    label: 'Đơn mới',
+    color: 'bg-emerald-100 text-emerald-800',
+    icon: '🆕'
+  },
+  payment_update: {
+    label: 'Thanh toán',
+    color: 'bg-amber-100 text-amber-800',
+    icon: '💳'
   }
 }
