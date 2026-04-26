@@ -22,7 +22,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
 import UserHeader from '@/components/ui/user-header'
-import { getAuthData, clearAuthData, AdminUser, checkAndRefreshAuth } from '@/lib/admin-auth'
+import { getAuthData, clearAuthData, AdminUser, checkAndRefreshAuth, updateAdminUserPreferredLocale } from '@/lib/admin-auth'
 import { LanguageProvider, useLanguage } from '@/contexts/LanguageContext'
 import {
   Select,
@@ -41,6 +41,30 @@ function AdminLayoutContent({
   const router = useRouter()
   const pathname = usePathname()
   const { language, setLanguage, t } = useLanguage()
+
+  const handleLanguageChange = async (value: 'en' | 'vi') => {
+    setLanguage(value)
+    const { token } = getAuthData()
+    if (!token) return
+    try {
+      const r = await fetch('/api/backend/v1/auth/admin/locale', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ preferred_locale: value }),
+      })
+      const data = await r.json()
+      if (data?.success) {
+        updateAdminUserPreferredLocale(value)
+      } else {
+        toast.error(t('settingsSaveFailed'))
+      }
+    } catch {
+      toast.error(t('settingsSaveError'))
+    }
+  }
   // Mặc định sidebar mở full khi load lần đầu
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [user, setUser] = useState<AdminUser | null>(null)
@@ -266,7 +290,7 @@ function AdminLayoutContent({
             <div className="flex flex-1" />
             <div className="flex items-center gap-x-4 lg:gap-x-6">
               {/* Language Selector */}
-              <Select value={language} onValueChange={(value: 'en' | 'vi') => setLanguage(value)}>
+              <Select value={language} onValueChange={(value: 'en' | 'vi') => void handleLanguageChange(value)}>
                 <SelectTrigger className="min-w-[11rem] w-auto max-w-[14rem] border-gray-200 bg-white text-gray-900">
                   <Languages className="h-4 w-4 shrink-0 mr-2" />
                   <SelectValue placeholder={t('language')} />

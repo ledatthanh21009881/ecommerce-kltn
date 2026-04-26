@@ -3,6 +3,7 @@ export interface AdminUser {
   account_name: string
   account_type: string
   role: string
+  preferred_locale?: 'vi' | 'en'
 }
 
 export function getAuthData(): { token: string | null; user: AdminUser | null } {
@@ -28,6 +29,9 @@ export function getAuthData(): { token: string | null; user: AdminUser | null } 
 export function setAuthData(token: string, user: AdminUser): void {
   localStorage.setItem('adminToken', token)
   localStorage.setItem('adminUser', JSON.stringify(user))
+  if (user.preferred_locale === 'vi' || user.preferred_locale === 'en') {
+    localStorage.setItem('adminLanguage', user.preferred_locale)
+  }
 
   // Keep shared token store in sync so refresh flow works reliably.
   try {
@@ -50,6 +54,12 @@ export function setAuthData(token: string, user: AdminUser): void {
   } catch {
     // Ignore sync errors; adminToken/adminUser are still persisted.
   }
+}
+
+export function updateAdminUserPreferredLocale(locale: 'vi' | 'en'): void {
+  const { token, user } = getAuthData()
+  if (!token || !user) return
+  setAuthData(token, { ...user, preferred_locale: locale })
 }
 
 export function clearAuthData(): void {

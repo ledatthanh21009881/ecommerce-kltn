@@ -1,6 +1,7 @@
 'use client'
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react'
+import { getAuthData } from '@/lib/admin-auth'
 import { Language, TranslationKey, getTranslation } from '@/lib/ui-translations'
 
 interface LanguageContextType {
@@ -10,6 +11,7 @@ interface LanguageContextType {
 }
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined)
+const ADMIN_LANG_KEY = 'adminLanguage'
 
 export const useLanguage = (): LanguageContextType => {
   const context = useContext(LanguageContext)
@@ -24,25 +26,41 @@ interface LanguageProviderProps {
 }
 
 export const LanguageProvider: React.FC<LanguageProviderProps> = ({ children }) => {
-  const [language, setLanguage] = useState<Language>('en')
+  const [language, setLanguageState] = useState<Language>('en')
+  /**
+   * Chỉ ghi localStorage sau khi đã hydrate xong. Tránh effect lưu chạy cùng tick
+   * với effect đọc mà `language` trong closure còn 'en' → ghi đè 'vi' mỗi lần F5.
+   */
+  const [ready, setReady] = useState(false)
 
-  // Load language from localStorage on mount
   useEffect(() => {
-    const savedLanguage = localStorage.getItem('adminLanguage') as Language
-    if (savedLanguage && (savedLanguage === 'en' || savedLanguage === 'vi')) {
-      setLanguage(savedLanguage)
+    let next: Language = 'en'
+    const { user } = getAuthData()
+    if (user?.preferred_locale === 'vi' || user?.preferred_locale === 'en') {
+      next = user.preferred_locale
+    } else {
+      const saved = localStorage.getItem(ADMIN_LANG_KEY) as Language
+      if (saved === 'en' || saved === 'vi') {
+        next = saved
+      }
     }
+    setLanguageState(next)
+    setReady(true)
   }, [])
 
-  // Save language to localStorage when it changes
   useEffect(() => {
-    localStorage.setItem('adminLanguage', language)
-  }, [language])
+    if (!ready) return
+    localStorage.setItem(ADMIN_LANG_KEY, language)
+  }, [language, ready])
+
+  const setLanguage = (next: Language) => {
+    setLanguageState(next)
+  }
 
   const t = (key: TranslationKey, params?: Record<string, string>): string => {
     let translation = getTranslation(key, language)
     if (params) {
-      Object.keys(params).forEach(paramKey => {
+      Object.keys(params).forEach((paramKey) => {
         translation = translation.replace(`{${paramKey}}`, params[paramKey])
       })
     }

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, type ChangeEvent } from 'react'
+import { useState, useEffect, useCallback, useMemo, type ChangeEvent } from 'react'
 import { Save, Settings, Bell, Palette } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -11,6 +11,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { toast } from 'sonner'
 import { useLanguage } from '@/contexts/LanguageContext'
 import { getAuthData } from '@/lib/admin-auth'
+import type { InventoryVariant } from '@/lib/types'
 
 interface SettingsData {
   general: {
@@ -22,12 +23,14 @@ interface SettingsData {
     timezone: string
     currency: string
   }
+  /** Khớp `SiteSettingsController::NOTIFICATION_DEFAULTS` */
   notifications: {
-    email_notifications: boolean
-    sms_notifications: boolean
-    order_confirmation: boolean
-    shipping_updates: boolean
+    admin_notify_new_order: boolean
+    admin_notify_payment: boolean
+    admin_notify_order_assigned: boolean
+    email_invoice: boolean
     low_stock_alerts: boolean
+    low_stock_threshold: number
   }
   appearance: {
     theme: string
@@ -35,6 +38,15 @@ interface SettingsData {
     favicon_url: string
   }
 }
+
+const defaultNotifications = (): SettingsData['notifications'] => ({
+  admin_notify_new_order: true,
+  admin_notify_payment: true,
+  admin_notify_order_assigned: true,
+  email_invoice: true,
+  low_stock_alerts: true,
+  low_stock_threshold: 5,
+})
 
 export default function AdminSettingsPage() {
   const { t } = useLanguage()
@@ -48,13 +60,7 @@ export default function AdminSettingsPage() {
       timezone: 'Asia/Ho_Chi_Minh',
       currency: 'VND'
     },
-    notifications: {
-      email_notifications: true,
-      sms_notifications: false,
-      order_confirmation: true,
-      shipping_updates: true,
-      low_stock_alerts: true
-    },
+    notifications: defaultNotifications(),
     appearance: {
       theme: 'light',
       primary_color: '#000000',
@@ -64,6 +70,8 @@ export default function AdminSettingsPage() {
   const [loading, setLoading] = useState(false)
   const [faviconUploading, setFaviconUploading] = useState(false)
   const [activeTab, setActiveTab] = useState('general')
+  const [inventoryRows, setInventoryRows] = useState<InventoryVariant[]>([])
+  const [inventoryLoading, setInventoryLoading] = useState(false)
 
   // Fetch settings
   const fetchSettings = async () => {
@@ -78,8 +86,23 @@ export default function AdminSettingsPage() {
       })
       const data = await response.json()
       
-      if (data.success) {
-        setSettings(data.data || settings)
+      if (data.success && data.data) {
+        const d = data.data
+        setSettings((prev) => {
+          const n = d.notifications as Partial<SettingsData['notifications']> | undefined
+          const th = n?.low_stock_threshold
+          const lowTh =
+            typeof th === 'number' && !Number.isNaN(th)
+              ? Math.max(0, Math.min(999999, th))
+              : Math.max(0, parseInt(String(th ?? ''), 10) || defaultNotifications().low_stock_threshold)
+          return {
+            ...prev,
+            ...d,
+            general: { ...prev.general, ...d.general },
+            appearance: { ...prev.appearance, ...d.appearance },
+            notifications: { ...defaultNotifications(), ...n, low_stock_threshold: lowTh },
+          }
+        })
       } else {
         toast.error(t('settingsFetchFailed'))
       }
@@ -94,6 +117,37 @@ export default function AdminSettingsPage() {
   useEffect(() => {
     fetchSettings()
   }, [])
+
+  const loadInventoryPreview = useCallback(async () => {
+    try {
+      setInventoryLoading(true)
+      const { token } = getAuthData()
+      const response = await fetch('/api/backend/v1/inventory', {
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      })
+      const data = await response.json()
+      const rows = Array.isArray(data.data) ? data.data : (data.data?.variants ?? [])
+      setInventoryRows(Array.isArray(rows) ? (rows as InventoryVariant[]) : [])
+    } catch {
+      setInventoryRows([])
+    } finally {
+      setInventoryLoading(false)
+    }
+  }, [])
+
+  const lowStockPreview = useMemo(() => {
+    const th = settings.notifications.low_stock_threshold
+    return inventoryRows.filter((v) => v.stock_quantity <= th)
+  }, [inventoryRows, settings.notifications.low_stock_threshold])
+
+  useEffect(() => {
+    if (activeTab === 'notifications') {
+      void loadInventoryPreview()
+    }
+  }, [activeTab, loadInventoryPreview])
 
   // Save settings
   const saveSettings = async () => {
@@ -398,77 +452,147 @@ export default function AdminSettingsPage() {
                       </div>
                     )}
 
-                    {/* Notification Settings */}
+                    {/* Notification Settings — theo từng kênh hệ thống thực sự có */}
                     {activeTab === 'notifications' && (
-                      <div className="space-y-6">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <Label className="text-base font-medium">{t('settingsEmailNotifications')}</Label>
-                            <p className="text-sm text-gray-500">{t('settingsEmailNotificationsDesc')}</p>
+                      <div className="space-y-8">
+                        <p className="text-sm text-slate-600">{t('settingsNotifSettingsHint')}</p>
+
+                        <div className="space-y-4">
+                          <h3 className="text-sm font-semibold text-slate-800 uppercase tracking-wide">
+                            {t('settingsNotifAdminSection')}
+                          </h3>
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <Label className="text-base font-medium">{t('settingsNotifNewOrder')}</Label>
+                              <p className="text-sm text-gray-500">{t('settingsNotifNewOrderDesc')}</p>
+                            </div>
+                            <Switch
+                              checked={settings.notifications.admin_notify_new_order}
+                              onCheckedChange={(checked) => setSettings({
+                                ...settings,
+                                notifications: { ...settings.notifications, admin_notify_new_order: checked }
+                              })}
+                            />
                           </div>
-                          <Switch
-                            checked={settings.notifications.email_notifications}
-                            onCheckedChange={(checked) => setSettings({
-                              ...settings,
-                              notifications: { ...settings.notifications, email_notifications: checked }
-                            })}
-                          />
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <Label className="text-base font-medium">{t('settingsNotifPayment')}</Label>
+                              <p className="text-sm text-gray-500">{t('settingsNotifPaymentDesc')}</p>
+                            </div>
+                            <Switch
+                              checked={settings.notifications.admin_notify_payment}
+                              onCheckedChange={(checked) => setSettings({
+                                ...settings,
+                                notifications: { ...settings.notifications, admin_notify_payment: checked }
+                              })}
+                            />
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <Label className="text-base font-medium">{t('settingsNotifOrderAssigned')}</Label>
+                              <p className="text-sm text-gray-500">{t('settingsNotifOrderAssignedDesc')}</p>
+                            </div>
+                            <Switch
+                              checked={settings.notifications.admin_notify_order_assigned}
+                              onCheckedChange={(checked) => setSettings({
+                                ...settings,
+                                notifications: { ...settings.notifications, admin_notify_order_assigned: checked }
+                              })}
+                            />
+                          </div>
                         </div>
 
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <Label className="text-base font-medium">{t('settingsSmsNotifications')}</Label>
-                            <p className="text-sm text-gray-500">{t('settingsSmsNotificationsDesc')}</p>
+                        <div className="space-y-4">
+                          <h3 className="text-sm font-semibold text-slate-800 uppercase tracking-wide">
+                            {t('settingsNotifEmailSection')}
+                          </h3>
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <Label className="text-base font-medium">{t('settingsEmailInvoice')}</Label>
+                              <p className="text-sm text-gray-500">{t('settingsEmailInvoiceDesc')}</p>
+                            </div>
+                            <Switch
+                              checked={settings.notifications.email_invoice}
+                              onCheckedChange={(checked) => setSettings({
+                                ...settings,
+                                notifications: { ...settings.notifications, email_invoice: checked }
+                              })}
+                            />
                           </div>
-                          <Switch
-                            checked={settings.notifications.sms_notifications}
-                            onCheckedChange={(checked) => setSettings({
-                              ...settings,
-                              notifications: { ...settings.notifications, sms_notifications: checked }
-                            })}
-                          />
                         </div>
 
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <Label className="text-base font-medium">{t('settingsOrderConfirmation')}</Label>
-                            <p className="text-sm text-gray-500">{t('settingsOrderConfirmationDesc')}</p>
+                        <div className="space-y-4">
+                          <h3 className="text-sm font-semibold text-slate-800 uppercase tracking-wide">
+                            {t('settingsNotifInventorySection')}
+                          </h3>
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <Label className="text-base font-medium">{t('settingsLowStockAlerts')}</Label>
+                              <p className="text-sm text-gray-500">{t('settingsLowStockAlertsDesc')}</p>
+                            </div>
+                            <Switch
+                              checked={settings.notifications.low_stock_alerts}
+                              onCheckedChange={(checked) => setSettings({
+                                ...settings,
+                                notifications: { ...settings.notifications, low_stock_alerts: checked }
+                              })}
+                            />
                           </div>
-                          <Switch
-                            checked={settings.notifications.order_confirmation}
-                            onCheckedChange={(checked) => setSettings({
-                              ...settings,
-                              notifications: { ...settings.notifications, order_confirmation: checked }
-                            })}
-                          />
-                        </div>
-
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <Label className="text-base font-medium">{t('settingsShippingUpdates')}</Label>
-                            <p className="text-sm text-gray-500">{t('settingsShippingUpdatesDesc')}</p>
+                          <div className="space-y-2 max-w-xs">
+                            <Label htmlFor="low_stock_threshold">{t('settingsLowStockThreshold')}</Label>
+                            <p className="text-sm text-gray-500">{t('settingsLowStockThresholdDesc')}</p>
+                            <Input
+                              id="low_stock_threshold"
+                              type="number"
+                              min={0}
+                              max={999999}
+                              value={settings.notifications.low_stock_threshold}
+                              onChange={(e) => {
+                                const v = parseInt(e.target.value, 10)
+                                setSettings({
+                                  ...settings,
+                                  notifications: {
+                                    ...settings.notifications,
+                                    low_stock_threshold: Number.isNaN(v) ? 0 : Math.max(0, Math.min(999999, v)),
+                                  },
+                                })
+                              }}
+                            />
                           </div>
-                          <Switch
-                            checked={settings.notifications.shipping_updates}
-                            onCheckedChange={(checked) => setSettings({
-                              ...settings,
-                              notifications: { ...settings.notifications, shipping_updates: checked }
-                            })}
-                          />
-                        </div>
-
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <Label className="text-base font-medium">{t('settingsLowStockAlerts')}</Label>
-                            <p className="text-sm text-gray-500">{t('settingsLowStockAlertsDesc')}</p>
+                          <div className="rounded-lg border border-slate-200 bg-slate-50/80 p-4">
+                            <div className="mb-2 flex items-center justify-between">
+                              <span className="text-sm font-medium text-slate-800">{t('settingsLowStockPreviewTitle')}</span>
+                              {inventoryLoading && (
+                                <span className="text-xs text-slate-500">{t('loading')}</span>
+                              )}
+                            </div>
+                            {lowStockPreview.length === 0 ? (
+                              <p className="text-sm text-slate-600">{t('settingsLowStockPreviewEmpty')}</p>
+                            ) : (
+                              <div className="max-h-56 overflow-auto">
+                                <table className="w-full text-left text-sm">
+                                  <thead>
+                                    <tr className="border-b border-slate-200 text-slate-600">
+                                      <th className="py-1.5 pr-2 font-medium">{t('settingsLowStockPreviewColProduct')}</th>
+                                      <th className="py-1.5 pr-2 font-medium">{t('settingsLowStockPreviewColSku')}</th>
+                                      <th className="py-1.5 pr-2 font-medium">{t('settingsLowStockPreviewColSize')}</th>
+                                      <th className="py-1.5 font-medium text-right">{t('settingsLowStockPreviewColQty')}</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {lowStockPreview.map((row) => (
+                                      <tr key={row.variant_id} className="border-b border-slate-100 last:border-0">
+                                        <td className="py-1.5 pr-2">{row.product_name}</td>
+                                        <td className="py-1.5 pr-2 font-mono text-xs">{row.sku}</td>
+                                        <td className="py-1.5 pr-2">{row.size_name}</td>
+                                        <td className="py-1.5 text-right tabular-nums">{row.stock_quantity}</td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            )}
                           </div>
-                          <Switch
-                            checked={settings.notifications.low_stock_alerts}
-                            onCheckedChange={(checked) => setSettings({
-                              ...settings,
-                              notifications: { ...settings.notifications, low_stock_alerts: checked }
-                            })}
-                          />
                         </div>
                       </div>
                     )}
