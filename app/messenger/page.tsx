@@ -1,9 +1,10 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, useCallback, useRef } from "react"
 import { toast } from "sonner"
 import Link from "next/link"
 import { ArrowLeft, Moon, Sun } from "lucide-react"
+import { useSearchParams } from "next/navigation"
 import { useWebSocket } from "@/hooks/useWebSocket"
 import ChatWindow, {
   ChatContact,
@@ -43,14 +44,42 @@ interface Conversation {
   unread_count: number
 }
 
+function extractConversationIdFromResponse(payload: any): number | null {
+  const raw =
+    payload?.data?.conversation_id ??
+    payload?.conversation_id ??
+    payload?.data?.conversation?.conversation_id ??
+    payload?.data?.items?.[0]?.conversation_id ??
+    payload?.data?.[0]?.conversation_id
+
+  const id = Number(raw)
+  return Number.isFinite(id) && id > 0 ? id : null
+}
+
 export default function MessengerPage() {
+  const getAuthToken = () =>
+    localStorage.getItem('auth_token') ||
+    localStorage.getItem('adminToken') ||
+    localStorage.getItem('access_token') ||
+    localStorage.getItem('token')
+
+  const searchParams = useSearchParams()
   const [messages, setMessages] = useState<Message[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [conversationId, setConversationId] = useState<number | null>(null)
+  const conversationIdRef = useRef<number | null>(null)
+  conversationIdRef.current = conversationId
   const [isDarkMode, setIsDarkMode] = useState(false)
   const [isTyping, setIsTyping] = useState(false)
   const [recallSelectionMode, setRecallSelectionMode] = useState(false)
   const [selectedRecallMessageIds, setSelectedRecallMessageIds] = useState<number[]>([])
+  const orderId = searchParams.get("order_id")
+  const shipperId = searchParams.get("shipper_id")
+  const shipperName = searchParams.get("shipper_name")
+  const isShipperChat = !!shipperId
+  const conversationLabel = isShipperChat ? `shipper:${shipperId}:order:${orderId || 0}` : "support"
+  const returnToParam = searchParams.get("returnTo")
+  const returnHref = returnToParam && returnToParam.startsWith("/") ? returnToParam : "/"
 
   // WebSocket hook
   const {
@@ -64,6 +93,10 @@ export default function MessengerPage() {
   } = useWebSocket({
     onMessage: (message) => {
       console.log('Debug - New message received:', message)
+      const activeId = conversationIdRef.current
+      if (activeId != null && message?.conversation_id != null && Number(message.conversation_id) !== activeId) {
+        return
+      }
       setMessages(prev => {
         // Check if message already exists
         const exists = prev.some(msg => msg.message_id === message.message_id)
@@ -73,13 +106,15 @@ export default function MessengerPage() {
     },
     onTypingStart: (convId) => {
       console.log('Debug - Typing start for conversation:', convId)
-      if (conversationId && convId === conversationId) {
+      const activeId = conversationIdRef.current
+      if (activeId != null && convId === activeId) {
         setIsTyping(true)
       }
     },
     onTypingStop: (convId) => {
       console.log('Debug - Typing stop for conversation:', convId)
-      if (conversationId && convId === conversationId) {
+      const activeId = conversationIdRef.current
+      if (activeId != null && convId === activeId) {
         setIsTyping(false)
       }
     },
@@ -91,22 +126,161 @@ export default function MessengerPage() {
     }
   })
 
+  const loadMessages = useCallback(async (convId: number) => {
+    try {
+      const token = getAuthToken()
+      console.log('Debug - Loading messages for conversation:', convId)
+
+      const response = await fetch(`/api/messenger?action=get_messages&conversation_id=${convId}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+
+      console.log('Debug - Load messages response status:', response.status)
+
+      if (response.ok) {
+        const data = await response.json()
+        console.log('Debug - Load messages data:', data)
+        if (data.success) {
+          const messagesData = data.data && data.data.items ? data.data.items : data.data
+          console.log('Debug - Raw messages data:', messagesData)
+          console.log('Debug - First message structure:', messagesData[0])
+          setMessages(Array.isArray(messagesData) ? messagesData : [])
+          console.log('Debug - Messages loaded:', Array.isArray(messagesData) ? messagesData.length : 0, 'messages')
+        }
+      } else {
+        console.log('Debug - Failed to load messages')
+        const errorData = await response.json()
+        console.log('Debug - Load messages error:', errorData)
+      }
+    } catch (error) {
+      console.error('❌ Error loading messages:', error)
+      toast.error('Failed to load messages')
+    }
+  }, [])
+
+  const initializeChat = useCallback(async () => {
+    console.log('Debug - initializeChat started')
+    try {
+      setIsLoading(true)
+      const token = getAuthToken()
+      console.log('Debug - Token:', token ? 'Token exists' : 'No token found')
+
+      if (!token) {
+        toast.error('Please login to use messenger')
+        return
+      }
+
+      let currentUserId = 1
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]))
+        currentUserId = payload.user_id
+        console.log('Debug - Current user ID from token:', currentUserId)
+      } catch (error) {
+        console.error('Error decoding token:', error)
+        toast.error('Invalid token')
+        return
+      }
+
+      if (isShipperChat && (!orderId?.trim() || !shipperId?.trim())) {
+        console.log('Debug - Shipper chat: waiting for order_id and shipper_id from URL')
+        setConversationId(null)
+        setMessages([])
+        return
+      }
+
+      console.log('Debug - Checking for existing conversation for customer:', currentUserId, 'label:', conversationLabel)
+      const convQuery = new URLSearchParams({
+        action: 'get_conversations',
+        customer_id: String(currentUserId),
+        label: conversationLabel,
+      })
+      if (shipperId) convQuery.set('shipper_id', shipperId)
+      if (orderId) convQuery.set('order_id', orderId)
+
+      const response = await fetch(`/api/messenger?${convQuery.toString()}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+
+      console.log('Debug - Response status:', response.status)
+
+      if (response.ok) {
+        const data = await response.json()
+        const existingConversationId = extractConversationIdFromResponse(data)
+        if (data?.success && existingConversationId) {
+          console.log('Debug - Found existing conversation id:', existingConversationId)
+          setConversationId(existingConversationId)
+          await loadMessages(existingConversationId)
+        } else {
+          console.log('Debug - No conversations found, creating new one...')
+          const createResponse = await fetch('/api/messenger', {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              action: 'create_conversation',
+              customer_id: currentUserId,
+              label: conversationLabel,
+              ...(shipperId ? { shipper_id: Number(shipperId) } : {}),
+              ...(orderId ? { order_id: Number(orderId) } : {}),
+            }),
+          })
+
+          const createData = await createResponse.json().catch(() => null)
+          const newConversationId = extractConversationIdFromResponse(createData)
+
+          if (createResponse.ok && createData?.success && newConversationId) {
+            console.log('Debug - Setting conversationId to (new conversation):', newConversationId)
+            setConversationId(newConversationId)
+            await loadMessages(newConversationId)
+          } else {
+            const fallbackMessage = createData?.message || 'Không thể tạo cuộc trò chuyện'
+            console.log('Debug - Failed to create conversation', fallbackMessage)
+            toast.error(fallbackMessage)
+          }
+        }
+      } else {
+        const errorData = await response.json().catch(() => null)
+        console.log('Debug - Fetch error:', errorData)
+      }
+    } catch (error) {
+      console.error('❌ Error initializing chat:', error)
+      toast.error('Failed to initialize chat')
+    } finally {
+      setIsLoading(false)
+      console.log('Debug - initializeChat finally block completed')
+    }
+  }, [conversationLabel, orderId, shipperId, isShipperChat, loadMessages])
+
   useEffect(() => {
-    console.log('Debug - useEffect started - calling initializeChat and connectWebSocket')
-    const init = async () => {
-      console.log('Debug - Starting initialization...')
+    if (isShipperChat && (!orderId?.trim() || !shipperId?.trim())) {
+      return
+    }
+
+    let cancelled = false
+    setMessages([])
+    setConversationId(null)
+
+    const run = async () => {
       await initializeChat()
-      console.log('Debug - initializeChat completed')
-      
-      // Connect WebSocket after chat initialization
-      const token = localStorage.getItem('token') || localStorage.getItem('access_token') || localStorage.getItem('auth_token')
+      if (cancelled) return
+      const token = getAuthToken()
       if (token) {
         connect(token)
         console.log('Debug - WebSocket connect called')
       }
     }
-    init()
-  }, []) // Remove connect from dependencies to prevent infinite loop
+
+    void run()
+    return () => {
+      cancelled = true
+    }
+  }, [isShipperChat, orderId, shipperId, conversationLabel, initializeChat, connect])
 
   // Join conversation when WebSocket connects and conversationId is available
   useEffect(() => {
@@ -119,150 +293,6 @@ export default function MessengerPage() {
       console.log('Debug - Cannot join - isConnected:', isConnected, 'conversationId:', conversationId)
     }
   }, [isConnected, conversationId, joinConversation])
-
-
-  const initializeChat = async () => {
-    console.log('Debug - initializeChat started')
-    try {
-      setIsLoading(true)
-             const token = localStorage.getItem('token') || localStorage.getItem('access_token') || localStorage.getItem('auth_token')
-       console.log('Debug - Token:', token ? 'Token exists' : 'No token found')
-       console.log('Debug - Token length:', token ? token.length : 0)
-       console.log('Debug - Token preview:', token ? token.substring(0, 20) + '...' : 'No token')
-       console.log('Debug - All localStorage keys:', Object.keys(localStorage))
-      
-             if (!token) {
-         toast.error('Please login to use messenger')
-         return
-       }
-
-       // Get current user ID from token
-       let currentUserId = 1 // fallback
-       try {
-         const payload = JSON.parse(atob(token.split('.')[1]))
-         currentUserId = payload.user_id
-         console.log('Debug - Current user ID from token:', currentUserId)
-       } catch (error) {
-         console.error('Error decoding token:', error)
-         toast.error('Invalid token')
-         return
-       }
-
-                       // First, try to find existing conversation for this customer
-         console.log('Debug - Checking for existing conversation for customer:', currentUserId)
-        const response = await fetch(`/api/messenger?action=get_conversations&customer_id=${currentUserId}`, {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        })
-
-      console.log('Debug - Response status:', response.status)
-      console.log('Debug - Response ok:', response.ok)
-
-      if (response.ok) {
-        const data = await response.json()
-        console.log('Debug - Response data:', data)
-        
-        if (data.success && data.data && data.data.items && data.data.items.length > 0) {
-          console.log('Debug - Found existing conversation:', data.data.items[0])
-          const existingConversationId = data.data.items[0].conversation_id
-          console.log('Debug - Setting conversationId to:', existingConversationId)
-          setConversationId(existingConversationId)
-          
-          // Note: WebSocket join will be handled by useEffect when ws connects
-          loadMessages(existingConversationId)
-        } else if (data.success && data.data && Array.isArray(data.data) && data.data.length > 0) {
-          console.log('Debug - Found existing conversation (array format):', data.data[0])
-          const existingConversationId = data.data[0].conversation_id
-          console.log('Debug - Setting conversationId to (array format):', existingConversationId)
-          setConversationId(existingConversationId)
-          
-          // Note: WebSocket join will be handled by useEffect when ws connects
-          loadMessages(existingConversationId)
-        } else {
-          console.log('Debug - No conversations found, creating new one...')
-                     // Create new conversation
-           const createResponse = await fetch('/api/messenger', {
-             method: 'POST',
-             headers: {
-               'Authorization': `Bearer ${token}`,
-               'Content-Type': 'application/json'
-             },
-             body: JSON.stringify({
-               action: 'create_conversation',
-               customer_id: currentUserId
-             })
-           })
-
-          console.log('Debug - Create response status:', createResponse.status)
-          
-          if (createResponse.ok) {
-            const createData = await createResponse.json()
-            console.log('Debug - Created conversation:', createData)
-            const newConversationId = createData.data.conversation_id
-            console.log('Debug - Setting conversationId to (new conversation):', newConversationId)
-            setConversationId(newConversationId)
-            
-            // Note: WebSocket join will be handled by useEffect when ws connects
-          } else {
-            console.log('Debug - Failed to create conversation')
-            const errorData = await createResponse.json()
-            console.log('Debug - Create error:', errorData)
-          }
-        }
-      } else {
-        console.log('Debug - Failed to fetch conversations')
-        const errorData = await response.json()
-        console.log('Debug - Fetch error:', errorData)
-      }
-    } catch (error) {
-      console.error('❌ Error initializing chat:', error)
-      console.log('Debug - Error details:', error)
-      toast.error('Failed to initialize chat')
-         } finally {
-       setIsLoading(false)
-       console.log('Debug - initializeChat finally block completed')
-     }
-     console.log('Debug - initializeChat function completed')
-   }
-
-
-
-  const loadMessages = async (convId: number) => {
-         try {
-       const token = localStorage.getItem('token') || localStorage.getItem('access_token') || localStorage.getItem('auth_token')
-       console.log('Debug - Loading messages for conversation:', convId)
-      
-             const response = await fetch(`/api/messenger?action=get_messages&conversation_id=${convId}`, {
-         headers: {
-           'Authorization': `Bearer ${token}`
-         }
-       })
-
-      console.log('Debug - Load messages response status:', response.status)
-
-      if (response.ok) {
-        const data = await response.json()
-        console.log('Debug - Load messages data:', data)
-        if (data.success) {
-          const messagesData = data.data && data.data.items ? data.data.items : data.data
-          console.log('Debug - Raw messages data:', messagesData)
-          console.log('Debug - First message structure:', messagesData[0])
-          setMessages(messagesData)
-          console.log('Debug - Messages loaded:', messagesData.length, 'messages')
-          
-          // Note: WebSocket join will be handled by useEffect when ws connects
-        }
-      } else {
-        console.log('Debug - Failed to load messages')
-        const errorData = await response.json()
-        console.log('Debug - Load messages error:', errorData)
-      }
-    } catch (error) {
-      console.error('❌ Error loading messages:', error)
-      toast.error('Failed to load messages')
-    }
-  }
 
   // Helper functions for link detection and media
   const isValidUrl = (string: string) => {
@@ -320,7 +350,7 @@ export default function MessengerPage() {
     }
     
     // Get current user ID from token
-    const token = localStorage.getItem('token') || localStorage.getItem('access_token') || localStorage.getItem('auth_token')
+    const token = getAuthToken()
     if (!token) return (message: Message) => false
     
     try {
@@ -356,7 +386,7 @@ export default function MessengerPage() {
     const mediaType = isMediaUrl ? getMediaTypeFromUrl(messageContent) : null
 
     // Get current user ID from token
-    const token = localStorage.getItem('token') || localStorage.getItem('access_token') || localStorage.getItem('auth_token')
+    const token = getAuthToken()
     let currentUserId = 1 // fallback
     if (token) {
       try {
@@ -392,7 +422,7 @@ export default function MessengerPage() {
     setMessages(prev => [...prev, optimisticMessage])
 
          try {
-       const token = localStorage.getItem('token') || localStorage.getItem('access_token') || localStorage.getItem('auth_token')
+       const token = getAuthToken()
        console.log('Debug - Sending message to conversation:', conversationId)
       console.log('Debug - Message content:', messageContent)
       
@@ -462,7 +492,7 @@ export default function MessengerPage() {
     const content = isVideo ? '[Video]' : isAudio ? '' : '[Image]'
 
     // Get current user ID from token
-    const token = localStorage.getItem('token') || localStorage.getItem('access_token') || localStorage.getItem('auth_token')
+    const token = getAuthToken()
     let currentUserId = 1 // fallback
     if (token) {
       try {
@@ -506,7 +536,7 @@ export default function MessengerPage() {
     }
 
          try {
-       const token = localStorage.getItem('token') || localStorage.getItem('access_token') || localStorage.getItem('auth_token')
+       const token = getAuthToken()
        if (!token) {
         toast.error('Please login to upload media')
         setMessages(prev => prev.filter(msg => msg.message_id !== optimisticMessage.message_id))
@@ -592,7 +622,10 @@ export default function MessengerPage() {
   // Build data for new chat UI - MUST be called BEFORE any early return
   const contact: ChatContact = useMemo(() => {
     const otherMessage = messages.find((m) => !isMessageFromCustomer(m))
+    const shipperDisplayName =
+      (shipperName && shipperName.trim()) || (shipperId ? `Shipper #${shipperId}` : "")
     const name =
+      shipperDisplayName ||
       (otherMessage
         ? `${otherMessage.first_name || ""} ${otherMessage.last_name || ""}`.trim()
         : "") || "Customer Support"
@@ -601,11 +634,14 @@ export default function MessengerPage() {
       id: conversationId ?? "support",
       name,
       avatar:
+        shipperDisplayName
+          ? `https://ui-avatars.com/api/?name=${encodeURIComponent(shipperDisplayName)}&background=0D8ABC&color=fff`
+          : (
         otherMessage?.avatar_url ||
-        "https://ui-avatars.com/api/?name=CS&background=0D8ABC&color=fff",
+        "https://ui-avatars.com/api/?name=CS&background=0D8ABC&color=fff"),
       online: isConnected,
     }
-  }, [messages, conversationId, isConnected, isMessageFromCustomer])
+  }, [messages, conversationId, isConnected, isMessageFromCustomer, shipperId, shipperName])
 
   const chatMessages: ChatMessage[] = useMemo(
     () => {
@@ -734,10 +770,7 @@ export default function MessengerPage() {
   }
 
   const recallMessageOnServer = async (messageId: number, quiet?: boolean) => {
-    const token =
-      localStorage.getItem('token') ||
-      localStorage.getItem('access_token') ||
-      localStorage.getItem('auth_token')
+      const token = getAuthToken()
     if (!token) {
       if (!quiet) toast.error('Vui lòng đăng nhập để thu hồi tin nhắn')
       return false
@@ -828,7 +861,7 @@ export default function MessengerPage() {
       const formData = new FormData()
       formData.append('media', audioFile)
       
-      const token = localStorage.getItem('token') || localStorage.getItem('access_token') || localStorage.getItem('auth_token')
+      const token = getAuthToken()
       if (!token) {
         toast.error('Please login to send voice message')
         return
@@ -900,7 +933,7 @@ export default function MessengerPage() {
           className={`flex items-center gap-2 px-3 sm:px-4 py-2 border-b shrink-0 ${isDarkMode ? 'border-gray-700 bg-gray-800' : 'border-gray-200 bg-white'} pt-[max(0.5rem,env(safe-area-inset-top))]`}
         >
           <Link
-            href="/"
+            href={returnHref}
             className={`p-2 rounded-full transition-colors shrink-0 ${isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}
           >
             <ArrowLeft className={`w-4 h-4 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`} />
@@ -908,8 +941,10 @@ export default function MessengerPage() {
           <span
             className={`text-sm font-medium truncate min-w-0 ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}
           >
-            <span className="sm:hidden">Trang chủ</span>
-            <span className="hidden sm:inline">Quay lại trang chủ</span>
+            <span className="sm:hidden">Quay lại</span>
+            <span className="hidden sm:inline">Quay lại trang trước</span>
+            {orderId ? ` • Đơn #${orderId}` : ""}
+            {shipperId ? ` • Chat với shipper` : ""}
           </span>
           <div className="ml-auto flex items-center gap-3">
             {/* Dark Mode Toggle */}

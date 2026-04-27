@@ -5,7 +5,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { useParams } from 'next/navigation'
 import dynamic from 'next/dynamic'
-import { ArrowLeft, Phone, MapPin } from 'lucide-react'
+import { ArrowLeft, Phone, MapPin, MessageCircle } from 'lucide-react'
 import { userOrdersApi } from '@/lib/userOrdersApi'
 import type { Shipper, OrderTracking } from '@/lib/tracking-types'
 import { ORDER_STATUS_CONFIG } from '@/lib/tracking-types'
@@ -323,6 +323,22 @@ export default function OrderDetailPage() {
   }
 
   const orderLabel = order.invoice_number ?? `ORD-${order.order_id}`
+  const resolvedShipperId = shipper?.user_id ?? order.tracking?.shipper_id ?? null
+  const resolvedShipperName =
+    shipper?.shipper_name ??
+    [order.tracking?.first_name, order.tracking?.last_name].filter(Boolean).join(' ') ??
+    ''
+  const messengerParams = new URLSearchParams({
+    order_id: String(order.order_id),
+    returnTo: `/account/orders/${orderId}`,
+  })
+  if (resolvedShipperId) {
+    messengerParams.set('shipper_id', String(resolvedShipperId))
+    if (resolvedShipperName.trim()) {
+      messengerParams.set('shipper_name', resolvedShipperName.trim())
+    }
+  }
+  const messengerHref = `/messenger?${messengerParams.toString()}`
 
   return (
     <ProtectedRoute>
@@ -527,15 +543,24 @@ export default function OrderDetailPage() {
                       <p className="text-gray-600">Xe: {shipper?.vehicle_info ?? order.tracking?.vehicle_info ?? '—'}</p>
                       {shipper?.rating != null && <p className="text-gray-600">Đánh giá: {shipper.rating}</p>}
                     </div>
-                    {(shipper?.phone ?? order.tracking?.phone) && (
-                      <a
-                        href={`tel:${shipper?.phone ?? order.tracking?.phone}`}
-                        className="inline-flex items-center gap-2 rounded-xl bg-black px-4 py-2 text-sm font-medium text-white hover:bg-gray-800"
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Link
+                        href={messengerHref}
+                        className="inline-flex items-center gap-2 rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-800 hover:bg-gray-50"
                       >
-                        <Phone className="h-4 w-4" />
-                        Gọi điện
-                      </a>
-                    )}
+                        <MessageCircle className="h-4 w-4" />
+                        Nhắn tin
+                      </Link>
+                      {(shipper?.phone ?? order.tracking?.phone) && (
+                        <a
+                          href={`tel:${shipper?.phone ?? order.tracking?.phone}`}
+                          className="inline-flex items-center gap-2 rounded-xl bg-black px-4 py-2 text-sm font-medium text-white hover:bg-gray-800"
+                        >
+                          <Phone className="h-4 w-4" />
+                          Gọi điện
+                        </a>
+                      )}
+                    </div>
                   </div>
                 </div>
               )}

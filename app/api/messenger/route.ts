@@ -7,6 +7,10 @@ export async function GET(request: NextRequest) {
     const action = searchParams.get('action')
     const conversationId = searchParams.get('conversation_id')
     const customerId = searchParams.get('customer_id')
+    const shipperId = searchParams.get('shipper_id')
+    const orderId = searchParams.get('order_id')
+    const label = searchParams.get('label')
+    const myShipperConversations = searchParams.get('my_shipper_conversations')
     const token = request.headers.get('authorization')?.replace('Bearer ', '')
 
     if (!token) {
@@ -19,9 +23,17 @@ export async function GET(request: NextRequest) {
     let url = ''
     switch (action) {
       case 'get_conversations':
-        url = customerId
-          ? backendUrl(`/api/backend/v1/conversations?customer_id=${customerId}`)
-          : backendUrl('/api/backend/v1/conversations')
+        if (customerId) {
+          const qs = new URLSearchParams({ customer_id: customerId })
+          if (shipperId) qs.set('shipper_id', shipperId)
+          if (orderId) qs.set('order_id', orderId)
+          if (label) qs.set('label', label)
+          url = backendUrl(`/api/backend/v1/conversations?${qs.toString()}`)
+        } else if (myShipperConversations === '1' || myShipperConversations === 'true') {
+          url = backendUrl('/api/backend/v1/conversations?my_shipper_conversations=1')
+        } else {
+          url = backendUrl('/api/backend/v1/conversations')
+        }
         break
       case 'get_messages':
         if (!conversationId) {
@@ -131,6 +143,12 @@ export async function POST(request: NextRequest) {
       switch (action) {
         case 'create_conversation':
           url = backendUrl('/api/backend/v1/conversations')
+          requestBody = {
+            ...data,
+            ...(body.shipper_id != null ? { shipper_id: body.shipper_id } : {}),
+            ...(body.order_id != null ? { order_id: body.order_id } : {}),
+            ...(body.label ? { label: body.label } : {}),
+          }
           break
         case 'send_message':
           url = backendUrl('/api/backend/v1/messages')

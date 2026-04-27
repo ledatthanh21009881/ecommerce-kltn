@@ -31,6 +31,34 @@ export default function AssignShipperModal({ isOpen, onClose, order, onShipperAs
     }
   }, [isOpen])
 
+  const translateAssignShipperError = (message?: string) => {
+    if (!message) return t('failedToAssignShipper')
+
+    if (message.includes('Cannot reassign shipper. Order is already being delivered')) {
+      return t('cannotReassignShipperShipping')
+    }
+
+    if (message.includes('Cannot assign shipper. Order status must be')) {
+      const statusMatch = message.match(/Current status:\s*([a-z_]+)/i)
+      const status = statusMatch?.[1] || 'unknown'
+      return t('cannotAssignShipperInvalidStatus').replace('{status}', status)
+    }
+
+    if (message.includes('Order not found')) {
+      return t('orderNotFound')
+    }
+
+    if (message.includes('Shipper not found')) {
+      return t('shipperNotFound')
+    }
+
+    if (message.includes('Shipper is not available or inactive')) {
+      return t('shipperNotAvailable')
+    }
+
+    return message
+  }
+
   const fetchAvailableShippers = async () => {
     try {
       setFetchingShippers(true)
@@ -97,7 +125,7 @@ export default function AssignShipperModal({ isOpen, onClose, order, onShipperAs
         onClose()
         setSelectedShipper(null)
       } else {
-        toast.error(data.message || t('failedToAssignShipper'))
+        toast.error(translateAssignShipperError(data.message))
       }
     } catch (error) {
       console.error('Error assigning shipper:', error)
