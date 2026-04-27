@@ -140,9 +140,14 @@ function getPaymentMethodLabel(method: string | undefined): string {
   return method
 }
 
-function getPaymentStatusLabel(status: string | undefined): string {
+function getPaymentStatusLabel(status: string | undefined, method?: string | undefined): string {
   if (!status) return '—'
   const s = status.toLowerCase()
+  const m = (method ?? '').toLowerCase()
+  if (m === 'cod' || m === 'cash') {
+    if (s === 'pending') return 'Thanh toán khi nhận — chưa thu'
+    if (s === 'confirmed' || s === 'paid' || s === 'success' || s === 'completed') return 'Đã thu khi giao hàng'
+  }
   if (s === 'pending') return 'Chờ thanh toán'
   if (s === 'confirmed' || s === 'paid' || s === 'success' || s === 'completed') return 'Đã thanh toán'
   if (s === 'failed' || s === 'cancelled' || s === 'expired') return 'Thất bại / Đã hủy'
@@ -150,9 +155,16 @@ function getPaymentStatusLabel(status: string | undefined): string {
   return status
 }
 
-function getPaymentStatusBadgeClass(status: string | undefined): string {
+function getPaymentStatusBadgeClass(status: string | undefined, method?: string | undefined): string {
   if (!status) return 'bg-gray-100 text-gray-800'
   const s = status.toLowerCase()
+  const m = (method ?? '').toLowerCase()
+  if (m === 'cod' || m === 'cash') {
+    if (s === 'pending') return 'bg-sky-100 text-sky-900 ring-1 ring-sky-200'
+    if (s === 'confirmed' || s === 'paid' || s === 'success' || s === 'completed') {
+      return 'bg-emerald-100 text-emerald-900 ring-1 ring-emerald-200'
+    }
+  }
   if (s === 'pending') return 'bg-amber-100 text-amber-900 ring-1 ring-amber-200'
   if (s === 'confirmed' || s === 'paid' || s === 'success' || s === 'completed') {
     return 'bg-emerald-100 text-emerald-900 ring-1 ring-emerald-200'
@@ -483,9 +495,9 @@ export default function OrderDetailPage() {
                     <dt className="text-gray-500">Trạng thái thanh toán</dt>
                     <dd>
                       <span
-                        className={`inline-flex rounded-lg px-2.5 py-1 text-xs font-semibold ${getPaymentStatusBadgeClass(payment?.status)}`}
+                        className={`inline-flex rounded-lg px-2.5 py-1 text-xs font-semibold ${getPaymentStatusBadgeClass(payment?.status, payment?.method)}`}
                       >
-                        {getPaymentStatusLabel(payment?.status)}
+                        {getPaymentStatusLabel(payment?.status, payment?.method)}
                       </span>
                     </dd>
                   </div>

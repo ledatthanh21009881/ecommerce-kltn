@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react"
 import { toast } from "sonner"
 import Link from "next/link"
-import { ArrowLeft, Moon, Sun } from "lucide-react"
+import { AlertTriangle, ArrowLeft, Moon, Sun } from "lucide-react"
 import { useSearchParams } from "next/navigation"
 import { useWebSocket } from "@/hooks/useWebSocket"
 import ChatWindow, {
@@ -73,6 +73,8 @@ export default function MessengerPage() {
   const [isTyping, setIsTyping] = useState(false)
   const [recallSelectionMode, setRecallSelectionMode] = useState(false)
   const [selectedRecallMessageIds, setSelectedRecallMessageIds] = useState<number[]>([])
+  const [recallConfirmOpen, setRecallConfirmOpen] = useState(false)
+  const [recallDeleting, setRecallDeleting] = useState(false)
   const orderId = searchParams.get("order_id")
   const shipperId = searchParams.get("shipper_id")
   const shipperName = searchParams.get("shipper_name")
@@ -822,33 +824,40 @@ export default function MessengerPage() {
     setSelectedRecallMessageIds([])
   }
 
-  const handleConfirmRecallSelected = async () => {
+  const handleConfirmRecallSelected = () => {
     if (selectedRecallMessageIds.length === 0) {
       toast.error('Chọn ít nhất một tin nhắn')
       return
     }
-    const n = selectedRecallMessageIds.length
-    const confirmText =
-      n === 1
-        ? 'Thu hồi tin nhắn đã chọn? Người nhận sẽ không còn thấy tin này.'
-        : `Thu hồi ${n} tin nhắn đã chọn? Người nhận sẽ không còn thấy các tin này.`
-    if (typeof window !== 'undefined' && !window.confirm(confirmText)) {
+    setRecallConfirmOpen(true)
+  }
+
+  const executeRecallSelected = async () => {
+    const ids = [...selectedRecallMessageIds]
+    if (ids.length === 0) {
+      setRecallConfirmOpen(false)
       return
     }
+    setRecallDeleting(true)
     let ok = 0
-    for (const mid of selectedRecallMessageIds) {
-      if (await recallMessageOnServer(mid, true)) ok += 1
+    try {
+      for (const mid of ids) {
+        if (await recallMessageOnServer(mid, true)) ok += 1
+      }
+      const total = ids.length
+      if (ok === total) {
+        toast.success(ok === 1 ? 'Đã thu hồi tin nhắn' : `Đã thu hồi ${ok} tin nhắn`)
+      } else if (ok > 0) {
+        toast.warning(`Thu hồi được ${ok}/${total} tin — một số tin không thể thu hồi`)
+      } else {
+        toast.error('Không thu hồi được tin nhắn nào')
+      }
+    } finally {
+      setRecallDeleting(false)
+      setRecallConfirmOpen(false)
+      setRecallSelectionMode(false)
+      setSelectedRecallMessageIds([])
     }
-    const total = selectedRecallMessageIds.length
-    if (ok === total) {
-      toast.success(ok === 1 ? 'Đã thu hồi tin nhắn' : `Đã thu hồi ${ok} tin nhắn`)
-    } else if (ok > 0) {
-      toast.warning(`Thu hồi được ${ok}/${total} tin — một số tin không thể thu hồi`)
-    } else {
-      toast.error('Không thu hồi được tin nhắn nào')
-    }
-    setRecallSelectionMode(false)
-    setSelectedRecallMessageIds([])
   }
 
   const handleVoiceRecordingComplete = async (audioBlob: Blob) => {
@@ -996,6 +1005,91 @@ export default function MessengerPage() {
           />
         </div>
       </div>
+
+      {recallConfirmOpen && (
+        <div
+          className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 p-4 backdrop-blur-[2px]"
+          role="presentation"
+          onClick={() => {
+            if (!recallDeleting) setRecallConfirmOpen(false)
+          }}
+        >
+          <div
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="messenger-recall-title"
+            aria-describedby="messenger-recall-desc"
+            className={`w-full max-w-md rounded-2xl p-5 shadow-2xl ring-1 ${
+              isDarkMode
+                ? "bg-gray-800 text-gray-100 ring-white/10"
+                : "bg-white text-gray-900 ring-black/5"
+            }`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex gap-3">
+              <div
+                className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full ${
+                  isDarkMode ? "bg-red-500/20" : "bg-red-50"
+                }`}
+              >
+                <AlertTriangle
+                  className={`h-5 w-5 ${isDarkMode ? "text-red-400" : "text-red-600"}`}
+                  aria-hidden
+                />
+              </div>
+              <div className="min-w-0 flex-1">
+                <h3 id="messenger-recall-title" className="text-lg font-semibold tracking-tight">
+                  Xác nhận thu hồi
+                </h3>
+                <p
+                  id="messenger-recall-desc"
+                  className={`mt-2 text-sm leading-relaxed ${
+                    isDarkMode ? "text-gray-400" : "text-gray-600"
+                  }`}
+                >
+                  {selectedRecallMessageIds.length === 1 ? (
+                    <>
+                      Thu hồi tin nhắn đã chọn?{" "}
+                      <span className="font-medium text-inherit">Người nhận sẽ không còn thấy tin này.</span>
+                    </>
+                  ) : (
+                    <>
+                      Thu hồi{" "}
+                      <span className="font-semibold text-inherit">{selectedRecallMessageIds.length}</span> tin nhắn
+                      đã chọn?{" "}
+                      <span className="font-medium text-inherit">
+                        Người nhận sẽ không còn thấy các tin này.
+                      </span>
+                    </>
+                  )}
+                </p>
+              </div>
+            </div>
+            <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                disabled={recallDeleting}
+                onClick={() => setRecallConfirmOpen(false)}
+                className={`rounded-xl px-4 py-2.5 text-sm font-medium transition-colors disabled:opacity-50 ${
+                  isDarkMode
+                    ? "border border-white/15 bg-white/5 text-gray-200 hover:bg-white/10"
+                    : "border border-gray-200 bg-white text-gray-800 hover:bg-gray-50"
+                }`}
+              >
+                Hủy
+              </button>
+              <button
+                type="button"
+                disabled={recallDeleting}
+                onClick={() => void executeRecallSelected()}
+                className="rounded-xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-red-700 disabled:opacity-60"
+              >
+                {recallDeleting ? "Đang thu hồi…" : "Thu hồi"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
