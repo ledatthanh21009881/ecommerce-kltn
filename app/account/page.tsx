@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import Link from "next/link"
 import { useLanguage } from "@/components/language-provider"
 import { toast } from "sonner"
@@ -47,6 +47,12 @@ interface ProvinceOption {
   name: string
   code: number
   districts?: DistrictOption[]
+}
+
+/** Combobox/popover được portal ra ngoài Dialog — không preventDefault sẽ bị Modal chặn focus & cuộn. */
+function isInsideAddressDropdown(target: unknown): boolean {
+  if (!(target instanceof Element)) return false
+  return Boolean(target.closest("[data-address-picker]"))
 }
 interface DistrictOption {
   name: string
@@ -111,6 +117,11 @@ export default function AccountPage() {
   const [provinceOpen, setProvinceOpen] = useState(false)
   const [districtOpen, setDistrictOpen] = useState(false)
   const [wardOpen, setWardOpen] = useState(false)
+  /** Dropdown định vị trong Dialog — tránh FocusScope Dialog đẩy focus khỏi ô search Cmdk */
+  const [addressDialogContentEl, setAddressDialogContentEl] = useState<HTMLElement | null>(null)
+  const bindAddressDialogContentRef = useCallback((node: HTMLElement | null) => {
+    setAddressDialogContentEl((prev) => (prev === node ? prev : node))
+  }, [])
 
   const PHONE_REGEX = /^0[0-9]{9}$/
   const isValidEmail = (s: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s)
@@ -785,8 +796,29 @@ export default function AccountPage() {
                   )}
                 </div>
 
-                <Dialog open={addressDialogOpen} onOpenChange={setAddressDialogOpen}>
-                  <DialogContent className="font-gotham max-w-4xl w-[95vw] sm:w-full">
+                <Dialog
+                  open={addressDialogOpen}
+                  onOpenChange={(open) => {
+                    setAddressDialogOpen(open)
+                    if (!open) setAddressDialogContentEl(null)
+                  }}
+                >
+                  <DialogContent
+                    ref={bindAddressDialogContentRef}
+                    className="font-gotham max-w-4xl w-[95vw] sm:w-full overflow-visible"
+                    onPointerDownOutside={(e) => {
+                      if (isInsideAddressDropdown(e.target)) e.preventDefault()
+                    }}
+                    onInteractOutside={(e) => {
+                      if (isInsideAddressDropdown(e.target)) e.preventDefault()
+                    }}
+                    onFocusOutside={(e) => {
+                      const rt = (
+                        e as unknown as CustomEvent<{ originalEvent?: FocusEvent | null }>
+                      ).detail?.originalEvent?.relatedTarget
+                      if (rt != null && isInsideAddressDropdown(rt)) e.preventDefault()
+                    }}
+                  >
                     <DialogHeader>
                       <DialogTitle className="uppercase tracking-wider">
                         {editingAddress ? t("account.dialog.editAddress") : t("account.dialog.addAddress")}
@@ -843,7 +875,12 @@ export default function AccountPage() {
                                 <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                               </Button>
                             </PopoverTrigger>
-                            <PopoverContent className="z-[100] w-[var(--radix-popover-trigger-width)] p-0" align="start">
+                            <PopoverContent
+                              container={addressDialogContentEl}
+                              data-address-picker
+                              className="z-[100] w-[var(--radix-popover-trigger-width)] max-h-[min(320px,var(--radix-popover-content-available-height))] p-0"
+                              align="start"
+                            >
                               <Command>
                                 <CommandInput placeholder={t("account.field.searchProvince")} />
                                 <CommandList>
@@ -892,7 +929,12 @@ export default function AccountPage() {
                                 <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                               </Button>
                             </PopoverTrigger>
-                            <PopoverContent className="z-[100] w-[var(--radix-popover-trigger-width)] p-0" align="start">
+                            <PopoverContent
+                              container={addressDialogContentEl}
+                              data-address-picker
+                              className="z-[100] w-[var(--radix-popover-trigger-width)] max-h-[min(320px,var(--radix-popover-content-available-height))] p-0"
+                              align="start"
+                            >
                               <Command>
                                 <CommandInput placeholder={t("account.field.searchDistrict")} />
                                 <CommandList>
@@ -941,7 +983,12 @@ export default function AccountPage() {
                                 <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                               </Button>
                             </PopoverTrigger>
-                            <PopoverContent className="z-[100] w-[var(--radix-popover-trigger-width)] p-0" align="start">
+                            <PopoverContent
+                              container={addressDialogContentEl}
+                              data-address-picker
+                              className="z-[100] w-[var(--radix-popover-trigger-width)] max-h-[min(320px,var(--radix-popover-content-available-height))] p-0"
+                              align="start"
+                            >
                               <Command>
                                 <CommandInput placeholder={t("account.field.searchWard")} />
                                 <CommandList>
