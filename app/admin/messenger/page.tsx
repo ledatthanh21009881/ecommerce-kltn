@@ -1,11 +1,17 @@
 'use client'
 
-import { useState, useEffect, useRef, useMemo, Suspense } from 'react'
+import { useState, useEffect, useRef, useMemo, useCallback, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useLanguage } from '@/contexts/LanguageContext'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { toast } from 'sonner'
 import { Send, Image, Video, Search, MoreVertical, FileText, Link, Phone, Video as VideoCall, UserPlus, Archive, Trash2, Mic, Smile, Sun, Moon, ArrowLeft, Reply, Forward, AlertTriangle } from 'lucide-react'
@@ -212,9 +218,14 @@ function AdminMessengerPageInner() {
   const [forwardSending, setForwardSending] = useState(false)
   const [recallConfirmOpen, setRecallConfirmOpen] = useState(false)
   const [recallDeleting, setRecallDeleting] = useState(false)
+  const [deleteConvPending, setDeleteConvPending] = useState<Conversation | null>(null)
+  const [deleteConvLoading, setDeleteConvLoading] = useState(false)
   const highlightTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const unreadBroadcastRef = useRef<BroadcastChannel | null>(null)
+  const conversationsFetchInFlightRef = useRef<Promise<void> | null>(null)
+  const lastConversationsFetchAtRef = useRef(0)
+  const CONVERSATIONS_DEBOUNCE_MS = 1500
 
   const getAdminToken = () => {
     return localStorage.getItem('adminToken')
@@ -272,7 +283,7 @@ function AdminMessengerPageInner() {
   }, [conversations, deepLinkCustomerIdParam, t])
 
   useEffect(() => {
-    fetchConversations()
+    void fetchConversations({ force: true })
     connectWebSocket()
     
     // Cleanup timeout on unmount
@@ -614,27 +625,45 @@ function AdminMessengerPageInner() {
     }, 2200)
   }
 
-  const fetchConversations = async () => {
-    try {
-      const token = localStorage.getItem('adminToken')
-      if (!token) {
-        toast.error('Please login to access messenger')
-        return
-      }
+  const fetchConversations = async ({ force = false }: { force?: boolean } = {}) => {
+    const now = Date.now()
+    if (!force && now - lastConversationsFetchAtRef.current < CONVERSATIONS_DEBOUNCE_MS) {
+      return
+    }
+    if (conversationsFetchInFlightRef.current) {
+      return conversationsFetchInFlightRef.current
+    }
 
-      const response = await fetch(`${API_BASE}/conversations`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
+    const run = (async () => {
+      lastConversationsFetchAtRef.current = Date.now()
+      try {
+        const token = localStorage.getItem('adminToken')
+        if (!token) {
+          toast.error('Please login to access messenger')
+          return
         }
-      })
 
-      if (response.ok) {
-        const data = await response.json()
-        setConversations(data.data.items || [])
+        const response = await fetch(`${API_BASE}/conversations`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        })
+
+        if (response.ok) {
+          const data = await response.json()
+          setConversations(data.data.items || [])
+        }
+      } catch (error) {
+        toast.error('Failed to fetch conversations')
       }
-    } catch (error) {
-      toast.error('Failed to fetch conversations')
+    })()
+
+    conversationsFetchInFlightRef.current = run
+    try {
+      await run
+    } finally {
+      conversationsFetchInFlightRef.current = null
     }
   }
 
@@ -1214,6 +1243,48 @@ function AdminMessengerPageInner() {
     }
   }
 
+  const runDeleteConversation = useCallback(
+    async (conv: Conversation) => {
+      const token = getAdminToken()
+      if (!token) {
+        toast.error('Vui lòng đăng nhập admin')
+        return
+      }
+      setDeleteConvLoading(true)
+      try {
+        const res = await fetch(`${API_BASE}/conversations/${conv.conversation_id}`, {
+          method: 'DELETE',
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        })
+        const body = await res.json().catch(() => ({}))
+        if (!res.ok) {
+          throw new Error(
+            typeof body?.message === 'string' ? body.message : `Lỗi ${res.status}`,
+          )
+        }
+        toast.success('Đã xóa cuộc trò chuyện')
+        setDeleteConvPending(null)
+        setConversations((prev) =>
+          prev.filter((c) => c.conversation_id !== conv.conversation_id),
+        )
+        if (selectedConversation?.conversation_id === conv.conversation_id) {
+          leaveConversation(conv.conversation_id)
+          setSelectedConversation(null)
+          setMessages([])
+        }
+      } catch (err: unknown) {
+        const msg =
+          err instanceof Error ? err.message : 'Không xóa được cuộc trò chuyện'
+        toast.error(msg)
+      } finally {
+        setDeleteConvLoading(false)
+      }
+    },
+    [API_BASE, leaveConversation, selectedConversation?.conversation_id],
+  )
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }
@@ -1464,7 +1535,7 @@ function AdminMessengerPageInner() {
                     : ''
                 }`}
               >
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 sm:gap-3">
                   <Avatar className="h-14 w-14 shrink-0 ring-2 ring-transparent">
                     <AvatarImage src={conversation.avatar_url} />
                     <AvatarFallback className="text-[15px] font-semibold">
@@ -1521,6 +1592,47 @@ function AdminMessengerPageInner() {
                         )}
                       </div>
                     </div>
+                  </div>
+                  <div
+                    className="shrink-0"
+                    role="presentation"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                    }}
+                    onPointerDown={(e) => {
+                      e.stopPropagation()
+                    }}
+                    onKeyDown={(e) => e.stopPropagation()}
+                  >
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className={cn(
+                            'h-8 w-8',
+                            isDarkMode
+                              ? 'text-[#e4e6eb] hover:bg-[#4e4f50]'
+                              : 'text-[#65676B] hover:bg-[#F0F2F5]',
+                          )}
+                          aria-label="Tùy chọn hội thoại"
+                        >
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="min-w-[180px]">
+                        <DropdownMenuItem
+                          className="cursor-pointer text-red-600 focus:text-red-600"
+                          onClick={() => {
+                            setDeleteConvPending(conversation)
+                          }}
+                        >
+                          <Trash2 className="mr-2 h-4 w-4 shrink-0" />
+                          Xóa cuộc trò chuyện
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
                 </div>
               </div>
@@ -2552,6 +2664,85 @@ function AdminMessengerPageInner() {
         )}
         
                 {/* Xác nhận thu hồi tin nhắn */}
+        {deleteConvPending && (
+          <div
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4"
+            role="presentation"
+            onClick={() => {
+              if (!deleteConvLoading) setDeleteConvPending(null)
+            }}
+          >
+            <div
+              role="alertdialog"
+              aria-modal="true"
+              aria-labelledby="delete-conv-title"
+              aria-describedby="delete-conv-desc"
+              className={cn(
+                'w-full max-w-md rounded-2xl p-5 shadow-xl',
+                isDarkMode ? 'bg-[#242526] text-[#e4e6eb]' : 'bg-white text-gray-900',
+              )}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex gap-3">
+                <div
+                  className={cn(
+                    'flex h-11 w-11 shrink-0 items-center justify-center rounded-full',
+                    isDarkMode ? 'bg-red-500/20' : 'bg-red-50',
+                  )}
+                >
+                  <Trash2
+                    className={cn('h-5 w-5', isDarkMode ? 'text-red-400' : 'text-red-600')}
+                    aria-hidden
+                  />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <h3 id="delete-conv-title" className="text-base font-semibold">
+                    Xóa cuộc trò chuyện?
+                  </h3>
+                  <p
+                    id="delete-conv-desc"
+                    className={cn(
+                      'mt-2 text-sm leading-relaxed',
+                      isDarkMode ? 'text-gray-400' : 'text-gray-600',
+                    )}
+                  >
+                    Xóa hội thoại với{' '}
+                    <span className="font-semibold text-inherit">
+                      {deleteConvPending.first_name} {deleteConvPending.last_name}
+                    </span>{' '}
+                    và toàn bộ tin nhắn trong đó? Thao tác không thể hoàn tác.
+                  </p>
+                </div>
+              </div>
+              <div className="mt-5 flex justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={deleteConvLoading}
+                  onClick={() => setDeleteConvPending(null)}
+                  className={
+                    isDarkMode ? 'border-white/20 bg-transparent hover:bg-white/10' : ''
+                  }
+                >
+                  Hủy
+                </Button>
+                <Button
+                  type="button"
+                  variant="destructive"
+                  disabled={deleteConvLoading}
+                  onClick={() =>
+                    deleteConvPending
+                      ? void runDeleteConversation(deleteConvPending)
+                      : undefined
+                  }
+                >
+                  {deleteConvLoading ? 'Đang xóa…' : 'Xóa cuộc trò chuyện'}
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {recallConfirmOpen && (
           <div
             className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4"

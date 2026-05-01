@@ -33,7 +33,7 @@ function getDemoShipperAndOrder(id: number): { shipper: Shipper; orders: OrderTr
   }
   const order: OrderTracking = {
     order_id: 1,
-    status: 'in_transit',
+    status: 'shipping',
     total_amount: 0,
     created_at: new Date().toISOString(),
     customer_name: 'Điểm giao hàng demo',
@@ -119,7 +119,7 @@ export default function ShipperTrackingPage() {
 
   const hasActiveOrder = shipper && orders.some(
     o => o.shipper_id === shipper.user_id && o.destination_lat && o.destination_lng &&
-      ['picking_up', 'picked_up', 'in_transit', 'arriving'].includes(o.status)
+      o.status === 'shipping'
   )
 
   if (!shipperId || isNaN(shipperId)) {

@@ -2,7 +2,9 @@
 
 import { useEffect, useRef } from 'react'
 import mapboxgl from 'mapbox-gl'
+import 'mapbox-gl/dist/mapbox-gl.css'
 import { Shipper, OrderTracking } from '@/lib/tracking-types'
+import { fetchJsonSafe } from '@/lib/api'
 
 /**
  * PURE DEMO MAP – HTML EQUIVALENT
@@ -18,7 +20,24 @@ import { Shipper, OrderTracking } from '@/lib/tracking-types'
 
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN ?? ''
 const DEFAULT_CENTER: [number, number] = [106.660172, 10.762622]
-const ANIM_INTERVAL_MS = 400 // ~tốc độ xe máy thực tế trong phố (100ms = quá nhanh)
+const POLL_INTERVAL_MS = 5000 // request GPS mới theo chu kỳ (5s)
+
+const VIETNAM_BOUNDS = {
+  minLat: 8,
+  maxLat: 24,
+  minLng: 102,
+  maxLng: 110,
+}
+
+function isInVietnam(lat: number | null | undefined, lng: number | null | undefined): boolean {
+  if (lat == null || lng == null) return false
+  return (
+    lat >= VIETNAM_BOUNDS.minLat &&
+    lat <= VIETNAM_BOUNDS.maxLat &&
+    lng >= VIETNAM_BOUNDS.minLng &&
+    lng <= VIETNAM_BOUNDS.maxLng
+  )
+}
 
 interface Props {
   shipper: Shipper | null
@@ -38,10 +57,6 @@ export default function MapboxShipperDetailMapDemo({
   useEffect(() => {
     if (!shipper || !containerRef.current || !MAPBOX_TOKEN) return
 
-    const start: [number, number] = shipper.current_lng && shipper.current_lat
-      ? [shipper.current_lng, shipper.current_lat]
-      : DEFAULT_CENTER
-
     const activeOrder = orders
       .filter(
         o =>
@@ -57,6 +72,14 @@ export default function MapboxShipperDetailMapDemo({
       activeOrder.destination_lng!,
       activeOrder.destination_lat!
     ]
+
+    const orderCurrentInVn = isInVietnam(activeOrder.current_lat, activeOrder.current_lng)
+    const shipperCurrentInVn = isInVietnam(shipper.current_lat, shipper.current_lng)
+    const start: [number, number] = orderCurrentInVn
+      ? [activeOrder.current_lng!, activeOrder.current_lat!]
+      : shipperCurrentInVn
+        ? [shipper.current_lng!, shipper.current_lat!]
+        : end
 
     mapboxgl.accessToken = MAPBOX_TOKEN
 
@@ -80,8 +103,10 @@ export default function MapboxShipperDetailMapDemo({
 
         const res = await fetch(url)
         const data = await res.json()
-        const route = data.routes?.[0]?.geometry
-        if (!route) return
+        const route = data.routes?.[0]?.geometry ?? {
+          type: 'LineString',
+          coordinates: [start, end]
+        }
 
         map.addSource('route', {
           type: 'geojson',
@@ -106,7 +131,9 @@ export default function MapboxShipperDetailMapDemo({
           }
         })
 
-        const coordinates = route.coordinates as [number, number][]
+        const coordinates = (route.coordinates as [number, number][]).length >= 2
+          ? (route.coordinates as [number, number][])
+          : [start, end]
         const lastCoord = coordinates[coordinates.length - 1]
 
         // === ICON: Xe (custom - vòng tròn xanh + emoji xe máy) ===
@@ -194,24 +221,71 @@ export default function MapboxShipperDetailMapDemo({
 
         setTimeout(() => map.resize(), 100)
 
-        let i = 0
-        const source = map.getSource('shipper-position') as mapboxgl.GeoJSONSource
-        intervalRef.current = setInterval(() => {
+        const source = map.getSource('shipper-position') as mapboxgl.GeoJSONSource | undefined
+
+        const updateMarkerFromLatLng = (lat: number | string | null | undefined, lng: number | string | null | undefined) => {
           if (!source) return
+          const latNum = typeof lat === 'number' ? lat : Number(lat)
+          const lngNum = typeof lng === 'number' ? lng : Number(lng)
+          if (!Number.isFinite(latNum) || !Number.isFinite(lngNum)) return
+
           source.setData({
             type: 'Feature',
             properties: {},
             geometry: {
               type: 'Point',
-              coordinates: coordinates[i]
-            }
+              coordinates: [lngNum, latNum],
+            },
           })
-          i++
-          if (i >= coordinates.length && intervalRef.current) {
-            clearInterval(intervalRef.current)
-            intervalRef.current = null
+        }
+
+        const pollLatestLocation = async () => {
+          const shipperId = shipper.user_id
+          const res = await fetchJsonSafe(`api/backend/v1/tracking/shippers/${shipperId}/location`)
+          if (!res.ok || !res.data?.success) return
+
+          const loc = res.data?.data
+          const lat = loc?.lat ?? null
+          const lng = loc?.lng ?? null
+          updateMarkerFromLatLng(lat, lng)
+        }
+
+        const startPolling = () => {
+          if (intervalRef.current) return
+          intervalRef.current = setInterval(() => {
+            void pollLatestLocation()
+          }, POLL_INTERVAL_MS)
+        }
+
+        const stopPolling = () => {
+          if (!intervalRef.current) return
+          clearInterval(intervalRef.current)
+          intervalRef.current = null
+        }
+
+        const handleVisibilityChange = () => {
+          if (document.visibilityState === 'visible') {
+            void pollLatestLocation()
+            startPolling()
+            return
           }
-        }, ANIM_INTERVAL_MS)
+          stopPolling()
+        }
+
+        // Only poll while this detail page is visible.
+        document.addEventListener('visibilitychange', handleVisibilityChange)
+
+        // Update ngay lần đầu để icon không đứng yên đến hết chu kỳ.
+        void pollLatestLocation()
+        if (document.visibilityState === 'visible') {
+          startPolling()
+        }
+
+        // Ensure cleanup also removes listeners started after map load.
+        map.once('remove', () => {
+          document.removeEventListener('visibilitychange', handleVisibilityChange)
+          stopPolling()
+        })
       } catch (err) {
         console.error('Mapbox demo error:', err)
       }

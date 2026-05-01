@@ -139,6 +139,30 @@ export default function AssignShipperModal({ isOpen, onClose, order, onShipperAs
     return phone.replace(/(\d{4})(\d{3})(\d{3})/, '$1 $2 $3')
   }
 
+  const formatShippingAddress = (snapshot: unknown) => {
+    if (!snapshot) return '—'
+
+    let parsed: any = snapshot
+    if (typeof snapshot === 'string') {
+      try {
+        parsed = JSON.parse(snapshot)
+      } catch {
+        return snapshot
+      }
+    }
+
+    if (!parsed || typeof parsed !== 'object') return '—'
+
+    const parts = [
+      parsed.address_line ?? parsed.street,
+      parsed.ward,
+      parsed.district,
+      parsed.province ?? parsed.city,
+    ].filter(Boolean)
+
+    return parts.length ? parts.join(', ') : '—'
+  }
+
   if (!isOpen) return null
 
   return (
@@ -195,7 +219,7 @@ export default function AssignShipperModal({ isOpen, onClose, order, onShipperAs
                     </div>
                     <div>
                       <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">{t('shippingAddress')}</p>
-                      <p className="text-sm text-slate-700">{order?.shipping_address_snapshot}</p>
+                      <p className="text-sm text-slate-700">{formatShippingAddress(order?.shipping_address_snapshot)}</p>
                     </div>
                   </div>
                   <div className="space-y-3">

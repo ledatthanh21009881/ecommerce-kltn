@@ -846,7 +846,9 @@ export default function MessengerPage() {
       }
       const total = ids.length
       if (ok === total) {
-        toast.success(ok === 1 ? 'Đã thu hồi tin nhắn' : `Đã thu hồi ${ok} tin nhắn`)
+        toast.success(
+          ok === 1 ? 'Thu hồi được 1 tin nhắn' : `Thu hồi được ${ok} tin nhắn`
+        )
       } else if (ok > 0) {
         toast.warning(`Thu hồi được ${ok}/${total} tin — một số tin không thể thu hồi`)
       } else {

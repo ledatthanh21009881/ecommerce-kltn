@@ -1,9 +1,9 @@
 'use client'
 
-import React, { useEffect, useRef, useState, useMemo } from 'react'
-import { Map as MapboxMap, Marker, Source, Layer } from 'react-map-gl'
-import type { MapRef } from 'react-map-gl'
-import { Navigation, MapPin } from 'lucide-react'
+import React, { useEffect, useMemo, useRef } from 'react'
+import mapboxgl from 'mapbox-gl'
+import 'mapbox-gl/dist/mapbox-gl.css'
+import { MapPin } from 'lucide-react'
 import type { OrderTracking } from '@/lib/tracking-types'
 import { getRouteCoordinates } from '@/lib/routeService'
 import type { RoutePoint } from '@/lib/routeService'
@@ -19,63 +19,122 @@ interface Props {
  * Bản đồ tuyến đường từ vị trí hiện tại (đơn) đến điểm giao — Mapbox Directions.
  */
 export default function TrackingOrderRoutePreview({ order, className = '' }: Props) {
-  const mapRef = useRef<MapRef | null>(null)
-  const [routeCoords, setRouteCoords] = useState<[number, number][] | null>(null)
-  const [routeLoading, setRouteLoading] = useState(false)
-  const cacheRef = useRef<Record<string, [number, number][]>>({})
+  const mapRef = useRef<mapboxgl.Map | null>(null)
+  const containerRef = useRef<HTMLDivElement | null>(null)
+  const resizeObserverRef = useRef<ResizeObserver | null>(null)
+  const fitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const origin: RoutePoint | null = useMemo(() => {
-    if (!order?.current_lat || !order?.current_lng) return null
-    return { lat: order.current_lat, lng: order.current_lng }
+    const lat = Number(order?.current_lat)
+    const lng = Number(order?.current_lng)
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null
+    return { lat, lng }
   }, [order])
 
   const destination: RoutePoint | null = useMemo(() => {
-    if (!order?.destination_lat || !order?.destination_lng) return null
-    return { lat: order.destination_lat, lng: order.destination_lng }
+    const lat = Number(order?.destination_lat)
+    const lng = Number(order?.destination_lng)
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null
+    return { lat, lng }
   }, [order])
 
   useEffect(() => {
-    if (!origin || !destination || !order) {
-      setRouteCoords(null)
+    if (!order || !origin || !destination || !containerRef.current || !MAPBOX_TOKEN) {
       return
     }
-    const cacheKey = `${order.order_id}-${origin.lat},${origin.lng}-${destination.lat},${destination.lng}`
-    const cached = cacheRef.current[cacheKey]
-    if (cached) {
-      setRouteCoords(cached)
-      return
-    }
-    setRouteLoading(true)
-    getRouteCoordinates(origin, destination)
-      .then((coords) => {
-        if (coords?.length) {
-          setRouteCoords(coords)
-          cacheRef.current[cacheKey] = coords
-        } else {
-          setRouteCoords([[origin.lng, origin.lat], [destination.lng, destination.lat]])
-        }
-      })
-      .catch(() =>
-        setRouteCoords([[origin.lng, origin.lat], [destination.lng, destination.lat]])
-      )
-      .finally(() => setRouteLoading(false))
-  }, [order, origin, destination])
 
-  useEffect(() => {
-    const map = mapRef.current?.getMap()
-    if (!map) return
-    if (origin && destination) {
-      const lngs = [origin.lng, destination.lng]
-      const lats = [origin.lat, destination.lat]
+    mapboxgl.accessToken = MAPBOX_TOKEN
+    let disposed = false
+    const map = new mapboxgl.Map({
+      container: containerRef.current,
+      style: 'mapbox://styles/mapbox/streets-v12',
+      center: [origin.lng, origin.lat],
+      zoom: 13,
+      minZoom: 11,
+      maxZoom: 18,
+    })
+    mapRef.current = map
+
+    const fitToRoute = () => {
+      if (disposed || !mapRef.current || mapRef.current !== map) return
+      map.resize()
       map.fitBounds(
         [
-          [Math.min(...lngs), Math.min(...lats)],
-          [Math.max(...lngs), Math.max(...lats)],
+          [Math.min(origin.lng, destination.lng), Math.min(origin.lat, destination.lat)],
+          [Math.max(origin.lng, destination.lng), Math.max(origin.lat, destination.lat)],
         ],
-        { padding: 48, duration: 400 }
+        { padding: 48, duration: 0 }
       )
     }
-  }, [origin, destination, routeCoords])
+
+    map.on('load', async () => {
+      let coords = await getRouteCoordinates(origin, destination)
+      if (!coords || coords.length < 2) {
+        coords = [[origin.lng, origin.lat], [destination.lng, destination.lat]]
+      }
+
+      if (disposed || !mapRef.current || mapRef.current !== map) return
+      if (!map.isStyleLoaded()) return
+
+      map.addSource('route-line', {
+        type: 'geojson',
+        data: {
+          type: 'Feature',
+          properties: {},
+          geometry: { type: 'LineString', coordinates: coords },
+        },
+      })
+      map.addLayer({
+        id: 'route-line-layer',
+        type: 'line',
+        source: 'route-line',
+        layout: { 'line-cap': 'round', 'line-join': 'round' },
+        paint: { 'line-color': '#7c3aed', 'line-width': 5 },
+      })
+
+      map.addSource('destination-point', {
+        type: 'geojson',
+        data: {
+          type: 'Feature',
+          properties: {},
+          geometry: { type: 'Point', coordinates: coords[coords.length - 1] },
+        },
+      })
+      map.addLayer({
+        id: 'destination-point-layer',
+        type: 'circle',
+        source: 'destination-point',
+        paint: {
+          'circle-radius': 10,
+          'circle-color': '#ef4444',
+          'circle-stroke-width': 2,
+          'circle-stroke-color': '#fff',
+        },
+      })
+
+      new mapboxgl.Marker({ color: '#7c3aed' })
+        .setLngLat([origin.lng, origin.lat])
+        .addTo(map)
+
+      fitToRoute()
+      fitTimerRef.current = setTimeout(fitToRoute, 120)
+    })
+
+    resizeObserverRef.current = new ResizeObserver(() => fitToRoute())
+    resizeObserverRef.current.observe(containerRef.current)
+
+    return () => {
+      disposed = true
+      if (fitTimerRef.current) {
+        clearTimeout(fitTimerRef.current)
+        fitTimerRef.current = null
+      }
+      resizeObserverRef.current?.disconnect()
+      resizeObserverRef.current = null
+      map.remove()
+      mapRef.current = null
+    }
+  }, [order?.order_id, origin, destination])
 
   if (!MAPBOX_TOKEN) {
     return (
@@ -98,82 +157,7 @@ export default function TrackingOrderRoutePreview({ order, className = '' }: Pro
     )
   }
 
-  const routeEnd = routeCoords?.[routeCoords.length - 1]
-
   return (
-    <div className={`relative h-[360px] w-full overflow-hidden rounded-xl border border-slate-200 shadow-inner ${className}`}>
-      <MapboxMap
-        key={`order-route-${order.order_id}`}
-        ref={mapRef}
-        mapboxAccessToken={MAPBOX_TOKEN}
-        initialViewState={{
-          longitude: origin.lng,
-          latitude: origin.lat,
-          zoom: 13,
-        }}
-        minZoom={11}
-        maxZoom={18}
-        style={{ width: '100%', height: '100%' }}
-        mapStyle="mapbox://styles/mapbox/streets-v12"
-      >
-        {routeCoords && routeCoords.length > 0 && (
-          <Source
-            id={`route-line-${order.order_id}`}
-            type="geojson"
-            data={{
-              type: 'Feature',
-              properties: {},
-              geometry: { type: 'LineString', coordinates: routeCoords },
-            }}
-          >
-            <Layer
-              id={`route-line-layer-${order.order_id}`}
-              type="line"
-              layout={{ 'line-cap': 'round', 'line-join': 'round' }}
-              paint={{ 'line-color': '#7c3aed', 'line-width': 5 }}
-            />
-          </Source>
-        )}
-
-        {routeEnd && (
-          <Source
-            id={`dest-${order.order_id}`}
-            type="geojson"
-            data={{
-              type: 'Feature',
-              properties: {},
-              geometry: { type: 'Point', coordinates: routeEnd },
-            }}
-          >
-            <Layer
-              id={`dest-circle-${order.order_id}`}
-              type="circle"
-              paint={{
-                'circle-radius': 10,
-                'circle-color': '#ef4444',
-                'circle-stroke-width': 2,
-                'circle-stroke-color': '#fff',
-              }}
-            />
-          </Source>
-        )}
-
-        <Marker longitude={origin.lng} latitude={origin.lat} anchor="center">
-          <div
-            className="flex h-11 w-11 items-center justify-center rounded-full border-[3px] border-white bg-gradient-to-br from-violet-600 to-indigo-600 text-lg shadow-lg"
-            title="Vị trí hiện tại"
-          >
-            🏍️
-          </div>
-        </Marker>
-      </MapboxMap>
-
-      {routeLoading && (
-        <div className="absolute left-3 top-3 z-10 flex items-center gap-2 rounded-lg border bg-white/95 px-3 py-2 text-xs font-medium text-slate-700 shadow-md backdrop-blur">
-          <Navigation className="h-3.5 w-3.5 animate-spin text-violet-600" />
-          Đang tải tuyến…
-        </div>
-      )}
-    </div>
+    <div ref={containerRef} className={`relative h-[360px] w-full overflow-hidden rounded-xl border border-slate-200 shadow-inner ${className}`} />
   )
 }

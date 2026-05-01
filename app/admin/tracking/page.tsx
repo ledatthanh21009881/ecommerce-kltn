@@ -73,140 +73,65 @@ function formatCoordPair(lat: unknown, lng: unknown, decimals: number): string |
   return `${a.toFixed(decimals)}, ${b.toFixed(decimals)}`
 }
 
-/** Đơn đang trong luồng giao (có shipper). */
-const DELIVERY_STATUSES = new Set([
-  'assigned',
-  'picking_up',
-  'picked_up',
-  'in_transit',
-  'arriving',
-])
-
-// Mock data for development
-const mockStats: TrackingStats = {
-  total_orders_today: 45,
-  active_deliveries: 12,
-  completed_today: 28,
-  pending_pickup: 5,
-  failed_deliveries: 2,
-  avg_delivery_time: 35.5,
-  total_revenue_today: 12500000,
-  active_shippers: 8,
-  date_range: {
-    from: '2025-10-28',
-    to: '2025-10-28'
-  }
+function toTimestamp(value: string | null | undefined): number {
+  if (!value) return 0
+  const time = new Date(value).getTime()
+  return Number.isFinite(time) ? time : 0
 }
 
-const mockOrders: OrderTracking[] = [
-  {
-    order_id: 1,
-    status: 'in_transit',
-    total_amount: 450000,
-    created_at: '2025-10-28 14:30:00',
-    estimated_delivery_at: '2025-10-28 15:30:00',
-    customer_id: 101,
-    customer_name: 'Nguyễn Văn A',
-    customer_phone: '0901234567',
-    customer_address: '123 Nguyễn Huệ, Q1, TP.HCM',
-    shipper_id: 4,
-    shipper_name: 'Trần Thị B',
-    shipper_phone: '0987654321',
-    vehicle_info: 'Honda Wave',
-    rating: 4.8,
-    current_lat: 10.762622,
-    current_lng: 106.660172,
-    destination_lat: 10.776000,
-    destination_lng: 106.678000,
-    location_updated_at: '2025-10-28 14:45:00',
-    event_count: 5,
-    last_status: 'in_transit',
-    last_event_at: '2025-10-28 14:45:00'
-  },
-  {
-    order_id: 2,
-    status: 'picking_up',
-    total_amount: 320000,
-    created_at: '2025-10-28 13:15:00',
-    estimated_delivery_at: '2025-10-28 14:15:00',
-    customer_id: 102,
-    customer_name: 'Lê Văn C',
-    customer_phone: '0912345678',
-    customer_address: '456 Lê Lợi, Q3, TP.HCM',
-    shipper_id: 5,
-    shipper_name: 'Phạm Thị D',
-    shipper_phone: '0976543210',
-    vehicle_info: 'Yamaha Grande',
-    rating: 4.5,
-    current_lat: 10.775000,
-    current_lng: 106.675000,
-    destination_lat: 10.780000,
-    destination_lng: 106.682000,
-    location_updated_at: '2025-10-28 14:40:00',
-    event_count: 3,
-    last_status: 'picking_up',
-    last_event_at: '2025-10-28 14:40:00'
-  }
-]
+function dedupeOrdersById(rows: OrderTracking[]): OrderTracking[] {
+  const byId = new Map<number, OrderTracking>()
+  for (const row of rows) {
+    const existing = byId.get(row.order_id)
+    if (!existing) {
+      byId.set(row.order_id, row)
+      continue
+    }
 
-const mockShippers = [
-  {
-    user_id: 4,
-    shipper_name: 'Trần Thị B',
-    phone: '0987654321',
-    vehicle_info: 'Honda Wave',
-    rating: 4.8,
-    on_time_delivery_pct: 95.5,
-    total_delivered: 150,
-    is_available: false,
-    status: 'active' as const,
-    created_at: '2025-01-15 10:00:00',
-    current_lat: 10.762622,
-    current_lng: 106.660172,
-    location_updated_at: '2025-10-28 14:45:00',
-    active_orders_count: 1
-  },
-  {
-    user_id: 5,
-    shipper_name: 'Phạm Thị D',
-    phone: '0976543210',
-    vehicle_info: 'Yamaha Grande',
-    rating: 4.5,
-    on_time_delivery_pct: 92.0,
-    total_delivered: 120,
-    is_available: false,
-    status: 'active' as const,
-    created_at: '2025-02-20 10:00:00',
-    current_lat: 10.775000,
-    current_lng: 106.675000,
-    location_updated_at: '2025-10-28 14:40:00',
-    active_orders_count: 1
-  },
-  {
-    user_id: 6,
-    shipper_name: 'Hoàng Văn E',
-    phone: '0965432109',
-    vehicle_info: 'Honda Lead',
-    rating: 4.9,
-    on_time_delivery_pct: 98.0,
-    total_delivered: 200,
-    is_available: true,
-    status: 'active' as const,
-    created_at: '2025-03-10 10:00:00',
-    current_lat: 10.750000,
-    current_lng: 106.650000,
-    location_updated_at: '2025-10-28 14:50:00',
-    active_orders_count: 0
+    // Keep the freshest row to avoid duplicate keys + stale shipper/location data.
+    const existingTime = Math.max(
+      toTimestamp(existing.location_updated_at),
+      toTimestamp(existing.last_event_at),
+      toTimestamp(existing.created_at),
+    )
+    const currentTime = Math.max(
+      toTimestamp(row.location_updated_at),
+      toTimestamp(row.last_event_at),
+      toTimestamp(row.created_at),
+    )
+
+    if (currentTime >= existingTime) {
+      byId.set(row.order_id, row)
+    }
   }
-]
+  return Array.from(byId.values())
+}
+
+/** Admin tracking chỉ hiển thị đơn đã vào trạng thái vận chuyển. */
+const DELIVERY_STATUSES = new Set(['shipping'])
+
+const EMPTY_STATS: TrackingStats = {
+  total_orders_today: 0,
+  active_deliveries: 0,
+  completed_today: 0,
+  pending_pickup: 0,
+  failed_deliveries: 0,
+  avg_delivery_time: 0,
+  total_revenue_today: 0,
+  active_shippers: 0,
+  date_range: {
+    from: '',
+    to: '',
+  },
+}
 
 export default function OrderTrackingPage() {
   const router = useRouter()
   const { t } = useLanguage()
   // State management - áp dụng error prevention patterns từ Loi_thuong_gap.md
   const [orders, setOrders] = useState<OrderTracking[]>([])
-  const [shippers, setShippers] = useState<Shipper[]>(mockShippers as Shipper[])
-  const [stats, setStats] = useState<TrackingStats>(mockStats)
+  const [shippers, setShippers] = useState<Shipper[]>([])
+  const [stats, setStats] = useState<TrackingStats>(EMPTY_STATS)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   
@@ -220,7 +145,6 @@ export default function OrderTrackingPage() {
   
   // UI state
   const [activeTab, setActiveTab] = useState('overview')
-  const [warned, setWarned] = useState(false)
   const [routeModal, setRouteModal] = useState<{
     open: boolean
     shipperName: string
@@ -253,9 +177,8 @@ export default function OrderTrackingPage() {
       
       const token = authUtils.getToken()
       if (!token) {
-        // Gracefully handle missing token in dev
         setError('Missing authentication token')
-        setOrders(mockOrders)
+        setOrders([])
         return
       }
 
@@ -268,33 +191,19 @@ export default function OrderTrackingPage() {
       const { ok, status, data } = await fetchJsonSafe(`api/backend/v1/tracking/orders?${queryParams}`)
 
       if (ok && data?.success) {
-        const ordersData = ensureArray<OrderTracking>(data.data?.orders || [])
+        const ordersData = dedupeOrdersById(ensureArray<OrderTracking>(data.data?.orders || []))
         setOrders(ordersData)
-        if (warned) setWarned(false)
         return
       }
 
-      if (ok && !data?.success) {
-        // Không coi là lỗi: dùng data rỗng nếu có, hoặc demo nếu thiếu
-        const ordersData = ensureArray<OrderTracking>(data?.data?.orders || [])
-        setOrders(ordersData.length ? ordersData : mockOrders)
-        return
-      }
-
-      if (!ok || (status && status >= 500)) {
-        if (!warned) {
-          toast.warning('Orders API lỗi - đang hiển thị dữ liệu demo')
-          setWarned(true)
-        }
-        setError(null)
-        setOrders(mockOrders)
-      }
+      const apiMessage = data?.message || `Orders API failed (status ${status ?? 'unknown'})`
+      setError(apiMessage)
+      setOrders([])
     } catch (err) {
       console.error('Error fetching orders:', err)
-      toast.warning('Network error - showing demo data')
-      setError(null)
-      // Fallback to mock data for development
-      setOrders(mockOrders)
+      toast.error('Network error - cannot load tracking orders')
+      setError('Network error while loading tracking orders')
+      setOrders([])
     } finally {
       setLoading(false)
     }
@@ -329,12 +238,15 @@ export default function OrderTrackingPage() {
     }
   }, [])
 
-  // Initial data fetch (no interval — tránh lag; admin bấm Làm mới khi cần)
+  // Initial data fetch
   useEffect(() => {
     fetchOrders()
     fetchStats()
     fetchShippers()
   }, [fetchOrders, fetchStats, fetchShippers])
+
+  // Intentionally no background polling on list page.
+  // Realtime GPS polling only runs on the shipper detail page to reduce load.
 
   // Event handlers
   const handleFilterChange = (key: keyof OrderFilters, value: string | number) => {
@@ -415,26 +327,12 @@ export default function OrderTrackingPage() {
       }
 
     // Tracking UX: nhãn ngắn gọn + tương phản mạnh + icon xe máy cho luồng giao hàng
-    if (normalized === 'in_transit') {
+    if (normalized === 'shipping') {
       return {
         ...base,
         label: t('trackingStatusShortInTransit'),
         color: 'bg-blue-600 text-white hover:bg-blue-600',
         icon: 'delivery',
-      }
-    }
-    if (normalized === 'picking_up') {
-      return {
-        ...base,
-        label: t('trackingStatusShortPickingUp'),
-        color: 'bg-amber-600 text-white hover:bg-amber-600',
-        icon: 'delivery',
-      }
-    }
-    if (['assigned', 'picked_up', 'arriving'].includes(normalized)) {
-      return {
-        ...base,
-        icon: '🛵',
       }
     }
 
@@ -580,13 +478,10 @@ export default function OrderTrackingPage() {
               <SelectContent>
                 <SelectItem value="all">{t('trackingStatusAll')}</SelectItem>
                 <SelectItem value="pending">{t('trackingStatusPending')}</SelectItem>
-                <SelectItem value="confirmed">{t('trackingStatusConfirmed')}</SelectItem>
-                <SelectItem value="assigned">{t('trackingStatusAssigned')}</SelectItem>
-                <SelectItem value="picking_up">{t('trackingStatusPickingUp')}</SelectItem>
-                <SelectItem value="picked_up">{t('trackingStatusPickedUp')}</SelectItem>
-                <SelectItem value="in_transit">{t('trackingStatusInTransit')}</SelectItem>
-                <SelectItem value="arriving">{t('trackingStatusArriving')}</SelectItem>
+                <SelectItem value="processing">{t('trackingStatusConfirmed')}</SelectItem>
+                <SelectItem value="shipping">{t('trackingStatusInTransit')}</SelectItem>
                 <SelectItem value="delivered">{t('trackingStatusDelivered')}</SelectItem>
+                <SelectItem value="completed">{t('trackingStatCompleted')}</SelectItem>
                 <SelectItem value="failed">{t('trackingStatusFailed')}</SelectItem>
                 <SelectItem value="cancelled">{t('trackingStatusCancelled')}</SelectItem>
               </SelectContent>
