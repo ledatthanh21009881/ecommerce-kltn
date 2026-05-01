@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import mapboxgl from 'mapbox-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
 import { Shipper, OrderTracking } from '@/lib/tracking-types'
@@ -43,19 +43,44 @@ interface Props {
   shipper: Shipper | null
   orders: OrderTracking[]
   className?: string
+  /** Nếu truyền: poll vị trí qua đây (token khách) và chỉ `setData` marker — không dùng API admin `/tracking/shippers/.../location`. */
+  pollLocation?: () => Promise<{ lat: number; lng: number } | null>
+  /** Sau mỗi lần lấy tọa độ mới (pollLocation hoặc admin), có thể cập nhật UI cha (vd. km) mà không cần remount map. */
+  onLiveLngLat?: (lat: number, lng: number) => void
 }
 
 export default function MapboxShipperDetailMapDemo({
   shipper,
   orders,
-  className = ''
+  className = '',
+  pollLocation,
+  onLiveLngLat,
 }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const mapRef = useRef<mapboxgl.Map | null>(null)
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const pollLocationRef = useRef(pollLocation)
+  pollLocationRef.current = pollLocation
+  const onLiveLngLatRef = useRef(onLiveLngLat)
+  onLiveLngLatRef.current = onLiveLngLat
+
+  /** Chỉ các trường cấu trúc tuyến/gán shipper — đổi tọa độ shipper không remount map. */
+  const routeStructureKey = useMemo(() => {
+    if (!shipper?.user_id) return ''
+    return orders
+      .filter(
+        (o) =>
+          o.shipper_id === shipper.user_id &&
+          o.destination_lat != null &&
+          o.destination_lng != null,
+      )
+      .map((o) => `${o.order_id}:${o.destination_lat}:${o.destination_lng}`)
+      .sort()
+      .join(';')
+  }, [shipper?.user_id, orders])
 
   useEffect(() => {
-    if (!shipper || !containerRef.current || !MAPBOX_TOKEN) return
+    if (!shipper || !containerRef.current || !MAPBOX_TOKEN || !routeStructureKey) return
 
     const activeOrder = orders
       .filter(
@@ -67,6 +92,8 @@ export default function MapboxShipperDetailMapDemo({
       .sort((a, b) => +new Date(b.created_at) - +new Date(a.created_at))[0]
 
     if (!activeOrder) return
+
+    const adminPollShipperId = shipper.user_id
 
     const end: [number, number] = [
       activeOrder.destination_lng!,
@@ -237,11 +264,23 @@ export default function MapboxShipperDetailMapDemo({
               coordinates: [lngNum, latNum],
             },
           })
+          onLiveLngLatRef.current?.(latNum, lngNum)
         }
 
         const pollLatestLocation = async () => {
-          const shipperId = shipper.user_id
-          const res = await fetchJsonSafe(`api/backend/v1/tracking/shippers/${shipperId}/location`)
+          if (pollLocationRef.current) {
+            try {
+              const loc = await pollLocationRef.current()
+              if (loc && Number.isFinite(loc.lat) && Number.isFinite(loc.lng)) {
+                updateMarkerFromLatLng(loc.lat, loc.lng)
+              }
+            } catch (e) {
+              console.warn('pollLocation:', e)
+            }
+            return
+          }
+
+          const res = await fetchJsonSafe(`api/backend/v1/tracking/shippers/${adminPollShipperId}/location`)
           if (!res.ok || !res.data?.success) return
 
           const loc = res.data?.data
@@ -307,7 +346,7 @@ export default function MapboxShipperDetailMapDemo({
         mapRef.current = null
       }
     }
-  }, [shipper, orders])
+  }, [shipper?.user_id, routeStructureKey])
 
   if (!shipper || !MAPBOX_TOKEN) {
     return (

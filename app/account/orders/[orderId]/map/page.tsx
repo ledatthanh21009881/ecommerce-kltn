@@ -1,12 +1,13 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import { ArrowLeft } from 'lucide-react'
 import { userOrdersApi } from '@/lib/userOrdersApi'
 import type { Shipper, OrderTracking } from '@/lib/tracking-types'
+import { shipperDestinationDistanceKm, trackingHasDestination } from '@/lib/orderCustomerTracking'
 import ProtectedRoute from '@/components/protected-route'
 
 const MapboxShipperDetailMapDemo = dynamic(
@@ -32,6 +33,7 @@ interface OrderDetail {
   order_id: number
   status: string
   total_amount?: number
+  created_at?: string
   shipping_address_snapshot?: string | null
   shipping_address?: ShippingAddressSnapshot | null
 }
@@ -41,10 +43,18 @@ function isDeliveringStatus(status: string | undefined | null): boolean {
   return ['in_transit', 'picking_up', 'picked_up', 'arriving', 'shipping'].includes(s)
 }
 
-const DEMO_CENTER_LNG = 106.660172
-const DEMO_CENTER_LAT = 10.762622
-const DEMO_DEST_LNG = 106.67
-const DEMO_DEST_LAT = 10.76
+function parseUserTracking(body: unknown): { shipper: Shipper | null; orders: OrderTracking[] } {
+  const rawTracking = body as {
+    data?: { shipper?: Shipper | null; orders?: OrderTracking[] }
+    shipper?: Shipper | null
+    orders?: OrderTracking[]
+  }
+  const tracking = rawTracking.data ?? rawTracking
+  return {
+    shipper: tracking.shipper ?? null,
+    orders: Array.isArray(tracking.orders) ? tracking.orders : [],
+  }
+}
 
 export default function OrderMapPage() {
   const params = useParams()
@@ -54,6 +64,12 @@ export default function OrderMapPage() {
   const [orders, setOrders] = useState<OrderTracking[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  /** Đồng bộ với marker trong map (GeoJSON), không cần setState shipper mỗi chu kỳ. */
+  const [liveLatLng, setLiveLatLng] = useState<{ lat: number; lng: number } | null>(null)
+
+  useEffect(() => {
+    setLiveLatLng(null)
+  }, [orderId])
 
   useEffect(() => {
     if (!orderId) {
@@ -93,51 +109,61 @@ export default function OrderMapPage() {
       setOrder(raw as unknown as OrderDetail)
 
       if (trackingRes.ok && trackingRes.data) {
-        const rawTracking = trackingRes.data as { data?: { shipper?: Shipper | null; orders?: OrderTracking[] }; shipper?: Shipper | null; orders?: OrderTracking[] }
-        const tracking = rawTracking.data ?? rawTracking
-        setShipper(tracking.shipper ?? null)
-        setOrders(tracking.orders ?? [])
+        const { shipper: nextS, orders: nextO } = parseUserTracking(trackingRes.data)
+        setShipper(nextS)
+        setOrders(nextO)
       }
       setLoading(false)
     }
 
-    load()
+    void load()
   }, [orderId])
 
+  const numericOrderId = Number(orderId)
+  const currentTrackingRow = useMemo(() => {
+    if (!numericOrderId || Number.isNaN(numericOrderId)) return null
+    return orders.find((o) => o.order_id === numericOrderId) ?? null
+  }, [orders, numericOrderId])
+
+  const latForDistance = liveLatLng?.lat ?? shipper?.current_lat ?? null
+  const lngForDistance = liveLatLng?.lng ?? shipper?.current_lng ?? null
+
+  const distanceKm =
+    shipper &&
+    currentTrackingRow &&
+    latForDistance != null &&
+    lngForDistance != null
+      ? shipperDestinationDistanceKm(
+          { ...shipper, current_lat: latForDistance, current_lng: lngForDistance },
+          currentTrackingRow.destination_lat,
+          currentTrackingRow.destination_lng,
+        )
+      : null
+
+  const pollCustomerShipperLngLat = useCallback(async (): Promise<{ lat: number; lng: number } | null> => {
+    if (!orderId) return null
+    const trackingRes = await userOrdersApi.getOrderTracking(orderId)
+    if (!trackingRes.ok || !trackingRes.data) return null
+    const { shipper: s } = parseUserTracking(trackingRes.data)
+    const lat = s?.current_lat
+    const lng = s?.current_lng
+    if (lat == null || lng == null) return null
+    const lt = typeof lat === 'number' ? lat : Number(lat)
+    const ln = typeof lng === 'number' ? lng : Number(lng)
+    if (!Number.isFinite(lt) || !Number.isFinite(ln)) return null
+    return { lat: lt, lng: ln }
+  }, [orderId])
+
+  const hasRealMapData = Boolean(
+    shipper &&
+      currentTrackingRow &&
+      trackingHasDestination({
+        lat: currentTrackingRow.destination_lat,
+        lng: currentTrackingRow.destination_lng,
+      }),
+  )
+
   const isDelivering = isDeliveringStatus(order?.status ?? '')
-  const hasRealMapData = shipper && orders.length > 0 && orders.some((o) => o.destination_lat && o.destination_lng)
-
-  const mapShipper: Shipper = hasRealMapData && shipper
-    ? shipper
-    : {
-        user_id: 0,
-        shipper_name: 'Shipper (demo)',
-        phone: '',
-        vehicle_info: 'Xe máy',
-        total_delivered: 0,
-        is_available: false,
-        status: 'active',
-        created_at: new Date().toISOString(),
-        current_lat: DEMO_CENTER_LAT,
-        current_lng: DEMO_CENTER_LNG,
-        active_orders_count: 1,
-      }
-
-  const mapOrders: OrderTracking[] = hasRealMapData && orders.length > 0
-    ? orders
-    : [{
-        order_id: order?.order_id ?? 0,
-        status: 'in_transit' as const,
-        total_amount: order?.total_amount ?? 0,
-        created_at: order?.created_at ?? new Date().toISOString(),
-        customer_name: '',
-        customer_phone: '',
-        customer_address: '',
-        shipper_id: 0,
-        destination_lat: DEMO_DEST_LAT,
-        destination_lng: DEMO_DEST_LNG,
-        event_count: 0,
-      }]
 
   if (loading) {
     return (
@@ -183,10 +209,28 @@ export default function OrderMapPage() {
     )
   }
 
+  if (!hasRealMapData || !shipper || !currentTrackingRow) {
+    return (
+      <ProtectedRoute>
+        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-4 bg-[#f9fafb] p-4">
+          <p className="text-center text-gray-700 max-w-sm">
+            Chưa có dữ liệu vị trí shipper và địa chỉ giao để hiển thị bản đồ. Vui lòng thử lại sau.
+          </p>
+          <Link
+            href={`/account/orders/${orderId}`}
+            className="inline-flex items-center gap-2 rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Quay lại đơn hàng
+          </Link>
+        </div>
+      </ProtectedRoute>
+    )
+  }
+
   return (
     <ProtectedRoute>
       <div className="fixed inset-0 z-40 flex flex-col bg-white">
-        {/* Header: full width, back button */}
         <header className="flex shrink-0 items-center justify-between border-b border-gray-200 bg-white px-4 py-3 shadow-sm">
           <Link
             href={`/account/orders/${orderId}`}
@@ -195,15 +239,16 @@ export default function OrderMapPage() {
             <ArrowLeft className="h-4 w-4" />
             Quay lại đơn hàng
           </Link>
-          {!hasRealMapData && (
-            <span className="text-xs font-medium text-amber-600">Demo – vị trí mẫu</span>
-          )}
+          {distanceKm != null ? (
+            <span className="text-xs font-medium text-gray-600">~{distanceKm.toFixed(2)} km đến nơi giao</span>
+          ) : null}
         </header>
-        {/* Map: full remaining height */}
         <div className="relative min-h-0 flex-1">
           <MapboxShipperDetailMapDemo
-            shipper={mapShipper}
-            orders={mapOrders}
+            shipper={shipper}
+            orders={orders}
+            pollLocation={pollCustomerShipperLngLat}
+            onLiveLngLat={(lat, lng) => setLiveLatLng({ lat, lng })}
             className="absolute inset-0 h-full w-full"
           />
         </div>

@@ -15,6 +15,27 @@ import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, Command
 import { Check, ChevronsUpDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
+
+function parseVndAmount(value: unknown): number {
+  if (value === null || value === undefined) return 0
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? Math.round(value) : 0
+  }
+  const s = String(value).trim().replace(/,/g, '')
+  if (!s) return 0
+  const n = Number(s)
+  return Number.isFinite(n) ? Math.round(n) : 0
+}
+
+function formatVnd(amount: number): string {
+  return (
+    new Intl.NumberFormat('vi-VN', {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(Number.isFinite(amount) ? Math.round(amount) : 0) + ' ₫'
+  )
+}
+
 interface CartItem {
   item_id: number
   variant_id: number
@@ -152,12 +173,12 @@ export default function CheckoutPage() {
   useEffect(() => {
     if (selectedShippingId) {
       const method = shippingMethods.find(m => m.shipping_method_id === selectedShippingId)
-      setShippingFee(method?.fee || 0)
+      setShippingFee(parseVndAmount(method?.fee))
     }
   }, [selectedShippingId, shippingMethods])
 
   useEffect(() => {
-    setTotal(subtotal + shippingFee)
+    setTotal(parseVndAmount(subtotal) + parseVndAmount(shippingFee))
   }, [subtotal, shippingFee])
 
   const loadProvinces = async () => {
@@ -258,8 +279,15 @@ export default function CheckoutPage() {
       })
       const cartData = await cartRes.json()
       if (cartData.success) {
-        setCartItems(cartData.data.items || [])
-        setSubtotal(cartData.data.subtotal || 0)
+        const rawItems = (cartData.data.items || []) as CartItem[]
+        setCartItems(
+          rawItems.map((it) => ({
+            ...it,
+            list_price: parseVndAmount(it.list_price as unknown),
+            quantity: typeof it.quantity === 'number' && Number.isFinite(it.quantity) ? it.quantity : Number(it.quantity) || 0,
+          })),
+        )
+        setSubtotal(parseVndAmount(cartData.data.subtotal))
       }
 
       // Load customer info and saved addresses
@@ -775,7 +803,7 @@ export default function CheckoutPage() {
                       <Label htmlFor={`shipping-${method.shipping_method_id}`} className="flex-1 cursor-pointer">
                         <div className="flex justify-between">
                           <span>{method.name}</span>
-                          <span className="font-semibold">{method.fee.toLocaleString('vi-VN')} ₫</span>
+                          <span className="font-semibold">{formatVnd(method.fee)}</span>
                         </div>
                         <p className="text-sm text-gray-500">Giao hàng trong {method.estimated_days} ngày</p>
                       </Label>
@@ -838,22 +866,22 @@ export default function CheckoutPage() {
                 {cartItems.map((item) => (
                   <div key={item.item_id} className="flex justify-between text-sm">
                     <span>{item.product_name} ({item.size_name}) x{item.quantity}</span>
-                    <span>{(item.list_price * item.quantity).toLocaleString('vi-VN')} ₫</span>
+                    <span>{formatVnd(item.list_price * item.quantity)}</span>
                   </div>
                 ))}
               </div>
               <div className="border-t pt-4 space-y-2">
                 <div className="flex justify-between">
                   <span>Tạm tính:</span>
-                  <span>{subtotal.toLocaleString('vi-VN')} ₫</span>
+                  <span>{formatVnd(parseVndAmount(subtotal))}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Phí vận chuyển:</span>
-                  <span>{shippingFee.toLocaleString('vi-VN')} ₫</span>
+                  <span>{formatVnd(parseVndAmount(shippingFee))}</span>
                 </div>
                 <div className="flex justify-between font-bold text-lg border-t pt-2">
                   <span>Tổng cộng:</span>
-                  <span>{total.toLocaleString('vi-VN')} ₫</span>
+                  <span>{formatVnd(parseVndAmount(total))}</span>
                 </div>
               </div>
               <Button

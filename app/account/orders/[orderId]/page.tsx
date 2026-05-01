@@ -1,27 +1,16 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { useParams } from 'next/navigation'
-import dynamic from 'next/dynamic'
-import { ArrowLeft, Phone, MapPin, MessageCircle } from 'lucide-react'
+import { ArrowLeft, Phone, MessageCircle } from 'lucide-react'
 import { userOrdersApi } from '@/lib/userOrdersApi'
 import type { Shipper, OrderTracking } from '@/lib/tracking-types'
 import { ORDER_STATUS_CONFIG } from '@/lib/tracking-types'
+import { shipperDestinationDistanceKm } from '@/lib/orderCustomerTracking'
 import ProtectedRoute from '@/components/protected-route'
-
-const MapboxShipperDetailMapDemo = dynamic(
-  () => import('@/components/admin/MapboxShipperDetailMapDemo'),
-  {
-    ssr: false,
-    loading: () => (
-      <div className="w-full min-h-[70vh] bg-gray-100 flex items-center justify-center rounded-xl">
-        Đang tải bản đồ...
-      </div>
-    ),
-  }
-)
+import { CustomerOrderStatusBar } from '@/components/account/CustomerOrderStatusBar'
 
 /** Resolve product image URL: use as-is if absolute, else prepend backend base from env. */
 function productImageSrc(url: string | null | undefined): string | null {
@@ -114,7 +103,6 @@ function getStatusLabel(status: string | undefined | null): string {
   return raw
 }
 
-/** Chỉ hiện bản đồ khi đơn đang giao (in_transit, picking_up, picked_up, arriving, shipping). */
 function isDeliveringStatus(status: string | undefined | null): boolean {
   const s = (status ?? '').toString().toLowerCase()
   return ['in_transit', 'picking_up', 'picked_up', 'arriving', 'shipping'].includes(s)
@@ -186,7 +174,6 @@ export default function OrderDetailPage() {
   const [orders, setOrders] = useState<OrderTracking[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const mapSectionRef = useRef<HTMLElement>(null)
 
   useEffect(() => {
     if (!orderId) {
@@ -226,7 +213,11 @@ export default function OrderDetailPage() {
       setOrder(raw as unknown as OrderDetail)
 
       if (trackingRes.ok && trackingRes.data) {
-        const rawTracking = trackingRes.data as { data?: { shipper?: Shipper | null; orders?: OrderTracking[] }; shipper?: Shipper | null; orders?: OrderTracking[] }
+        const rawTracking = trackingRes.data as {
+          data?: { shipper?: Shipper | null; orders?: OrderTracking[] }
+          shipper?: Shipper | null
+          orders?: OrderTracking[]
+        }
         const tracking = rawTracking.data ?? rawTracking
         setShipper(tracking.shipper ?? null)
         setOrders(tracking.orders ?? [])
@@ -234,8 +225,38 @@ export default function OrderDetailPage() {
       setLoading(false)
     }
 
-    load()
+    void load()
   }, [orderId])
+
+  /** Cập nhật vị trí shipper định kỳ khi đơn đang giao (API cùng hệ `/admin/tracking`). */
+  useEffect(() => {
+    if (!orderId || !order?.status || !isDeliveringStatus(order.status)) return undefined
+
+    let cancelled = false
+    const tick = async () => {
+      try {
+        const trackingRes = await userOrdersApi.getOrderTracking(orderId)
+        if (cancelled || !trackingRes.ok || !trackingRes.data) return
+        const rawTracking = trackingRes.data as {
+          data?: { shipper?: Shipper | null; orders?: OrderTracking[] }
+          shipper?: Shipper | null
+          orders?: OrderTracking[]
+        }
+        const tracking = rawTracking.data ?? rawTracking
+        setShipper(tracking.shipper ?? null)
+        setOrders(tracking.orders ?? [])
+      } catch {
+        /* noop */
+      }
+    }
+
+    void tick()
+    const idTimer = window.setInterval(() => void tick(), 45000)
+    return () => {
+      cancelled = true
+      window.clearInterval(idTimer)
+    }
+  }, [orderId, order?.status])
 
   const formatDate = (dateString: string) => {
     const d = new Date(dateString)
@@ -252,45 +273,25 @@ export default function OrderDetailPage() {
       minimumFractionDigits: 0,
     }).format(amount)
 
+  const numericOrderId = Number(orderId)
+  const currentTrackingRow = useMemo(() => {
+    if (!numericOrderId || Number.isNaN(numericOrderId)) return null
+    return orders.find((o) => o.order_id === numericOrderId) ?? null
+  }, [orders, numericOrderId])
+
+  const distanceKm =
+    shipper && currentTrackingRow
+      ? shipperDestinationDistanceKm(shipper, currentTrackingRow.destination_lat, currentTrackingRow.destination_lng)
+      : null
+
   const isDelivering = isDeliveringStatus(order?.status ?? '')
-  const hasRealMapData = shipper && orders.length > 0 && orders.some((o) => o.destination_lat && o.destination_lng)
-  const showMap = isDelivering
-  const DEMO_CENTER_LNG = 106.660172
-  const DEMO_CENTER_LAT = 10.762622
-  const DEMO_DEST_LNG = 106.67
-  const DEMO_DEST_LAT = 10.76
-  const mapShipper: Shipper = hasRealMapData && shipper
-    ? shipper
-    : {
-        user_id: 0,
-        shipper_name: 'Shipper (demo)',
-        phone: '',
-        vehicle_info: 'Xe máy',
-        total_delivered: 0,
-        is_available: false,
-        status: 'active',
-        created_at: new Date().toISOString(),
-        current_lat: DEMO_CENTER_LAT,
-        current_lng: DEMO_CENTER_LNG,
-        active_orders_count: 1,
-      }
-  const mapOrders: OrderTracking[] = hasRealMapData && orders.length > 0
-    ? orders
-    : [{
-        order_id: order?.order_id ?? 0,
-        status: 'in_transit' as const,
-        total_amount: order?.total_amount ?? 0,
-        created_at: order?.created_at ?? new Date().toISOString(),
-        customer_name: '',
-        customer_phone: '',
-        customer_address: '',
-        shipper_id: 0,
-        destination_lat: DEMO_DEST_LAT,
-        destination_lng: DEMO_DEST_LNG,
-        event_count: 0,
-      }]
+  /** Nút bản đồ: mở khi đơn đang giao (không còn giới hạn 1 km). */
+  const showNearDestinationMapLink = Boolean(isDelivering)
+  const distanceForBar = isDelivering && distanceKm !== null ? distanceKm : null
+
   const shippingAddress = order?.shipping_address
-  const addressLine = shippingAddress?.address_line ?? ([shippingAddress?.ward, shippingAddress?.district, shippingAddress?.city].filter(Boolean).join(', ') || null)
+  const addressLine = shippingAddress?.address_line ??
+    ([shippingAddress?.ward, shippingAddress?.district, shippingAddress?.city].filter(Boolean).join(', ') || null)
   const payment = order?.payment
 
   if (loading) {
@@ -351,6 +352,7 @@ export default function OrderDetailPage() {
     }
   }
   const messengerHref = `/messenger?${messengerParams.toString()}`
+  const mapHref = `/account/orders/${orderId}/map`
 
   return (
     <ProtectedRoute>
@@ -368,24 +370,20 @@ export default function OrderDetailPage() {
               </Link>
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <h1 className="font-sans text-2xl font-bold text-black">{orderLabel}</h1>
-                <div className="flex items-center gap-2">
-                  {showMap && (
-                    <Link
-                      href={`/account/orders/${orderId}/map`}
-                      className="inline-flex items-center gap-2 rounded-xl border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
-                    >
-                      <MapPin className="h-4 w-4" />
-                      Xem đơn giao
-                    </Link>
-                  )}
-                  <span
-                    className={`rounded-xl px-3 py-1 text-xs font-medium ${getStatusBadgeClass(order.status)}`}
-                  >
-                    {getStatusLabel(order.status)}
-                  </span>
-                </div>
+                <span
+                  className={`rounded-xl px-3 py-1 text-xs font-medium ${getStatusBadgeClass(order.status)}`}
+                >
+                  {getStatusLabel(order.status)}
+                </span>
               </div>
             </header>
+
+            <CustomerOrderStatusBar
+              status={order.status}
+              distanceKm={distanceForBar ?? undefined}
+              showNearDestinationMapLink={showNearDestinationMapLink}
+              mapHref={mapHref}
+            />
 
             {/* Một khối chi tiết đơn (hóa đơn) */}
             <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm overflow-hidden">
@@ -423,17 +421,17 @@ export default function OrderDetailPage() {
               {/* Địa chỉ giao hàng */}
               {(addressLine || shippingAddress?.recipient_name || shippingAddress?.phone) && (
                 <div className="border-t border-gray-100 pt-6 pb-6">
-                    <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3" style={{ fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, sans-serif' }}>Địa chỉ giao hàng</h2>
-                    <div className="text-sm space-y-1">
-                      {shippingAddress?.recipient_name && (
-                        <p className="font-medium text-black">{shippingAddress.recipient_name}</p>
-                      )}
-                      {shippingAddress?.phone && (
-                        <p className="text-gray-700">SĐT: {shippingAddress.phone}</p>
-                      )}
-                      {addressLine && <p className="text-gray-800">{addressLine}</p>}
-                    </div>
+                  <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3" style={{ fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, sans-serif' }}>Địa chỉ giao hàng</h2>
+                  <div className="text-sm space-y-1">
+                    {shippingAddress?.recipient_name && (
+                      <p className="font-medium text-black">{shippingAddress.recipient_name}</p>
+                    )}
+                    {shippingAddress?.phone && (
+                      <p className="text-gray-700">SĐT: {shippingAddress.phone}</p>
+                    )}
+                    {addressLine && <p className="text-gray-800">{addressLine}</p>}
                   </div>
+                </div>
               )}
 
               {/* Sản phẩm */}
@@ -456,7 +454,7 @@ export default function OrderDetailPage() {
                         const name = item.product_name ?? 'Sản phẩm'
                         const qty = item.quantity ?? 1
                         const unitPrice = item.price ?? 0
-                        const subtotal = item.subtotal ?? unitPrice * qty
+                        const rowSubtotal = item.subtotal ?? unitPrice * qty
                         return (
                           <tr key={i} className="border-b border-gray-100 last:border-0">
                             <td className="p-3">
@@ -474,7 +472,7 @@ export default function OrderDetailPage() {
                             </td>
                             <td className="p-3 text-center text-gray-800">{qty}</td>
                             <td className="p-3 text-right text-gray-800">{formatPrice(unitPrice)}</td>
-                            <td className="p-3 text-right font-medium text-black">{formatPrice(subtotal)}</td>
+                            <td className="p-3 text-right font-medium text-black">{formatPrice(rowSubtotal)}</td>
                           </tr>
                         )
                       })}
@@ -577,25 +575,6 @@ export default function OrderDetailPage() {
                 </div>
               )}
             </section>
-
-            {/* Bản đồ demo – hiện khi đơn đang giao (dữ liệu thật hoặc demo) */}
-            {showMap && (
-              <section ref={mapSectionRef} className="w-full min-h-[70vh] rounded-2xl overflow-hidden border border-gray-200 bg-white shadow-sm">
-                <div className="flex items-center justify-between border-b border-gray-100 p-4">
-                  <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
-                    Theo dõi đơn hàng
-                  </h2>
-                  {!hasRealMapData && (
-                    <span className="text-xs text-amber-600 font-medium">Demo – vị trí mẫu</span>
-                  )}
-                </div>
-                <MapboxShipperDetailMapDemo
-                  shipper={mapShipper}
-                  orders={mapOrders}
-                  className="w-full min-h-[70vh]"
-                />
-              </section>
-            )}
           </div>
         </div>
       </main>
