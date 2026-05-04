@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { AdminVnAddressFields, isInsideAddressDropdown, type AdminAddressValue } from '@/components/admin/AdminVnAddressFields'
 import { useRouter } from 'next/navigation'
 import { Search, RefreshCw, Users, UserPlus, Mail, Phone, Calendar, Shield, Truck, LayoutList, LayoutGrid, ChevronLeft, ChevronRight, Edit, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -14,6 +15,7 @@ import { toast } from 'sonner'
 import { isAuthenticated } from '@/lib/admin-auth'
 import ConfirmModal from '@/components/ui/confirm-modal'
 import { useLanguage } from '@/contexts/LanguageContext'
+import type { TranslationKey } from '@/lib/ui-translations'
 
 interface User {
   user_id: number
@@ -35,6 +37,23 @@ interface UserStats {
   managers: number
   staff: number
   customers: number
+}
+
+const USER_ROLE_TRANSLATION_KEYS: Record<string, TranslationKey> = {
+  admin: 'userRole_admin',
+  customer: 'userRole_customer',
+  shipper: 'userRole_shipper',
+  staff: 'userRole_staff',
+  manager: 'userRole_manager',
+}
+
+/** Tên vai trò từ API (admin, customer, …) → bản dịch theo ngôn ngữ admin. */
+function translatedUserRole(
+  roleName: string,
+  t: (key: TranslationKey, params?: Record<string, string>) => string
+): string {
+  const key = USER_ROLE_TRANSLATION_KEYS[roleName.trim().toLowerCase()]
+  return key ? t(key) : roleName
 }
 
 export default function AdminUsersPage() {
@@ -82,6 +101,8 @@ export default function AdminUsersPage() {
     if (typeof window !== 'undefined') return (localStorage.getItem('admin_users_view') as 'list' | 'grid') || 'list'
     return 'list'
   })
+  const [addDialogContentEl, setAddDialogContentEl] = useState<HTMLElement | null>(null)
+  const [editDialogContentEl, setEditDialogContentEl] = useState<HTMLElement | null>(null)
 
   const setViewModeAndStore = (mode: 'list' | 'grid') => {
     setViewMode(mode)
@@ -536,11 +557,11 @@ export default function AdminUsersPage() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">{t('allRoles')}</SelectItem>
-                      <SelectItem value="admin">{t('admin')}</SelectItem>
-                      <SelectItem value="manager">{t('manager')}</SelectItem>
-                      <SelectItem value="staff">{t('staff')}</SelectItem>
-                      <SelectItem value="customer">{t('customer')}</SelectItem>
-                      <SelectItem value="shipper">{t('shipper')}</SelectItem>
+                      <SelectItem value="admin">{translatedUserRole('admin', t)}</SelectItem>
+                      <SelectItem value="manager">{translatedUserRole('manager', t)}</SelectItem>
+                      <SelectItem value="staff">{translatedUserRole('staff', t)}</SelectItem>
+                      <SelectItem value="customer">{translatedUserRole('customer', t)}</SelectItem>
+                      <SelectItem value="shipper">{translatedUserRole('shipper', t)}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -598,12 +619,12 @@ export default function AdminUsersPage() {
                           {Array.isArray(user.roles)
                             ? user.roles.map((r, i) => (
                                 <Badge key={i} variant="outline" className={`mr-1 ${getRoleColor(r)}`}>
-                                  {t(r as any)}
+                                  {translatedUserRole(r, t)}
                                 </Badge>
                               ))
                             : (
                                 <Badge variant="outline" className={getRoleColor(user.roles)}>
-                                  {t(user.roles as any)}
+                                  {translatedUserRole(String(user.roles), t)}
                                 </Badge>
                               )}
                         </td>
@@ -654,7 +675,7 @@ export default function AdminUsersPage() {
                             className={`flex items-center gap-1 ${getRoleColor(role)}`}
                           >
                             {getRoleIcon(role)}
-                            {role.charAt(0).toUpperCase() + role.slice(1)}
+                            {translatedUserRole(role, t)}
                           </Badge>
                         )) : (
                           <Badge 
@@ -662,7 +683,7 @@ export default function AdminUsersPage() {
                             className={`flex items-center gap-1 ${getRoleColor(user.roles)}`}
                           >
                             {getRoleIcon(user.roles)}
-                            {t(user.roles as any) || user.roles.charAt(0).toUpperCase() + user.roles.slice(1)}
+                            {translatedUserRole(String(user.roles), t)}
                           </Badge>
                         )}
                         <Badge
@@ -754,58 +775,106 @@ export default function AdminUsersPage() {
         )}
 
         {/* Add User Modal */}
-        <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
-          <DialogContent 
-            className="sm:max-w-[425px] bg-white" 
-            style={{ 
+        <Dialog
+          open={showAddModal}
+          onOpenChange={(open) => {
+            setShowAddModal(open)
+            if (!open) setAddDialogContentEl(null)
+          }}
+        >
+          <DialogContent
+            className="flex w-[min(96vw,72rem)] max-w-6xl max-h-[92vh] translate-x-[-50%] translate-y-[-50%] flex-col gap-0 overflow-hidden border-0 bg-white p-0 shadow-[0_10px_25px_rgba(0,0,0,0.2)] sm:rounded-lg"
+            style={{
               backdropFilter: 'none',
               backgroundColor: 'white',
-              boxShadow: '0 10px 25px rgba(0, 0, 0, 0.2)'
+            }}
+            onPointerDownOutside={(e) => {
+              if (isInsideAddressDropdown(e.target)) e.preventDefault()
+            }}
+            onInteractOutside={(e) => {
+              if (isInsideAddressDropdown(e.target)) e.preventDefault()
+            }}
+            onFocusOutside={(e) => {
+              const rt = (
+                e as unknown as CustomEvent<{ originalEvent?: FocusEvent | null }>
+              ).detail?.originalEvent?.relatedTarget
+              if (rt != null && isInsideAddressDropdown(rt)) e.preventDefault()
             }}
           >
-            <DialogHeader>
-              <DialogTitle>{t('addNewUser')}</DialogTitle>
+            <DialogHeader className="shrink-0 border-b border-slate-100 px-6 py-4 text-left sm:px-8 sm:py-5">
+              <DialogTitle className="text-xl font-semibold tracking-tight sm:text-2xl">{t('addNewUser')}</DialogTitle>
             </DialogHeader>
-            <AddUserForm 
-              roles={roles}
-              onSuccess={() => {
-                setShowAddModal(false)
-                fetchUsers()
-                fetchStats()
-              }}
-              onCancel={() => setShowAddModal(false)}
-            />
+            <div
+              ref={(node) => setAddDialogContentEl(node)}
+              className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-6 py-4 sm:px-8 sm:py-5"
+            >
+              <AddUserForm
+                roles={roles}
+                dialogContentEl={addDialogContentEl}
+                modalOpen={showAddModal}
+                onSuccess={() => {
+                  setShowAddModal(false)
+                  fetchUsers()
+                  fetchStats()
+                }}
+                onCancel={() => setShowAddModal(false)}
+              />
+            </div>
           </DialogContent>
         </Dialog>
 
       {/* Edit User Modal */}
-        <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
-          <DialogContent 
-            className="sm:max-w-[425px] bg-white" 
-            style={{ 
+        <Dialog
+          open={showEditModal}
+          onOpenChange={(open) => {
+            setShowEditModal(open)
+            if (!open) setEditDialogContentEl(null)
+          }}
+        >
+          <DialogContent
+            className="flex w-[min(96vw,72rem)] max-w-6xl max-h-[92vh] translate-x-[-50%] translate-y-[-50%] flex-col gap-0 overflow-hidden border-0 bg-white p-0 shadow-[0_10px_25px_rgba(0,0,0,0.2)] sm:rounded-lg"
+            style={{
               backdropFilter: 'none',
               backgroundColor: 'white',
-              boxShadow: '0 10px 25px rgba(0, 0, 0, 0.2)'
+            }}
+            onPointerDownOutside={(e) => {
+              if (isInsideAddressDropdown(e.target)) e.preventDefault()
+            }}
+            onInteractOutside={(e) => {
+              if (isInsideAddressDropdown(e.target)) e.preventDefault()
+            }}
+            onFocusOutside={(e) => {
+              const rt = (
+                e as unknown as CustomEvent<{ originalEvent?: FocusEvent | null }>
+              ).detail?.originalEvent?.relatedTarget
+              if (rt != null && isInsideAddressDropdown(rt)) e.preventDefault()
             }}
           >
-          <DialogHeader>
-              <DialogTitle>{t('editUser')}</DialogTitle>
-          </DialogHeader>
+            <DialogHeader className="shrink-0 border-b border-slate-100 px-6 py-4 text-left sm:px-8 sm:py-5">
+              <DialogTitle className="text-xl font-semibold tracking-tight sm:text-2xl">{t('editUser')}</DialogTitle>
+            </DialogHeader>
             {selectedUser && (
-              <EditUserForm 
-                user={selectedUser}
-                roles={roles}
-                onSuccess={() => {
-                  setShowEditModal(false)
-                  setSelectedUser(null)
-                  fetchUsers()
-                  fetchStats()
-                }}
-                onCancel={() => {
-                  setShowEditModal(false)
-                  setSelectedUser(null)
-                }}
-              />
+              <div
+                ref={(node) => setEditDialogContentEl(node)}
+                className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-6 py-4 sm:px-8 sm:py-5"
+              >
+                <EditUserForm
+                  user={selectedUser}
+                  roles={roles}
+                  dialogContentEl={editDialogContentEl}
+                  modalOpen={showEditModal}
+                  onSuccess={() => {
+                    setShowEditModal(false)
+                    setSelectedUser(null)
+                    fetchUsers()
+                    fetchStats()
+                  }}
+                  onCancel={() => {
+                    setShowEditModal(false)
+                    setSelectedUser(null)
+                  }}
+                />
+              </div>
             )}
           </DialogContent>
         </Dialog>
@@ -828,11 +897,44 @@ export default function AdminUsersPage() {
   )
 }
 
+function emptyAdminAddress(): AdminAddressValue {
+  return {
+    receiver_name: '',
+    phone: '',
+    address_line: '',
+    ward: '',
+    district: '',
+    province: '',
+    is_default: true,
+  }
+}
+
+function addressFieldsFilled(a: AdminAddressValue): boolean {
+  return [a.receiver_name, a.phone, a.address_line, a.ward, a.district, a.province].every(
+    (s) => String(s ?? '').trim() !== ''
+  )
+}
+
+function addressFieldsPartial(a: AdminAddressValue): boolean {
+  const filled = [a.receiver_name, a.phone, a.address_line, a.ward, a.district, a.province].map(
+    (s) => String(s ?? '').trim() !== ''
+  )
+  return filled.some(Boolean) && !filled.every(Boolean)
+}
+
 // Add User Form Component
-function AddUserForm({ roles, onSuccess, onCancel }: { 
-  roles: Array<{role_id: number, role_name: string}>, 
-  onSuccess: () => void, 
-  onCancel: () => void 
+function AddUserForm({
+  roles,
+  onSuccess,
+  onCancel,
+  dialogContentEl,
+  modalOpen,
+}: {
+  roles: Array<{ role_id: number; role_name: string }>
+  onSuccess: () => void
+  onCancel: () => void
+  dialogContentEl: HTMLElement | null
+  modalOpen: boolean
 }) {
   const { t } = useLanguage()
   const [formData, setFormData] = useState({
@@ -842,12 +944,27 @@ function AddUserForm({ roles, onSuccess, onCancel }: {
     last_name: '',
     email: '',
     phone: '',
-    role_ids: [] as number[]
+    role_ids: [] as number[],
   })
+  const [addressForm, setAddressForm] = useState<AdminAddressValue>(() => emptyAdminAddress())
   const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    if (modalOpen) {
+      setAddressForm(emptyAdminAddress())
+    }
+  }, [modalOpen])
+
+  const patchAddress = (patch: Partial<AdminAddressValue>) => {
+    setAddressForm((prev) => ({ ...prev, ...patch }))
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (addressFieldsPartial(addressForm)) {
+      toast.error(t('adminUserAddressPartial'))
+      return
+    }
     setLoading(true)
 
     try {
@@ -857,20 +974,45 @@ function AddUserForm({ roles, onSuccess, onCancel }: {
         return
       }
 
+      const payload: Record<string, unknown> = { ...formData }
+      if (addressFieldsFilled(addressForm)) {
+        const receiver =
+          addressForm.receiver_name.trim() ||
+          `${formData.first_name} ${formData.last_name}`.trim()
+        const phoneDigits = (
+          addressForm.phone.trim() || formData.phone.replace(/\D/g, '')
+        ).replace(/\D/g, '')
+        payload.address = {
+          receiver_name: receiver,
+          phone: phoneDigits,
+          address_line: addressForm.address_line.trim(),
+          ward: addressForm.ward.trim(),
+          district: addressForm.district.trim(),
+          province: addressForm.province.trim(),
+          is_default: addressForm.is_default,
+        }
+      }
+
       const response = await fetch('/api/backend/v1/users', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${token}`,
+          Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(payload),
       })
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
-      }
-
       const data = await response.json()
+      if (!response.ok) {
+        const msg =
+          data?.message ||
+          (data?.errors && typeof data.errors === 'object'
+            ? Object.values(data.errors).flat().join(' ')
+            : null) ||
+          t('failedToCreateUser')
+        toast.error(msg)
+        return
+      }
       if (data.success) {
         toast.success(t('userCreatedSuccessfully'))
         onSuccess()
@@ -885,85 +1027,97 @@ function AddUserForm({ roles, onSuccess, onCancel }: {
     }
   }
 
+  const adminInputClass = 'h-10 mt-1.5'
+
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+    <form onSubmit={handleSubmit} className="space-y-5">
+      <div className="grid grid-cols-1 gap-x-4 gap-y-3 md:grid-cols-2 md:items-start">
         <div>
-          <Label htmlFor="first_name">{t('firstName')}</Label>
+          <Label htmlFor="add_first_name">{t('firstName')}</Label>
           <Input
-            id="first_name"
+            id="add_first_name"
+            className={adminInputClass}
             value={formData.first_name}
-            onChange={(e) => setFormData(prev => ({ ...prev, first_name: e.target.value }))}
+            onChange={(e) => setFormData((prev) => ({ ...prev, first_name: e.target.value }))}
             required
           />
-              </div>
+        </div>
         <div>
-          <Label htmlFor="last_name">{t('lastName')}</Label>
+          <Label htmlFor="add_last_name">{t('lastName')}</Label>
           <Input
-            id="last_name"
+            id="add_last_name"
+            className={adminInputClass}
             value={formData.last_name}
-            onChange={(e) => setFormData(prev => ({ ...prev, last_name: e.target.value }))}
+            onChange={(e) => setFormData((prev) => ({ ...prev, last_name: e.target.value }))}
             required
           />
-              </div>
-            </div>
-
-      <div>
-        <Label htmlFor="account_name">{t('username')}</Label>
-        <Input
-          id="account_name"
-          value={formData.account_name}
-          onChange={(e) => setFormData(prev => ({ ...prev, account_name: e.target.value }))}
-          required
-        />
+        </div>
+        <div>
+          <Label htmlFor="add_account_name">{t('username')}</Label>
+          <Input
+            id="add_account_name"
+            className={adminInputClass}
+            value={formData.account_name}
+            onChange={(e) => setFormData((prev) => ({ ...prev, account_name: e.target.value }))}
+            required
+          />
+        </div>
+        <div>
+          <Label htmlFor="add_password">{t('password')}</Label>
+          <Input
+            id="add_password"
+            className={adminInputClass}
+            type="password"
+            value={formData.password}
+            onChange={(e) => setFormData((prev) => ({ ...prev, password: e.target.value }))}
+            required
+          />
+        </div>
+        <div>
+          <Label htmlFor="add_email">{t('email')}</Label>
+          <Input
+            id="add_email"
+            className={adminInputClass}
+            type="email"
+            value={formData.email}
+            onChange={(e) => setFormData((prev) => ({ ...prev, email: e.target.value }))}
+            required
+          />
+        </div>
+        <div>
+          <Label htmlFor="add_phone">{t('phoneNumber')}</Label>
+          <Input
+            id="add_phone"
+            className={adminInputClass}
+            value={formData.phone}
+            autoComplete="off"
+            inputMode="numeric"
+            onChange={(e) => setFormData((prev) => ({ ...prev, phone: e.target.value }))}
+          />
+        </div>
+        <div className="md:col-span-2">
+          <Label htmlFor="add_role">{t('role')}</Label>
+          <Select onValueChange={(value) => setFormData((prev) => ({ ...prev, role_ids: [parseInt(value, 10)] }))}>
+            <SelectTrigger id="add_role" className="h-10 mt-1.5 w-full md:max-w-md">
+              <SelectValue placeholder={t('selectRole')} />
+            </SelectTrigger>
+            <SelectContent>
+              {roles.map((role) => (
+                <SelectItem key={role.role_id} value={role.role_id.toString()}>
+                  {translatedUserRole(role.role_name, t)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
-      <div>
-        <Label htmlFor="password">{t('password')}</Label>
-        <Input
-          id="password"
-          type="password"
-          value={formData.password}
-          onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
-          required
-        />
-      </div>
-
-      <div>
-        <Label htmlFor="email">{t('email')}</Label>
-        <Input
-          id="email"
-          type="email"
-          value={formData.email}
-          onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
-          required
-        />
-      </div>
-
-      <div>
-        <Label htmlFor="phone">{t('phoneNumber')}</Label>
-        <Input
-          id="phone"
-          value={formData.phone}
-          onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
-        />
-      </div>
-
-      <div>
-        <Label htmlFor="role">{t('role')}</Label>
-        <Select onValueChange={(value) => setFormData(prev => ({ ...prev, role_ids: [parseInt(value)] }))}>
-                  <SelectTrigger>
-            <SelectValue placeholder={t('selectRole')} />
-                  </SelectTrigger>
-                  <SelectContent>
-            {roles.map((role) => (
-              <SelectItem key={role.role_id} value={role.role_id.toString()}>
-                {role.role_name}
-              </SelectItem>
-            ))}
-                  </SelectContent>
-                </Select>
-              </div>
+      <AdminVnAddressFields
+        value={addressForm}
+        onChange={patchAddress}
+        enableNameSync={false}
+        dialogContentEl={dialogContentEl}
+      />
 
       <div className="flex justify-end gap-2">
         <Button type="button" variant="outline" onClick={onCancel}>
@@ -978,11 +1132,20 @@ function AddUserForm({ roles, onSuccess, onCancel }: {
 }
 
 // Edit User Form Component
-function EditUserForm({ user, roles, onSuccess, onCancel }: { 
-  user: User, 
-  roles: Array<{role_id: number, role_name: string}>, 
-  onSuccess: () => void, 
-  onCancel: () => void 
+function EditUserForm({
+  user,
+  roles,
+  onSuccess,
+  onCancel,
+  dialogContentEl,
+  modalOpen,
+}: {
+  user: User
+  roles: Array<{ role_id: number; role_name: string }>
+  onSuccess: () => void
+  onCancel: () => void
+  dialogContentEl: HTMLElement | null
+  modalOpen: boolean
 }) {
   const { t } = useLanguage()
   const [formData, setFormData] = useState({
@@ -990,15 +1153,81 @@ function EditUserForm({ user, roles, onSuccess, onCancel }: {
     last_name: user.last_name,
     email: user.email,
     phone: user.phone || '',
-    role_ids: Array.isArray(user.roles) ? user.roles.map(role => {
-      const roleObj = roles.find(r => r.role_name === role)
-      return roleObj ? roleObj.role_id : 0
-    }).filter(id => id > 0) : [roles.find(r => r.role_name === user.roles)?.role_id || 0].filter(id => id > 0)
+    role_ids: Array.isArray(user.roles)
+      ? user.roles
+          .map((role) => {
+            const roleObj = roles.find((r) => r.role_name === role)
+            return roleObj ? roleObj.role_id : 0
+          })
+          .filter((id) => id > 0)
+      : [roles.find((r) => r.role_name === user.roles)?.role_id || 0].filter((id) => id > 0),
   })
+  const [addressId, setAddressId] = useState<number | null>(null)
+  const [addressForm, setAddressForm] = useState<AdminAddressValue>(() => ({
+    ...emptyAdminAddress(),
+    receiver_name: `${user.first_name} ${user.last_name}`.trim(),
+    phone: (user.phone ?? '').replace(/\D/g, '').slice(0, 10),
+  }))
+  const [enableNameSync, setEnableNameSync] = useState(false)
   const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    if (!modalOpen) return
+    let cancelled = false
+    ;(async () => {
+      const token = localStorage.getItem('adminToken')
+      if (!token) return
+      try {
+        const res = await fetch(`/api/backend/v1/users/${user.user_id}/addresses`, {
+          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        })
+        const data = await res.json()
+        if (cancelled) return
+        if (data.success && Array.isArray(data.data) && data.data.length > 0) {
+          const primary =
+            data.data.find((x: { is_default: number }) => Number(x.is_default) === 1) ?? data.data[0]
+          setAddressId(Number(primary.address_id))
+          setAddressForm({
+            receiver_name: String(primary.receiver_name ?? ''),
+            phone: String(primary.phone ?? '').replace(/\D/g, '').slice(0, 10),
+            address_line: String(primary.address_line ?? ''),
+            ward: String(primary.ward ?? ''),
+            district: String(primary.district ?? ''),
+            province: String(primary.province ?? ''),
+            is_default: Number(primary.is_default) === 1,
+          })
+          setEnableNameSync(true)
+        } else {
+          setAddressId(null)
+          setAddressForm({
+            ...emptyAdminAddress(),
+            receiver_name: `${user.first_name} ${user.last_name}`.trim(),
+            phone: (user.phone ?? '').replace(/\D/g, '').slice(0, 10),
+          })
+          setEnableNameSync(false)
+        }
+      } catch {
+        if (!cancelled) {
+          setAddressId(null)
+          setEnableNameSync(false)
+        }
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [modalOpen, user.user_id, user.first_name, user.last_name, user.phone])
+
+  const patchAddress = (patch: Partial<AdminAddressValue>) => {
+    setAddressForm((prev) => ({ ...prev, ...patch }))
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (addressFieldsPartial(addressForm)) {
+      toast.error(t('adminUserAddressPartial'))
+      return
+    }
     setLoading(true)
 
     try {
@@ -1008,26 +1237,67 @@ function EditUserForm({ user, roles, onSuccess, onCancel }: {
         return
       }
 
-      const response = await fetch(`/api/backend/v1/users/update?id=${user.user_id}`, {
+      const userRes = await fetch(`/api/backend/v1/users/update?id=${user.user_id}`, {
         method: 'PUT',
         headers: {
-          'Authorization': `Bearer ${token}`,
+          Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(formData),
       })
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
+      const userData = await userRes.json()
+      if (!userRes.ok || !userData.success) {
+        const msg =
+          userData?.message ||
+          (userData?.errors && typeof userData.errors === 'object'
+            ? Object.values(userData.errors).flat().join(' ')
+            : null) ||
+          t('failedToUpdateUser')
+        toast.error(msg)
+        return
       }
 
-      const data = await response.json()
-      if (data.success) {
-        toast.success(t('userUpdatedSuccessfully'))
-        onSuccess()
-      } else {
-        toast.error(data.message || t('failedToUpdateUser'))
+      if (addressFieldsFilled(addressForm)) {
+        const receiver =
+          addressForm.receiver_name.trim() ||
+          `${formData.first_name} ${formData.last_name}`.trim()
+        const phoneDigits = addressForm.phone.replace(/\D/g, '')
+        const body = {
+          receiver_name: receiver,
+          phone: phoneDigits,
+          address_line: addressForm.address_line.trim(),
+          ward: addressForm.ward.trim(),
+          district: addressForm.district.trim(),
+          province: addressForm.province.trim(),
+          is_default: addressForm.is_default,
+        }
+        const addrUrl =
+          addressId != null
+            ? `/api/backend/v1/users/${user.user_id}/addresses/${addressId}`
+            : `/api/backend/v1/users/${user.user_id}/addresses`
+        const addrRes = await fetch(addrUrl, {
+          method: addressId != null ? 'PUT' : 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(body),
+        })
+        const addrData = await addrRes.json()
+        if (!addrRes.ok || !addrData.success) {
+          const msg =
+            addrData?.message ||
+            (addrData?.errors && typeof addrData.errors === 'object'
+              ? Object.values(addrData.errors).flat().join(' ')
+              : null) ||
+            t('failedToUpdateUser')
+          toast.error(msg)
+          return
+        }
       }
+
+      toast.success(t('userUpdatedSuccessfully'))
+      onSuccess()
     } catch (error) {
       console.error('Error updating user:', error)
       toast.error(t('failedToUpdateUser'))
@@ -1036,76 +1306,88 @@ function EditUserForm({ user, roles, onSuccess, onCancel }: {
     }
   }
 
+  const adminInputClass = 'h-10 mt-1.5'
+
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="grid grid-cols-2 gap-4">
+    <form onSubmit={handleSubmit} className="space-y-5">
+      <div className="grid grid-cols-1 gap-x-4 gap-y-3 md:grid-cols-2 md:items-start">
         <div>
-          <Label htmlFor="first_name">{t('firstName')}</Label>
+          <Label htmlFor="edit_first_name">{t('firstName')}</Label>
           <Input
-            id="first_name"
+            id="edit_first_name"
+            className={adminInputClass}
             value={formData.first_name}
-            onChange={(e) => setFormData(prev => ({ ...prev, first_name: e.target.value }))}
+            onChange={(e) => setFormData((prev) => ({ ...prev, first_name: e.target.value }))}
             required
           />
         </div>
         <div>
-          <Label htmlFor="last_name">{t('lastName')}</Label>
+          <Label htmlFor="edit_last_name">{t('lastName')}</Label>
           <Input
-            id="last_name"
+            id="edit_last_name"
+            className={adminInputClass}
             value={formData.last_name}
-            onChange={(e) => setFormData(prev => ({ ...prev, last_name: e.target.value }))}
+            onChange={(e) => setFormData((prev) => ({ ...prev, last_name: e.target.value }))}
             required
           />
         </div>
+        <div>
+          <Label htmlFor="edit_email">{t('email')}</Label>
+          <Input
+            id="edit_email"
+            className={adminInputClass}
+            type="email"
+            value={formData.email}
+            onChange={(e) => setFormData((prev) => ({ ...prev, email: e.target.value }))}
+            required
+          />
+        </div>
+        <div>
+          <Label htmlFor="edit_phone">{t('phoneNumber')}</Label>
+          <Input
+            id="edit_phone"
+            className={adminInputClass}
+            value={formData.phone}
+            autoComplete="off"
+            inputMode="numeric"
+            onChange={(e) => setFormData((prev) => ({ ...prev, phone: e.target.value }))}
+          />
+        </div>
+        <div className="md:col-span-2">
+          <Label htmlFor="edit_role">{t('role')}</Label>
+          <Select
+            value={formData.role_ids[0]?.toString() || ''}
+            onValueChange={(value) => setFormData((prev) => ({ ...prev, role_ids: [parseInt(value, 10)] }))}
+          >
+            <SelectTrigger id="edit_role" className="h-10 mt-1.5 w-full md:max-w-md">
+              <SelectValue placeholder={t('selectRole')} />
+            </SelectTrigger>
+            <SelectContent>
+              {roles.map((role) => (
+                <SelectItem key={role.role_id} value={role.role_id.toString()}>
+                  {translatedUserRole(role.role_name, t)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
-      <div>
-        <Label htmlFor="email">{t('email')}</Label>
-        <Input
-          id="email"
-          type="email"
-          value={formData.email}
-          onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
-          required
-        />
-      </div>
-
-      <div>
-        <Label htmlFor="phone">{t('phoneNumber')}</Label>
-        <Input
-          id="phone"
-          value={formData.phone}
-          onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
-        />
-      </div>
-
-      <div>
-        <Label htmlFor="role">{t('role')}</Label>
-        <Select 
-          value={formData.role_ids[0]?.toString() || ''} 
-          onValueChange={(value) => setFormData(prev => ({ ...prev, role_ids: [parseInt(value)] }))}
-        >
-                  <SelectTrigger>
-            <SelectValue placeholder={t('selectRole')} />
-                  </SelectTrigger>
-                  <SelectContent>
-            {roles.map((role) => (
-              <SelectItem key={role.role_id} value={role.role_id.toString()}>
-                {role.role_name}
-              </SelectItem>
-            ))}
-                  </SelectContent>
-                </Select>
-              </div>
+      <AdminVnAddressFields
+        value={addressForm}
+        onChange={patchAddress}
+        enableNameSync={enableNameSync}
+        dialogContentEl={dialogContentEl}
+      />
 
       <div className="flex justify-end gap-2">
         <Button type="button" variant="outline" onClick={onCancel}>
           {t('cancel')}
-              </Button>
+        </Button>
         <Button type="submit" disabled={loading}>
           {loading ? t('updating') : t('update')}
-              </Button>
-            </div>
+        </Button>
+      </div>
     </form>
   )
 }
