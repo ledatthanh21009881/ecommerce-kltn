@@ -27,6 +27,8 @@ import {
   Star,
   Route,
   MessageSquare,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react'
 import { 
   OrderTracking, 
@@ -134,6 +136,12 @@ export default function OrderTrackingPage() {
   const [stats, setStats] = useState<TrackingStats>(EMPTY_STATS)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [orderPagination, setOrderPagination] = useState<{
+    page: number
+    limit: number
+    total: number
+    total_pages: number
+  } | null>(null)
   
   // Filters and search
   const [filters, setFilters] = useState<OrderFilters>({
@@ -179,6 +187,7 @@ export default function OrderTrackingPage() {
       if (!token) {
         setError('Missing authentication token')
         setOrders([])
+        setOrderPagination(null)
         return
       }
 
@@ -191,19 +200,41 @@ export default function OrderTrackingPage() {
       const { ok, status, data } = await fetchJsonSafe(`api/backend/v1/tracking/orders?${queryParams}`)
 
       if (ok && data?.success) {
-        const ordersData = dedupeOrdersById(ensureArray<OrderTracking>(data.data?.orders || []))
+        const payload = data.data as {
+          orders?: OrderTracking[]
+          pagination?: { page?: number; limit?: number; total?: number; total_pages?: number }
+        }
+        const ordersData = dedupeOrdersById(ensureArray<OrderTracking>(payload?.orders || []))
         setOrders(ordersData)
+        const p = payload?.pagination
+        if (p && typeof p.total === 'number') {
+          const lim = Math.max(1, p.limit ?? filters.limit ?? 20)
+          const totPages =
+            typeof p.total_pages === 'number' && p.total_pages >= 0
+              ? p.total_pages
+              : Math.ceil(p.total / lim)
+          setOrderPagination({
+            page: p.page ?? filters.page ?? 1,
+            limit: lim,
+            total: p.total,
+            total_pages: Math.max(1, totPages),
+          })
+        } else {
+          setOrderPagination(null)
+        }
         return
       }
 
       const apiMessage = data?.message || `Orders API failed (status ${status ?? 'unknown'})`
       setError(apiMessage)
       setOrders([])
+      setOrderPagination(null)
     } catch (err) {
       console.error('Error fetching orders:', err)
       toast.error('Network error - cannot load tracking orders')
       setError('Network error while loading tracking orders')
       setOrders([])
+      setOrderPagination(null)
     } finally {
       setLoading(false)
     }
@@ -317,26 +348,74 @@ export default function OrderTrackingPage() {
     routeModal.orders[0] ??
     null
 
-  const getStatusConfig = (status: string) => {
-    const normalized = status.toLowerCase()
-    const base =
-      ORDER_STATUS_CONFIG[status as keyof typeof ORDER_STATUS_CONFIG] || {
-        label: status,
-        color: 'bg-gray-100 text-gray-800',
-        icon: '❓',
-      }
+  /** Badge giống promotions (Hoạt động): nền xanh nhạt, chữ xanh đậm, có viền — không dùng emoji ❓ */
+  const TRACKING_BADGE_COMPLETED = 'border-green-200 bg-green-100 text-green-800 hover:bg-green-100'
 
-    // Tracking UX: nhãn ngắn gọn + tương phản mạnh + icon xe máy cho luồng giao hàng
+  const getStatusConfig = (status: string) => {
+    const normalized = (status || '').toLowerCase()
+
     if (normalized === 'shipping') {
       return {
-        ...base,
         label: t('trackingStatusShortInTransit'),
-        color: 'bg-blue-600 text-white hover:bg-blue-600',
-        icon: 'delivery',
+        color: 'border-transparent bg-blue-600 text-white hover:bg-blue-600',
+        icon: 'delivery' as const,
       }
     }
 
-    return base
+    if (normalized === 'completed') {
+      return {
+        label: t('trackingStatCompleted'),
+        color: TRACKING_BADGE_COMPLETED,
+        icon: 'none' as const,
+      }
+    }
+
+    if (normalized === 'processing') {
+      return {
+        label: t('trackingStatusConfirmed'),
+        color: 'border-sky-200 bg-sky-50 text-sky-900 hover:bg-sky-50',
+        icon: 'none' as const,
+      }
+    }
+
+    if (normalized === 'pending') {
+      return {
+        label: t('trackingStatusPending'),
+        color: 'border-amber-200 bg-amber-50 text-amber-900 hover:bg-amber-50',
+        icon: 'none' as const,
+      }
+    }
+
+    if (normalized === 'cancelled') {
+      return {
+        label: t('trackingStatusCancelled'),
+        color: 'border-slate-200 bg-slate-100 text-slate-800 hover:bg-slate-100',
+        icon: 'none' as const,
+      }
+    }
+
+    if (normalized === 'returned') {
+      return {
+        label: t('returned'),
+        color: 'border-amber-200 bg-amber-50 text-amber-900 hover:bg-amber-50',
+        icon: 'none' as const,
+      }
+    }
+
+    const mapped = ORDER_STATUS_CONFIG[normalized as keyof typeof ORDER_STATUS_CONFIG]
+    if (mapped) {
+      return {
+        label: mapped.label,
+        color: 'border-slate-200 bg-slate-50 text-slate-800 hover:bg-slate-50',
+        icon: 'none' as const,
+      }
+    }
+
+    return {
+      label: status || '—',
+      color: 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-50',
+      icon: 'none' as const,
+    }
   }
 
   const formatCurrency = (amount: number) => {
@@ -572,16 +651,20 @@ export default function OrderTrackingPage() {
                               {order.vehicle_info || '—'}
                             </TableCell>
                             <TableCell className="min-w-[140px]">
-                              <Badge className={`${statusConfig.color} whitespace-nowrap px-2.5 py-1`}>
+                              <Badge
+                                variant="outline"
+                                className={cn(
+                                  'whitespace-nowrap px-2.5 py-1 font-medium',
+                                  statusConfig.color,
+                                )}
+                              >
                                 {statusConfig.icon === 'delivery' ? (
                                   <Image
                                     src={deliveryIcon}
                                     alt=""
                                     className="mr-1 inline-block h-4 w-4 align-middle"
                                   />
-                                ) : (
-                                  <span className="mr-1">{statusConfig.icon}</span>
-                                )}
+                                ) : null}
                                 {statusConfig.label}
                               </Badge>
                             </TableCell>
@@ -654,6 +737,70 @@ export default function OrderTrackingPage() {
               </div>
             </CardContent>
           </Card>
+
+          {!loading && orderPagination && orderPagination.total_pages > 1 && (
+            <Card className="border-violet-200/80 bg-white/90 shadow-sm">
+              <CardContent className="flex flex-wrap items-center justify-between gap-4 p-4">
+                <p className="text-sm text-slate-600">
+                  {t('showingXOfY', {
+                    from: String(
+                      orderPagination.total === 0
+                        ? 0
+                        : (orderPagination.page - 1) * orderPagination.limit + 1,
+                    ),
+                    to: String(
+                      Math.min(
+                        orderPagination.page * orderPagination.limit,
+                        orderPagination.total,
+                      ),
+                    ),
+                    total: String(orderPagination.total),
+                  })}
+                </p>
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={orderPagination.page <= 1}
+                    className="border-slate-200 bg-white/80 hover:bg-white"
+                    onClick={() =>
+                      setFilters((prev) => ({
+                        ...prev,
+                        page: Math.max(1, (prev.page ?? 1) - 1),
+                      }))
+                    }
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <span className="min-w-[120px] text-center text-sm font-medium text-slate-700">
+                    {t('pageOf', {
+                      current: String(orderPagination.page),
+                      total: String(orderPagination.total_pages),
+                    })}
+                  </span>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={orderPagination.page >= orderPagination.total_pages}
+                    className="border-slate-200 bg-white/80 hover:bg-white"
+                    onClick={() =>
+                      setFilters((prev) => ({
+                        ...prev,
+                        page: Math.min(
+                          orderPagination.total_pages,
+                          (prev.page ?? 1) + 1,
+                        ),
+                      }))
+                    }
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
 
         <TabsContent value="shippers" className="space-y-4">

@@ -9,6 +9,7 @@ import { useLanguage } from "@/components/language-provider"
 import { fetchCollections } from "@/lib/collections-api"
 import type { Collection } from "@/lib/collections-api"
 import { fetchMainCategoriesForNav, type ShopNavCategory } from "@/lib/shop-nav-categories"
+import { displayBrandSiteName } from "@/lib/utils"
 
 export default function ScrollAwareNav() {
   const { t } = useLanguage()
@@ -36,8 +37,8 @@ export default function ScrollAwareNav() {
       .then((r) => r.json())
       .then((d) => {
         const nextName = d?.data?.site_name
-        if (d?.success && typeof nextName === 'string' && nextName.trim()) {
-          setSiteName(nextName.trim())
+        if (d?.success && typeof nextName === "string" && nextName.trim()) {
+          setSiteName(displayBrandSiteName(nextName))
         }
       })
       .catch(() => {})

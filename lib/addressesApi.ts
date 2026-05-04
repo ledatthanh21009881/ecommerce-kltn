@@ -54,7 +54,13 @@ async function addressFetch<T = unknown>(
     } catch {
       data = null
     }
-    return { ok: response.ok, status: response.status, data }
+    const bodySaysFailure =
+      data !== null &&
+      typeof data === 'object' &&
+      'success' in data &&
+      (data as { success?: boolean }).success === false
+    const ok = response.ok && !bodySaysFailure
+    return { ok, status: response.status, data }
   } catch {
     return { ok: false, status: 0, data: null }
   }

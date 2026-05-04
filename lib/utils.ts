@@ -57,3 +57,10 @@ export function generateSlug(title: string): string {
   
   return slug
 }
+
+/** Brand label in nav/header: drop trailing "Fashion" (any case) from site_name. */
+export function displayBrandSiteName(name: string): string {
+  const t = name.trim()
+  const stripped = t.replace(/\s+fashion\s*$/i, "").trim()
+  return stripped.length > 0 ? stripped : t
+}

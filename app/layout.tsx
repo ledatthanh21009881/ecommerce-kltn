@@ -14,6 +14,7 @@ import { TokenRefreshProvider } from "@/components/token-refresh-provider"
 import Link from "next/link"
 import ScrollAwareNav from "@/components/scroll-aware-nav"
 import ClientLayout from "@/components/client-layout"
+import { displayBrandSiteName } from "@/lib/utils"
 
 const inter = Inter({
   subsets: ["latin"],
@@ -48,7 +49,7 @@ async function loadPublicSiteSettings(): Promise<PublicSiteSettings> {
 
 export async function generateMetadata(): Promise<Metadata> {
   const settings = await loadPublicSiteSettings()
-  const siteName = settings.site_name?.trim() || 'VIVIENNE Fashion'
+  const siteName = displayBrandSiteName(settings.site_name?.trim() || "VIVIENNE")
   const description = settings.site_description?.trim() || 'Elegant and timeless fashion designs'
   const favicon = settings.favicon_url?.trim() || '/icon.png'
 

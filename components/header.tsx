@@ -12,6 +12,7 @@ import { toast } from "sonner"
 import { useLanguage } from "@/components/language-provider"
 import LanguageSwitcher from "@/components/language-switcher"
 import LogoutModal from "@/components/logout-modal"
+import { displayBrandSiteName } from "@/lib/utils"
 
 export default function Header() {
   const router = useRouter()
@@ -49,8 +50,8 @@ export default function Header() {
       .then((r) => r.json())
       .then((d) => {
         const nextName = d?.data?.site_name
-        if (d?.success && typeof nextName === 'string' && nextName.trim()) {
-          setSiteName(nextName.trim())
+        if (d?.success && typeof nextName === "string" && nextName.trim()) {
+          setSiteName(displayBrandSiteName(nextName))
         }
       })
       .catch(() => {})
