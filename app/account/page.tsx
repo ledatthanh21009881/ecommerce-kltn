@@ -66,6 +66,16 @@ interface WardOption {
   district_code: number
 }
 
+/** Chuẩn hóa tên địa giới hành chính để khớp với provinces.open-api.vn / DB. */
+function normalizeAdminName(s: string): string {
+  return s.trim().replace(/\s+/g, " ")
+}
+
+/** Chỉ khớp đúng chuỗi sau chuẩn hóa — tránh includes() gây nhầm Quận 12 ↔ Quận 1, Phường 10 ↔ Phường 1. */
+function adminNamesEqual(a: string, b: string): boolean {
+  return normalizeAdminName(a) === normalizeAdminName(b)
+}
+
 const contentClass =
   "font-gotham text-black text-[17px] leading-[1.8] space-y-6"
 const labelClass = "font-gotham text-[17px] text-black uppercase tracking-wider block mb-2"
@@ -276,7 +286,9 @@ export default function AccountPage() {
       setWards([])
       setSelectedDistrictCode(null)
       setSelectedWardCode(null)
-      setAddressForm((p) => ({ ...p, district: "", ward: "" }))
+      // Không xóa addressForm.district/ward ở đây: lúc mở dialog sửa, code tỉnh còn null
+      // một nhịp — nếu clear form sẽ mất tên quận/phường cũ trước khi sync được mã.
+      // Khi user đổi tỉnh trong combobox, onSelect đã clear district/ward.
     }
   }, [selectedProvinceCode])
 
@@ -286,14 +298,16 @@ export default function AccountPage() {
     } else {
       setWards([])
       setSelectedWardCode(null)
-      setAddressForm((p) => ({ ...p, ward: "" }))
+      // Không clear addressForm.ward — cùng lý do sync khi mở sửa địa chỉ.
+      // Khi user đổi quận, onSelect đã clear ward.
     }
   }, [selectedDistrictCode])
 
   useEffect(() => {
     if (!addressDialogOpen) return
     if (editingAddress && provinces.length > 0 && addressForm.province && !selectedProvinceCode) {
-      const p = provinces.find((x) => x.name === addressForm.province)
+      const want = addressForm.province
+      const p = provinces.find((x) => adminNamesEqual(x.name, want))
       if (p) setSelectedProvinceCode(p.code)
     }
   }, [addressDialogOpen, editingAddress, provinces, addressForm.province, selectedProvinceCode])
@@ -301,7 +315,8 @@ export default function AccountPage() {
   useEffect(() => {
     if (!addressDialogOpen || !editingAddress) return
     if (districts.length > 0 && addressForm.district && !selectedDistrictCode) {
-      const d = districts.find((x) => x.name === addressForm.district)
+      const want = addressForm.district
+      const d = districts.find((x) => adminNamesEqual(x.name, want))
       if (d) setSelectedDistrictCode(d.code)
     }
   }, [addressDialogOpen, editingAddress, districts, addressForm.district, selectedDistrictCode])
@@ -309,7 +324,8 @@ export default function AccountPage() {
   useEffect(() => {
     if (!addressDialogOpen || !editingAddress) return
     if (wards.length > 0 && addressForm.ward && !selectedWardCode) {
-      const w = wards.find((x) => x.name === addressForm.ward)
+      const want = addressForm.ward
+      const w = wards.find((x) => adminNamesEqual(x.name, want))
       if (w) setSelectedWardCode(w.code)
     }
   }, [addressDialogOpen, editingAddress, wards, addressForm.ward, selectedWardCode])
@@ -892,6 +908,8 @@ export default function AccountPage() {
                                         value={province.name}
                                         onSelect={() => {
                                           setSelectedProvinceCode(province.code)
+                                          setSelectedDistrictCode(null)
+                                          setSelectedWardCode(null)
                                           setProvinceOpen(false)
                                           setAddressForm((p) => ({ ...p, province: province.name, district: "", ward: "" }))
                                         }}
@@ -946,6 +964,7 @@ export default function AccountPage() {
                                         value={district.name}
                                         onSelect={() => {
                                           setSelectedDistrictCode(district.code)
+                                          setSelectedWardCode(null)
                                           setDistrictOpen(false)
                                           setAddressForm((p) => ({ ...p, district: district.name, ward: "" }))
                                         }}
