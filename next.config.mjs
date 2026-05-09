@@ -42,7 +42,7 @@ const nextConfig = {
     const BACKEND =
       process.env.BACKEND_URL ||
       process.env.NEXT_PUBLIC_BACKEND_URL ||
-      'http://localhost:8000'
+      'http://103.90.225.212:8000'
 
     return [
       {

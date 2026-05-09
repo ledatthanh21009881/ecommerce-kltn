@@ -1,4 +1,4 @@
-const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8000'
+const BACKEND_URL = process.env.BACKEND_URL || 'http://103.90.225.212:8000'
 const ABOUT_PATH = '/about'
 
 async function getAboutPageHtml(): Promise<string> {

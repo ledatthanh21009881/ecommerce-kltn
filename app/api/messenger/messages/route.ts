@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-const BACKEND_BASE_URL = 'http://localhost:8000/api/backend/v1'
+const BACKEND_BASE_URL = 'http://103.90.225.212:8000/api/backend/v1'
 
 export async function POST(request: NextRequest) {
   try {

@@ -11,6 +11,15 @@ import type { Collection } from "@/lib/collections-api"
 import { fetchMainCategoriesForNav, type ShopNavCategory } from "@/lib/shop-nav-categories"
 import { displayBrandSiteName } from "@/lib/utils"
 
+const SHOP_CATEGORY_TRANSLATION_BY_SLUG: Record<string, string> = {
+  shirts: "nav.shopShirts",
+  "jackets-coats": "nav.shopJackets",
+  jackets: "nav.shopJackets",
+  skirts: "nav.shopSkirts",
+  pants: "nav.shopPants",
+  accessories: "nav.shopAccessories",
+}
+
 export default function ScrollAwareNav() {
   const { t } = useLanguage()
   const [siteName, setSiteName] = useState('VIVIENNE')
@@ -94,6 +103,11 @@ export default function ScrollAwareNav() {
     }
   }
 
+  const getLocalizedShopCategoryName = (cat: ShopNavCategory): string => {
+    const key = SHOP_CATEGORY_TRANSLATION_BY_SLUG[cat.slug?.toLowerCase?.() || ""]
+    return key ? t(key) : cat.category_name
+  }
+
   // Determine text color based on page and scroll position
   let textColorClass = "text-black" // Default for all pages
   let hoverColorClass = "hover:text-gray-600" // Default for all pages
@@ -140,7 +154,7 @@ export default function ScrollAwareNav() {
                 href={`/category/${encodeURIComponent(cat.slug)}`}
                 className={`block text-xs font-bold uppercase tracking-wider ${textColorClass} ${hoverColorClass} transition-colors py-0.5`}
               >
-                {cat.category_name}
+                {getLocalizedShopCategoryName(cat)}
               </Link>
             ))}
           </nav>

@@ -1,5 +1,5 @@
 const DEFAULT_VIDEO_URL = 'https://res.cloudinary.com/dknwpznzc/video/upload/v1754842411/1_fqyrll.mp4'
-const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8000'
+const BACKEND_URL = process.env.BACKEND_URL || 'http://103.90.225.212:8000'
 
 async function getHomepageVideoUrl(): Promise<string> {
   try {

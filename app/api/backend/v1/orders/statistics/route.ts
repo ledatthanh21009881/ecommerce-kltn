@@ -6,7 +6,7 @@ export async function GET(request: NextRequest) {
     const token = request.headers.get('authorization')
     
     // Call backend API
-    const backendUrl = `${process.env.BACKEND_URL || 'http://localhost:8000'}/api/v1/orders/statistics`
+    const backendUrl = `${process.env.BACKEND_URL || 'http://103.90.225.212:8000'}/api/v1/orders/statistics`
     
     const response = await fetch(backendUrl, {
       headers: {

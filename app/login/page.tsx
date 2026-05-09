@@ -10,6 +10,19 @@ import { loginUser, authUtils, type LoginData } from "@/lib/auth"
 import { toast } from "sonner"
 import { useLanguage } from "@/components/language-provider"
 
+function isInvalidCredentialsErrorMessage(message?: string): boolean {
+  if (!message) return false
+  const m = message.toLowerCase()
+  return (
+    m.includes("invalid credentials") ||
+    m.includes("invalid account") ||
+    m.includes("invalid password") ||
+    m.includes("invalid phone number or password") ||
+    m.includes("sai tài khoản") ||
+    m.includes("sai mật khẩu")
+  )
+}
+
 export default function LoginPage() {
   const { t } = useLanguage()
   const router = useRouter()
@@ -59,10 +72,15 @@ export default function LoginPage() {
           window.location.href = "/"
         }, 1500)
       } else {
-        toast.error(response.message || t("auth.loginFailed"))
+        toast.error(
+          isInvalidCredentialsErrorMessage(response.message)
+            ? t("auth.invalidCredentials")
+            : response.message || t("auth.loginFailed"),
+        )
       }
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : t("auth.loginFailed"))
+      const message = error instanceof Error ? error.message : t("auth.loginFailed")
+      toast.error(isInvalidCredentialsErrorMessage(message) ? t("auth.invalidCredentials") : message)
     } finally {
       setIsLoading(false)
     }

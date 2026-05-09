@@ -10,7 +10,7 @@ export async function GET(
     const token = request.headers.get('authorization')
     console.log('Token:', token ? 'present' : 'missing')
     
-    const response = await fetch(`http://localhost:8000/api/v1/orders/${params.id}`, {
+    const response = await fetch(`http://103.90.225.212:8000/api/v1/orders/${params.id}`, {
       headers: {
         'Authorization': token || '',
         'Content-Type': 'application/json',

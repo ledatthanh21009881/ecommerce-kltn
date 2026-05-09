@@ -191,7 +191,7 @@ function PaymentSuccessContent() {
 
           <div className="flex gap-4 justify-center pt-4">
             <Button onClick={() => router.push(`/account`)}>Xem đơn hàng của tôi</Button>
-            <Button variant="outline" onClick={() => router.push('/')}>
+            <Button variant="outline" onClick={() => router.push('/all-products')}>
               Tiếp tục mua sắm
             </Button>
           </div>

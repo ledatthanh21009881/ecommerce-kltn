@@ -238,9 +238,9 @@ function AdminMessengerPageInner() {
       ? `${process.env.NEXT_PUBLIC_BACKEND_URL.replace(/\/$/, '')}/api/backend/v1`
       : (typeof window !== 'undefined'
           ? (window.location.hostname === 'localhost'
-              ? 'http://localhost:8000/api/backend/v1'
+              ? 'http://103.90.225.212:8000/api/backend/v1'
               : `${window.location.protocol}//${window.location.hostname}/api/backend/v1`)
-          : 'http://localhost:8000/api/backend/v1')
+          : 'http://103.90.225.212:8000/api/backend/v1')
 
   const forwardPickConversations = useMemo(() => {
     const q = forwardRecipientSearch.trim().toLowerCase()

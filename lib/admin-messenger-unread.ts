@@ -10,7 +10,7 @@ export function getAdminMessengerApiBase(): string {
     return `${fromEnv.replace(/\/$/, '')}/api/backend/v1`
   }
   return window.location.hostname === 'localhost'
-    ? 'http://localhost:8000/api/backend/v1'
+    ? 'http://103.90.225.212:8000/api/backend/v1'
     : `${window.location.protocol}//${window.location.hostname}/api/backend/v1`
 }
 

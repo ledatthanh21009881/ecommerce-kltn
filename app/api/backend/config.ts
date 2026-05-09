@@ -1,6 +1,6 @@
 export const getBackendBaseUrl = () => {
   // Prefer explicit server-only BACKEND_URL, fallback to NEXT_PUBLIC_BACKEND_URL for shared config.
-  return process.env.BACKEND_URL || process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000"
+  return process.env.BACKEND_URL || process.env.NEXT_PUBLIC_BACKEND_URL || "http://103.90.225.212:8000"
 }
 
 export const getWebSocketUrl = () => {

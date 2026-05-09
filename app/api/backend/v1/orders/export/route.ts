@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
     if (dateTo) params.append('date_to', dateTo)
 
     // Forward request to backend
-    const backendUrl = `${process.env.BACKEND_URL || 'http://localhost:8000'}/api/v1/orders/export?${params.toString()}`
+    const backendUrl = `${process.env.BACKEND_URL || 'http://103.90.225.212:8000'}/api/v1/orders/export?${params.toString()}`
     
     const response = await fetch(backendUrl, {
       headers: {

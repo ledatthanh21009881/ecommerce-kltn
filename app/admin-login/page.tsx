@@ -11,6 +11,18 @@ import { Lock, User } from 'lucide-react'
 import { getAuthData, setAuthData, checkAndRefreshAuth } from '@/lib/admin-auth'
 import { LanguageProvider, useLanguage } from '@/contexts/LanguageContext'
 
+function isInvalidCredentialsErrorMessage(message?: string): boolean {
+  if (!message) return false
+  const m = message.toLowerCase()
+  return (
+    m.includes('invalid credentials') ||
+    m.includes('invalid account') ||
+    m.includes('invalid password') ||
+    m.includes('sai tài khoản') ||
+    m.includes('sai mật khẩu')
+  )
+}
+
 function AdminLoginForm() {
   const router = useRouter()
   const { t } = useLanguage()
@@ -62,7 +74,11 @@ function AdminLoginForm() {
       if (!response.ok) {
         const errorText = await response.text()
         console.error('Login failed with status:', response.status, 'Error:', errorText)
-        toast.error(t('adminLoginFailedRetry'))
+        toast.error(
+          isInvalidCredentialsErrorMessage(errorText)
+            ? t('authInvalidCredentials')
+            : t('adminLoginFailedRetry'),
+        )
         return
       }
 
@@ -88,11 +104,20 @@ function AdminLoginForm() {
           window.location.href = '/admin/dashboard'
         }
       } else {
-        toast.error(result.message || t('adminLoginFailed'))
+        toast.error(
+          isInvalidCredentialsErrorMessage(result.message)
+            ? t('authInvalidCredentials')
+            : result.message || t('adminLoginFailed'),
+        )
       }
     } catch (error) {
       console.error('Login error:', error)
-      toast.error(t('adminLoginFailedRetry'))
+      const message = error instanceof Error ? error.message : t('adminLoginFailedRetry')
+      toast.error(
+        isInvalidCredentialsErrorMessage(message)
+          ? t('authInvalidCredentials')
+          : t('adminLoginFailedRetry'),
+      )
     } finally {
       setLoading(false)
     }

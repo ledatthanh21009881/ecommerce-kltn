@@ -26,7 +26,7 @@ const playfair = Playfair_Display({
   variable: "--font-serif",
 })
 
-const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8000'
+const BACKEND_URL = process.env.BACKEND_URL || 'http://103.90.225.212:8000'
 
 type PublicSiteSettings = {
   site_name?: string
