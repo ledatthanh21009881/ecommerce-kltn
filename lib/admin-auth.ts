@@ -80,9 +80,27 @@ export function updateAdminUserPreferredLocale(locale: 'vi' | 'en'): void {
   updateAdminUserFromSession({ preferred_locale: locale })
 }
 
+const ADMIN_AVATAR_KEY = 'adminAvatarUrl'
+
+export function getAdminAvatarUrl(): string | null {
+  if (typeof window === 'undefined') return null
+  return localStorage.getItem(ADMIN_AVATAR_KEY)
+}
+
+export function setAdminAvatarUrl(url: string | null): void {
+  if (typeof window === 'undefined') return
+  if (url) {
+    localStorage.setItem(ADMIN_AVATAR_KEY, url)
+  } else {
+    localStorage.removeItem(ADMIN_AVATAR_KEY)
+  }
+  window.dispatchEvent(new CustomEvent('admin-avatar-updated', { detail: url }))
+}
+
 export function clearAuthData(): void {
   localStorage.removeItem('adminToken')
   localStorage.removeItem('adminUser')
+  localStorage.removeItem(ADMIN_AVATAR_KEY)
 }
 
 export function isAuthenticated(): boolean {
@@ -123,6 +141,7 @@ export function getFullAdminMenuPaths(): string[] {
 
 const PATH_EXCEPTIONS = [
   '/admin/messenger',
+  '/admin/account',
   '/admin-login',
   '/admin/forgot-password',
   '/admin/reset-password',

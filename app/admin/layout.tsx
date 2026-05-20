@@ -34,7 +34,9 @@ import {
   getAllowedMenuPaths,
   isAdminPanelPathAllowed,
   getFirstAllowedPath,
+  setAdminAvatarUrl,
 } from '@/lib/admin-auth'
+import { adminProfileApi } from '@/lib/adminProfileApi'
 import { LanguageProvider, useLanguage } from '@/contexts/LanguageContext'
 import {
   Select,
@@ -121,6 +123,10 @@ function AdminLayoutContent({
       }
 
       setUser(authUser)
+      const { ok, data } = await adminProfileApi.getProfile()
+      if (ok && data?.success && data.data?.avatar_url) {
+        setAdminAvatarUrl(data.data.avatar_url.trim())
+      }
       setIsLoading(false)
     }
     
@@ -350,6 +356,8 @@ function AdminLayoutContent({
                 userEmail={user.account_name ? `${user.account_name}@example.com` : 'admin@example.com'}
                 onLogout={handleLogout}
                 messengerLabel={t('messenger')}
+                accountLabel={t('myAccount')}
+                accountHref="/admin/account"
                 logoutLabel={t('logout')}
               />
             </div>

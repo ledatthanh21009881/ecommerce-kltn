@@ -10,6 +10,7 @@ import { fetchCollections } from "@/lib/collections-api"
 import type { Collection } from "@/lib/collections-api"
 import { fetchMainCategoriesForNav, type ShopNavCategory } from "@/lib/shop-nav-categories"
 import { displayBrandSiteName } from "@/lib/utils"
+import LogoutModal from "@/components/logout-modal"
 
 const SHOP_CATEGORY_TRANSLATION_BY_SLUG: Record<string, string> = {
   shirts: "nav.shopShirts",
@@ -30,6 +31,8 @@ export default function ScrollAwareNav() {
   const [collections, setCollections] = useState<Collection[]>([])
   const [shopCategories, setShopCategories] = useState<ShopNavCategory[]>([])
   const [isLoggedIn, setIsLoggedIn] = useState(false)
+  const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false)
+  const [isLoggingOut, setIsLoggingOut] = useState(false)
   const pathname = usePathname()
   const router = useRouter()
   const isCollectionPage = pathname?.startsWith("/collections/")
@@ -90,8 +93,8 @@ export default function ScrollAwareNav() {
     return () => window.removeEventListener('scroll', handleScroll)
   }, [isShopOpen, isCollectionOpen, isCollectionPage])
 
-  // Handle logout
   const handleLogout = async () => {
+    setIsLoggingOut(true)
     try {
       await authUtils.logout()
       setIsLoggedIn(false)
@@ -100,6 +103,9 @@ export default function ScrollAwareNav() {
     } catch (error) {
       console.error('Logout error:', error)
       toast.error(t('logout.failed'))
+    } finally {
+      setIsLogoutModalOpen(false)
+      setIsLoggingOut(false)
     }
   }
 
@@ -124,6 +130,7 @@ export default function ScrollAwareNav() {
   }
 
   return (
+    <>
     <div className="fixed left-0 top-0 w-56 h-full bg-transparent p-8 overflow-y-auto z-[100] pointer-events-auto">
              {/* Brand Name */}
        <div className="mb-8">
@@ -218,7 +225,8 @@ export default function ScrollAwareNav() {
       <div className="mt-auto">
         {isLoggedIn ? (
           <button
-            onClick={handleLogout}
+            type="button"
+            onClick={() => setIsLogoutModalOpen(true)}
             className={`block text-xs font-bold uppercase tracking-wider ${textColorClass} ${hoverColorClass} transition-colors py-0.5 cursor-pointer`}
           >
             {t('nav.logoutNav')}
@@ -230,5 +238,13 @@ export default function ScrollAwareNav() {
         )}
       </div>
     </div>
+
+    <LogoutModal
+      isOpen={isLogoutModalOpen}
+      onClose={() => !isLoggingOut && setIsLogoutModalOpen(false)}
+      onConfirm={handleLogout}
+      isLoading={isLoggingOut}
+    />
+    </>
   )
 }

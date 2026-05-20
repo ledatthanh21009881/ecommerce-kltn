@@ -14,6 +14,9 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from '@/components/ui/command'
 import { Check, ChevronsUpDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import AddressMapboxAutocomplete from '@/components/AddressMapboxAutocomplete'
+import type { MapboxFeature, MapboxParsedAddress } from '@/lib/mapbox-address'
+import { applyResolvedVnAddressToForm, resolveMapboxToVnAdmin } from '@/lib/vn-admin-resolve'
 
 
 function parseVndAmount(value: unknown): number {
@@ -33,6 +36,18 @@ function formatVnd(amount: number): string {
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
     }).format(Number.isFinite(amount) ? Math.round(amount) : 0) + ' ₫'
+  )
+}
+
+/** Ẩn phương thức nhận tại cửa hàng trên storefront (chỉ dùng nội bộ / bán tại quầy). */
+function isStorePickupShippingMethod(name: string): boolean {
+  const n = name.trim().toLowerCase()
+  return (
+    n.includes('nhận tại cửa hàng') ||
+    n.includes('nhan tai cua hang') ||
+    n.includes('pick up at store') ||
+    n.includes('pickup at store') ||
+    n.includes('in-store pickup')
   )
 }
 
@@ -180,6 +195,41 @@ export default function CheckoutPage() {
   useEffect(() => {
     setTotal(parseVndAmount(subtotal) + parseVndAmount(shippingFee))
   }, [subtotal, shippingFee])
+
+  const ensureAddress0 = (): Address => ({
+    address_id: 0,
+    receiver_name: '',
+    phone: '',
+    address_line: '',
+    ward: '',
+    district: '',
+    province: '',
+  })
+
+  const handleMapboxPlaceSelect = async (_parsed: MapboxParsedAddress, feature: MapboxFeature) => {
+    const resolved = await resolveMapboxToVnAdmin(feature, provinces)
+    await applyResolvedVnAddressToForm(resolved, {
+      setFormFields: (fields) => {
+        setAddresses((prev) => {
+          const next = [...prev]
+          const base = next[0] ?? ensureAddress0()
+          next[0] = {
+            ...base,
+            address_line: fields.address_line,
+            ward: fields.ward,
+            district: fields.district,
+            province: fields.province,
+          }
+          return next
+        })
+      },
+      setDistricts: (list) => setDistricts(list as unknown as District[]),
+      setWards: (list) => setWards(list as unknown as Ward[]),
+      setSelectedProvinceCode,
+      setSelectedDistrictCode,
+      setSelectedWardCode,
+    })
+  }
 
   const loadProvinces = async () => {
     try {
@@ -339,8 +389,19 @@ export default function CheckoutPage() {
       console.log('Shipping methods response:', shippingData)
       if (shippingData.success && shippingData.data) {
         // Filter only active methods and ensure data is an array
-        const methods = Array.isArray(shippingData.data) 
-          ? shippingData.data.filter((m: any) => m.is_active === 1 || m.is_active === true)
+        const methods = Array.isArray(shippingData.data)
+          ? shippingData.data
+              .filter((m: { is_active?: number | boolean; name?: string }) => {
+                if (!(m.is_active === 1 || m.is_active === true)) return false
+                if (isStorePickupShippingMethod(String(m.name ?? ''))) return false
+                return true
+              })
+              .map((m: { shipping_method_id: number; name: string; fee?: unknown; estimated_days?: unknown }) => ({
+                shipping_method_id: m.shipping_method_id,
+                name: m.name,
+                fee: parseVndAmount(m.fee),
+                estimated_days: Number(m.estimated_days) || 0,
+              }))
           : []
         setShippingMethods(methods)
         if (methods.length > 0) {
@@ -577,19 +638,18 @@ export default function CheckoutPage() {
                         })
                       }}
                     />
-                    <Input
-                      placeholder="Số nhà, tên đường"
+                    <AddressMapboxAutocomplete
                       value={addresses[0]?.address_line || ''}
-                      onChange={(e) => {
-                        setAddresses(prev => {
-                          const newAddresses = [...prev]
-                          if (!newAddresses[0]) {
-                            newAddresses[0] = { address_id: 0, receiver_name: '', phone: '', address_line: '', ward: '', district: '', province: '' }
-                          }
-                          newAddresses[0].address_line = e.target.value
-                          return newAddresses
+                      onValueChange={(address_line) => {
+                        setAddresses((prev) => {
+                          const next = [...prev]
+                          const base = next[0] ?? ensureAddress0()
+                          next[0] = { ...base, address_line }
+                          return next
                         })
                       }}
+                      onPlaceSelect={handleMapboxPlaceSelect}
+                      placeholder="Số nhà, tên đường"
                     />
                     <div className="grid grid-cols-3 gap-4">
                       <div>
@@ -803,7 +863,7 @@ export default function CheckoutPage() {
                       <Label htmlFor={`shipping-${method.shipping_method_id}`} className="flex-1 cursor-pointer">
                         <div className="flex justify-between">
                           <span>{method.name}</span>
-                          <span className="font-semibold">{formatVnd(method.fee)}</span>
+                          <span className="font-semibold">{formatVnd(parseVndAmount(method.fee))}</span>
                         </div>
                         <p className="text-sm text-gray-500">Giao hàng trong {method.estimated_days} ngày</p>
                       </Label>
