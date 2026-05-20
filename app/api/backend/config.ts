@@ -10,11 +10,22 @@ function isLocalHostname(hostname: string): boolean {
   return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '[::1]'
 }
 
+/** Dev: VPS mặc định; ghi đè bằng BACKEND_URL_LOCAL nếu chạy PHP local. */
+function resolveDevBackendUrl(): string {
+  const local =
+    process.env.BACKEND_URL_LOCAL || process.env.NEXT_PUBLIC_BACKEND_URL_LOCAL
+  if (local?.trim()) {
+    return trimBase(local)
+  }
+  const vps = process.env.BACKEND_URL_VPS || process.env.NEXT_PUBLIC_BACKEND_URL_VPS
+  return trimBase(vps || DEFAULT_BACKEND_VPS)
+}
+
 /**
  * URL gốc PHP backend.
- * - Local (localhost) → DEFAULT_BACKEND_LOCAL
- * - VPS / production → DEFAULT_BACKEND_VPS
- * Ghi đè: BACKEND_URL hoặc NEXT_PUBLIC_BACKEND_URL
+ * - Ghi đè cao nhất: BACKEND_URL / NEXT_PUBLIC_BACKEND_URL
+ * - Dev (npm run dev): VPS mặc định; local PHP → set BACKEND_URL_LOCAL
+ * - Production: VPS
  */
 export const getBackendBaseUrl = () => {
   const explicit =
@@ -28,16 +39,14 @@ export const getBackendBaseUrl = () => {
 
   if (typeof window !== 'undefined') {
     if (isLocalHostname(window.location.hostname)) {
-      const local = process.env.NEXT_PUBLIC_BACKEND_URL_LOCAL
-      return trimBase(local || DEFAULT_BACKEND_LOCAL)
+      return resolveDevBackendUrl()
     }
     const vps = process.env.NEXT_PUBLIC_BACKEND_URL_VPS
     return trimBase(vps || DEFAULT_BACKEND_VPS)
   }
 
   if (process.env.NODE_ENV === 'development') {
-    const local = process.env.BACKEND_URL_LOCAL || process.env.NEXT_PUBLIC_BACKEND_URL_LOCAL
-    return trimBase(local || DEFAULT_BACKEND_LOCAL)
+    return resolveDevBackendUrl()
   }
 
   const vps = process.env.BACKEND_URL_VPS || process.env.NEXT_PUBLIC_BACKEND_URL_VPS
