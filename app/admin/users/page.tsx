@@ -620,9 +620,6 @@ export default function AdminUsersPage() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">{t('allRoles')}</SelectItem>
-                      <SelectItem value="admin">{translatedUserRole('admin', t)}</SelectItem>
-                      <SelectItem value="manager">{translatedUserRole('manager', t)}</SelectItem>
-                      <SelectItem value="staff">{translatedUserRole('staff', t)}</SelectItem>
                       <SelectItem value="customer">{translatedUserRole('customer', t)}</SelectItem>
                       <SelectItem value="shipper">{translatedUserRole('shipper', t)}</SelectItem>
                     </SelectContent>
