@@ -1,8 +1,8 @@
 import { tokenStore } from './tokenStore'
 import { apiClient } from './api-client'
 
-// API base URL
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8081/api/v1'
+// API base URL — dùng relative path để đi qua Next.js rewrite (next.config.mjs)
+const API_BASE_URL = '/api/v1'
 
 // API Response types
 export interface ApiResponse<T> {
