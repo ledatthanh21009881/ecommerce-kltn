@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useMemo, useCallback, useRef } from "react"
+import { useState, useEffect, useMemo, useCallback, useRef, Suspense } from "react"
 import { toast } from "sonner"
 import Link from "next/link"
 import { AlertTriangle, ArrowLeft, Moon, Sun } from "lucide-react"
@@ -56,7 +56,7 @@ function extractConversationIdFromResponse(payload: any): number | null {
   return Number.isFinite(id) && id > 0 ? id : null
 }
 
-export default function MessengerPage() {
+function MessengerContent() {
   const getAuthToken = () =>
     localStorage.getItem('auth_token') ||
     localStorage.getItem('adminToken') ||
@@ -1093,5 +1093,13 @@ export default function MessengerPage() {
         </div>
       )}
     </div>
+  )
+}
+
+export default function MessengerPage() {
+  return (
+    <Suspense>
+      <MessengerContent />
+    </Suspense>
   )
 }
