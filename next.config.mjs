@@ -40,11 +40,15 @@ const nextConfig = {
     // Do NOT rewrite `/api/backend/*` to an external backend.
     // We implement `/api/backend/*` via Next Route Handlers under `app/api/backend/*`.
     // Rewriting it would bypass those handlers and break on VPS (previously hardcoded to localhost:8000).
-    const isDev = process.env.NODE_ENV === 'development'
-    const BACKEND =
-      process.env.BACKEND_URL ||
-      process.env.NEXT_PUBLIC_BACKEND_URL ||
-      (isDev ? 'http://localhost:8000' : 'http://103.90.225.212:8000')
+    const VPS = 'http://103.90.225.212:8000'
+    const explicit = process.env.BACKEND_URL || process.env.NEXT_PUBLIC_BACKEND_URL
+    const localOverride =
+      process.env.BACKEND_URL_LOCAL || process.env.NEXT_PUBLIC_BACKEND_URL_LOCAL
+    const BACKEND = explicit?.trim()
+      ? explicit.trim().replace(/\/$/, '')
+      : localOverride?.trim()
+        ? localOverride.trim().replace(/\/$/, '')
+        : VPS
 
     return [
       {
