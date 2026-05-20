@@ -1,6 +1,5 @@
+import { getBackendBaseUrl } from '@/app/api/backend/config'
 import { NextRequest, NextResponse } from 'next/server'
-
-const BACKEND_URL = process.env.BACKEND_URL || 'http://103.90.225.212:8000'
 
 export async function PUT(
   request: NextRequest,
@@ -10,7 +9,7 @@ export async function PUT(
     const token = request.headers.get('authorization')
     const body = await request.json()
     
-    const response = await fetch(`${BACKEND_URL}/api/backend/v1/orders/${params.id}/status`, {
+    const response = await fetch(`${getBackendBaseUrl()}/api/backend/v1/orders/${params.id}/status`, {
       method: 'PUT',
       headers: {
         'Authorization': token || '',
@@ -38,7 +37,7 @@ export async function POST(
     const token = request.headers.get('authorization')
     const body = await request.json()
     
-    const response = await fetch(`${BACKEND_URL}/api/backend/v1/orders/${params.id}/status`, {
+    const response = await fetch(`${getBackendBaseUrl()}/api/backend/v1/orders/${params.id}/status`, {
       method: 'PUT',
       headers: {
         'Authorization': token || '',

@@ -1,3 +1,5 @@
+import { getBackendApiV1Base } from '@/app/api/backend/config'
+
 /**
  * Base URL cho API messenger admin (trùng logic với app/admin/messenger/page.tsx).
  */
@@ -5,13 +7,7 @@ export function getAdminMessengerApiBase(): string {
   if (typeof window === 'undefined') {
     return ''
   }
-  const fromEnv = process.env.NEXT_PUBLIC_BACKEND_URL
-  if (fromEnv) {
-    return `${fromEnv.replace(/\/$/, '')}/api/backend/v1`
-  }
-  return window.location.hostname === 'localhost'
-    ? 'http://103.90.225.212:8000/api/backend/v1'
-    : `${window.location.protocol}//${window.location.hostname}/api/backend/v1`
+  return getBackendApiV1Base()
 }
 
 export const ADMIN_MESSENGER_UNREAD_CHANNEL = 'admin-messenger-unread'

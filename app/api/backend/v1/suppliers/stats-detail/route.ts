@@ -1,6 +1,5 @@
+import { getBackendBaseUrl } from '@/app/api/backend/config'
 import { NextRequest, NextResponse } from 'next/server'
-
-const BACKEND_URL = process.env.BACKEND_URL || 'http://103.90.225.212:8000'
 
 export async function GET(request: NextRequest) {
   try {
@@ -15,7 +14,7 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    const backendUrl = `${BACKEND_URL}/api/backend/v1/suppliers/stats-detail?id=${id}`
+    const backendUrl = `${getBackendBaseUrl()}/api/backend/v1/suppliers/stats-detail?id=${id}`
 
     const response = await fetch(backendUrl, {
       headers: {

@@ -1,6 +1,5 @@
+import { getBackendBaseUrl } from '@/app/api/backend/config'
 import { NextRequest, NextResponse } from 'next/server'
-
-const BACKEND_URL = process.env.BACKEND_URL || 'http://103.90.225.212:8000'
 
 export async function GET(request: NextRequest) {
   try {
@@ -16,7 +15,7 @@ export async function GET(request: NextRequest) {
       )
     }
     
-    const response = await fetch(`${BACKEND_URL}/api/v1/invoice/generate?order_id=${orderId}&format=${format}`, {
+    const response = await fetch(`${getBackendBaseUrl()}/api/v1/invoice/generate?order_id=${orderId}&format=${format}`, {
       headers: {
         'Authorization': token || '',
         'Content-Type': 'application/json',
@@ -60,7 +59,7 @@ export async function POST(request: NextRequest) {
       )
     }
     
-    const response = await fetch(`${BACKEND_URL}/api/v1/invoice/generate?order_id=${orderId}&format=${format}`, {
+    const response = await fetch(`${getBackendBaseUrl()}/api/v1/invoice/generate?order_id=${orderId}&format=${format}`, {
       method: 'POST',
       headers: {
         'Authorization': token || '',

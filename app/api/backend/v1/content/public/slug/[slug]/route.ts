@@ -1,6 +1,5 @@
+import { getBackendBaseUrl } from '@/app/api/backend/config'
 import { NextRequest, NextResponse } from 'next/server'
-
-const BACKEND_URL = process.env.BACKEND_URL || 'http://103.90.225.212:8000'
 
 export async function GET(
   _request: NextRequest,
@@ -17,7 +16,7 @@ export async function GET(
       )
     }
 
-    const response = await fetch(`${BACKEND_URL}/api/backend/v1/content/public/slug/${slug}`, {
+    const response = await fetch(`${getBackendBaseUrl()}/api/backend/v1/content/public/slug/${slug}`, {
       headers: { 'Content-Type': 'application/json' },
       cache: 'no-store',
     })

@@ -32,6 +32,9 @@ export interface AddressPayload {
   district: string
   province: string
   is_default?: boolean
+  /** From Mapbox when available — backend uses instead of re-geocoding */
+  lat?: number | null
+  lng?: number | null
 }
 
 async function addressFetch<T = unknown>(

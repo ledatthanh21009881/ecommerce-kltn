@@ -2,7 +2,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Search, RefreshCw, ShoppingCart, Eye, Package, Truck, CheckCircle, Clock, XCircle, Edit, MoreHorizontal, Download, FileText, Calendar, TrendingUp, Users, DollarSign, Mail, LayoutList, LayoutGrid, ChevronLeft, ChevronRight, Plus } from 'lucide-react'
+import { Search, RefreshCw, ShoppingCart, Eye, Package, Truck, CheckCircle, Clock, XCircle, Edit, MoreHorizontal, Download, FileText, Calendar, TrendingUp, Users, DollarSign, Mail, LayoutList, LayoutGrid, ChevronLeft, ChevronRight, Plus, QrCode } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
@@ -14,8 +14,9 @@ import OrderDetailModal from '@/components/admin/OrderDetailModal'
 import OrderStatusModal from '@/components/admin/OrderStatusModal'
 import AssignShipperModal from '@/components/admin/AssignShipperModal'
 import OrderCreateModal from '@/components/admin/OrderCreateModal'
+import CounterPayOsQrDialog, { type CounterPayOsPaymentInfo } from '@/components/admin/CounterPayOsQrDialog'
 import ConfirmModal from '@/components/ui/confirm-modal'
-import { getAuthData, checkAndRefreshAuth } from '@/lib/admin-auth'
+import { getAuthData, checkAndRefreshAuth, hasOrderAction, syncAdminMenusFromApi } from '@/lib/admin-auth'
 import { ordersApi } from '@/lib/api'
 import { useLanguage } from '@/contexts/LanguageContext'
 import { AdminPageHeading } from '@/components/admin/AdminPageHeading'
@@ -29,6 +30,9 @@ import {
 
 export default function AdminOrdersPage() {
   const { t } = useLanguage()
+  const [canManage, setCanManage] = useState(() => hasOrderAction('orders.manage'))
+  const [canAssign, setCanAssign] = useState(() => hasOrderAction('orders.assign_shipper'))
+  const hasOrderMenuActions = canManage || canAssign
   const [orders, setOrders] = useState<Order[]>([])
   const [statistics, setStatistics] = useState<OrderStatistics | null>(null)
   const [loading, setLoading] = useState(true)
@@ -54,6 +58,7 @@ export default function AdminOrdersPage() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
   const [deletingOrderId, setDeletingOrderId] = useState<number | null>(null)
+  const [payOsDialog, setPayOsDialog] = useState<CounterPayOsPaymentInfo | null>(null)
 
   // Fetch orders
   const fetchOrders = async () => {
@@ -142,6 +147,14 @@ export default function AdminOrdersPage() {
     setViewMode(mode)
     if (typeof window !== 'undefined') localStorage.setItem('admin_orders_view', mode)
   }
+
+  useEffect(() => {
+    void (async () => {
+      await syncAdminMenusFromApi()
+      setCanManage(hasOrderAction('orders.manage'))
+      setCanAssign(hasOrderAction('orders.assign_shipper'))
+    })()
+  }, [])
 
   useEffect(() => {
     setPage(1)
@@ -240,6 +253,54 @@ export default function AdminOrdersPage() {
     setIsDeleteModalOpen(true)
   }
 
+  const canOfferPaymentQr = (order: Order) =>
+    canManage && order.status !== 'completed' && order.status !== 'cancelled'
+
+  const handleShowPaymentQr = async (order: Order) => {
+    try {
+      const { token } = getAuthData()
+      const res = await fetch(`/api/backend/v1/payments/order/${order.order_id}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      })
+      const data = await res.json()
+      if (!data.success || !data.data) {
+        toast.error(data.message || t('noPendingPayment'))
+        return
+      }
+
+      const payment = data.data as {
+        payment_id: number
+        method?: string
+        status?: string
+        payment_url?: string | null
+        qr_code?: string | null
+      }
+      const method = String(payment.method || '').toLowerCase()
+      if (method !== 'payos' && method !== 'bank_transfer') {
+        toast.error(t('paymentQrPayOsOnly'))
+        return
+      }
+      if (String(payment.status || '').toLowerCase() === 'confirmed') {
+        toast.info(t('paymentAlreadyConfirmed'))
+        return
+      }
+
+      setPayOsDialog({
+        payment_id: Number(payment.payment_id),
+        order_id: order.order_id,
+        payment_url: payment.payment_url ?? null,
+        qr_code: payment.qr_code ?? null,
+        total_amount: Number(order.total_amount),
+      })
+    } catch (error) {
+      console.error('Failed to load payment for QR:', error)
+      toast.error(t('counterPayOsLoadFailed'))
+    }
+  }
+
     const handleGenerateInvoice = async (order: Order, format: 'pdf' | 'email') => {
     // Kiểm tra trạng thái đơn hàng
     if (order.status !== 'completed') {
@@ -311,13 +372,20 @@ export default function AdminOrdersPage() {
   }
 
   const handleExportOrders = async () => {
+    if (!canManage) {
+      toast.error(t('noMenuAccess'))
+      return
+    }
     try {
       const params = new URLSearchParams()
       if (statusFilter !== 'all') params.append('status', statusFilter)
       if (dateFrom) params.append('date_from', dateFrom)
       if (dateTo) params.append('date_to', dateTo)
       
-      const response = await fetch(`/api/backend/v1/orders/export?${params.toString()}`)
+      const { token } = getAuthData()
+      const response = await fetch(`/api/backend/v1/orders/export?${params.toString()}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      })
       const data = await response.json()
       
       if (data.success) {
@@ -354,6 +422,65 @@ export default function AdminOrdersPage() {
     fetchOrders()
     fetchStatistics()
   }
+
+  const renderOrderActionMenuContent = (order: Order) => (
+    <DropdownMenuContent align="end" className="bg-white/95 backdrop-blur-sm border-slate-200 z-50 shadow-lg">
+      {canManage && (
+        <DropdownMenuItem onClick={() => handleUpdateStatus(order)}>
+          <Package className="mr-2 h-4 w-4" />
+          {t('updateStatus')}
+        </DropdownMenuItem>
+      )}
+      {canAssign && (
+        <DropdownMenuItem onClick={() => handleAssignShipper(order)}>
+          <Truck className="mr-2 h-4 w-4" />
+          {t('assignShipper')}
+        </DropdownMenuItem>
+      )}
+      {canOfferPaymentQr(order) && (
+        <DropdownMenuItem onClick={() => void handleShowPaymentQr(order)}>
+          <QrCode className="mr-2 h-4 w-4" />
+          {t('showPaymentQr')}
+        </DropdownMenuItem>
+      )}
+      {canManage && (
+        <>
+          <DropdownMenuItem
+            onClick={() => handleGenerateInvoice(order, 'pdf')}
+            className={order.status !== 'completed' ? 'opacity-50 cursor-not-allowed' : ''}
+          >
+            <FileText className="mr-2 h-4 w-4" />
+            {t('printInvoice')}
+            {order.status !== 'completed' && (
+              <span className="ml-2 text-xs text-slate-500">({t('requiresCompleted')})</span>
+            )}
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() => handleGenerateInvoice(order, 'email')}
+            className={order.status !== 'completed' ? 'opacity-50 cursor-not-allowed' : ''}
+          >
+            <Mail className="mr-2 h-4 w-4" />
+            {t('sendMail')}
+            {order.status !== 'completed' && (
+              <span className="ml-2 text-xs text-slate-500">({t('requiresCompleted')})</span>
+            )}
+          </DropdownMenuItem>
+        </>
+      )}
+      {canManage && order.status !== 'cancelled' && order.status !== 'completed' && (
+        <>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            onClick={() => handleCancelOrder(order)}
+            className="text-red-600 focus:text-red-600"
+          >
+            <XCircle className="mr-2 h-4 w-4" />
+            {t('cancelOrder')}
+          </DropdownMenuItem>
+        </>
+      )}
+    </DropdownMenuContent>
+  )
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
@@ -398,6 +525,7 @@ export default function AdminOrdersPage() {
                 <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
                 {t('refresh')}
               </Button>
+              {canManage && (
               <Button
                 onClick={() => setIsCreateModalOpen(true)}
                 className="flex items-center gap-2"
@@ -405,6 +533,7 @@ export default function AdminOrdersPage() {
                 <Plus className="h-4 w-4" />
                 {t('createCounterOrder')}
               </Button>
+              )}
             </>
           }
         />
@@ -536,6 +665,7 @@ export default function AdminOrdersPage() {
                 </div>
               </div>
 
+              {canManage && (
               <div className="flex flex-col">
                 <label className="text-xs font-medium text-slate-600 mb-1">{t('actions')}</label>
                 <Button
@@ -547,6 +677,7 @@ export default function AdminOrdersPage() {
                   {t('export')}
                 </Button>
               </div>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -603,23 +734,16 @@ export default function AdminOrdersPage() {
                       <Eye className="h-3.5 w-3.5 mr-1" />
                       {t('view')}
                     </Button>
+                    {hasOrderMenuActions && (
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="outline" size="sm" className="bg-white/80 border-slate-200 hover:bg-white">
                           <MoreHorizontal className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="bg-white/95 backdrop-blur-sm border-slate-200 z-50 shadow-lg">
-                        <DropdownMenuItem onClick={() => handleUpdateStatus(order)}><Package className="mr-2 h-4 w-4" />{t('updateStatus')}</DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleAssignShipper(order)}><Truck className="mr-2 h-4 w-4" />{t('assignShipper')}</DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleGenerateInvoice(order, 'pdf')} className={order.status !== 'completed' ? 'opacity-50' : ''}><FileText className="mr-2 h-4 w-4" />{t('printInvoice')}</DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleGenerateInvoice(order, 'email')} className={order.status !== 'completed' ? 'opacity-50' : ''}><Mail className="mr-2 h-4 w-4" />{t('sendMail')}</DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        {order.status !== 'cancelled' && order.status !== 'completed' && (
-                          <DropdownMenuItem onClick={() => handleCancelOrder(order)} className="text-red-600"><XCircle className="mr-2 h-4 w-4" />{t('cancelOrder')}</DropdownMenuItem>
-                        )}
-                      </DropdownMenuContent>
+                      {renderOrderActionMenuContent(order)}
                     </DropdownMenu>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -680,23 +804,16 @@ export default function AdminOrdersPage() {
                         <Eye className="h-4 w-4" />
                         {t('view')}
                       </Button>
+                      {hasOrderMenuActions && (
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant="outline" size="sm" className="bg-white/80 backdrop-blur-sm border-slate-200 hover:bg-white">
                             <MoreHorizontal className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="bg-white/95 backdrop-blur-sm border-slate-200 z-50 shadow-lg">
-                          <DropdownMenuItem onClick={() => handleUpdateStatus(order)}><Package className="mr-2 h-4 w-4" />{t('updateStatus')}</DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleAssignShipper(order)}><Truck className="mr-2 h-4 w-4" />{t('assignShipper')}</DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleGenerateInvoice(order, 'pdf')} className={order.status !== 'completed' ? 'opacity-50 cursor-not-allowed' : ''}><FileText className="mr-2 h-4 w-4" />{t('printInvoice')}{order.status !== 'completed' && <span className="ml-2 text-xs text-slate-500">({t('requiresCompleted')})</span>}</DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleGenerateInvoice(order, 'email')} className={order.status !== 'completed' ? 'opacity-50 cursor-not-allowed' : ''}><Mail className="mr-2 h-4 w-4" />{t('sendMail')}{order.status !== 'completed' && <span className="ml-2 text-xs text-slate-500">({t('requiresCompleted')})</span>}</DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          {order.status !== 'cancelled' && order.status !== 'completed' && (
-                            <DropdownMenuItem onClick={() => handleCancelOrder(order)} className="text-red-600 focus:text-red-600"><XCircle className="mr-2 h-4 w-4" />{t('cancelOrder')}</DropdownMenuItem>
-                          )}
-                        </DropdownMenuContent>
+                        {renderOrderActionMenuContent(order)}
                       </DropdownMenu>
+                      )}
                     </div>
                   </div>
                 </CardContent>
@@ -746,6 +863,18 @@ export default function AdminOrdersPage() {
         onClose={() => setIsDetailModalOpen(false)}
         order={selectedOrder}
         onStatusUpdate={handleStatusUpdate}
+        onShowPaymentQr={canManage ? (o) => void handleShowPaymentQr(o) : undefined}
+      />
+
+      <CounterPayOsQrDialog
+        open={payOsDialog != null}
+        initial={payOsDialog}
+        onClose={() => setPayOsDialog(null)}
+        onPaid={() => {
+          setPayOsDialog(null)
+          fetchOrders()
+          fetchStatistics()
+        }}
       />
 
       <OrderStatusModal

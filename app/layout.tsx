@@ -1,3 +1,4 @@
+import { getBackendBaseUrl } from '@/app/api/backend/config'
 import type React from "react"
 import type { Metadata } from "next"
 import "./globals.css"
@@ -26,8 +27,6 @@ const playfair = Playfair_Display({
   variable: "--font-serif",
 })
 
-const BACKEND_URL = process.env.BACKEND_URL || 'http://103.90.225.212:8000'
-
 type PublicSiteSettings = {
   site_name?: string
   site_description?: string
@@ -36,7 +35,7 @@ type PublicSiteSettings = {
 
 async function loadPublicSiteSettings(): Promise<PublicSiteSettings> {
   try {
-    const response = await fetch(`${BACKEND_URL}/api/v1/public/site-settings`, {
+    const response = await fetch(`${getBackendBaseUrl()}/api/v1/public/site-settings`, {
       cache: 'no-store',
     })
     const data = await response.json()

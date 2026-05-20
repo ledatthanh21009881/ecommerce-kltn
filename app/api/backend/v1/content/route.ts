@@ -1,6 +1,5 @@
+import { getBackendBaseUrl } from '@/app/api/backend/config'
 import { NextRequest, NextResponse } from 'next/server'
-
-const BACKEND_URL = process.env.BACKEND_URL || 'http://103.90.225.212:8000'
 
 export async function GET(request: NextRequest) {
   try {
@@ -26,7 +25,7 @@ export async function GET(request: NextRequest) {
     params.append('page', page)
     params.append('limit', limit)
 
-    const backendUrl = `${BACKEND_URL}/api/backend/v1/content?${params.toString()}`
+    const backendUrl = `${getBackendBaseUrl()}/api/backend/v1/content?${params.toString()}`
 
     const response = await fetch(backendUrl, {
       headers: {
@@ -71,7 +70,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const token = request.headers.get('authorization')
 
-    const backendUrl = `${BACKEND_URL}/api/backend/v1/content`
+    const backendUrl = `${getBackendBaseUrl()}/api/backend/v1/content`
 
     const response = await fetch(backendUrl, {
       method: 'POST',

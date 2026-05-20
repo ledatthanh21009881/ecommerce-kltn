@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { backendUrl } from '@/app/api/backend/config'
 
 export async function GET(
   request: NextRequest,
@@ -10,7 +11,7 @@ export async function GET(
     const token = request.headers.get('authorization')
     console.log('Token:', token ? 'present' : 'missing')
     
-    const response = await fetch(`http://103.90.225.212:8000/api/v1/orders/${params.id}`, {
+    const response = await fetch(backendUrl(`/api/v1/orders/${params.id}`), {
       headers: {
         'Authorization': token || '',
         'Content-Type': 'application/json',

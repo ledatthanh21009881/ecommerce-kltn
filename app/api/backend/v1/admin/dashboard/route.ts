@@ -1,6 +1,5 @@
+import { getBackendBaseUrl } from '@/app/api/backend/config'
 import { NextRequest, NextResponse } from 'next/server'
-
-const BACKEND_URL = process.env.BACKEND_URL || 'http://103.90.225.212:8000'
 
 export async function GET(request: NextRequest) {
   try {
@@ -13,7 +12,7 @@ export async function GET(request: NextRequest) {
     const search = request.nextUrl.searchParams.toString()
     const qs = search ? `?${search}` : ''
 
-    const response = await fetch(`${BACKEND_URL}/api/backend/v1/admin/dashboard${qs}`, {
+    const response = await fetch(`${getBackendBaseUrl()}/api/backend/v1/admin/dashboard${qs}`, {
       method: 'GET',
       headers: {
         Authorization: token,

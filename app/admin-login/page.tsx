@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { toast } from 'sonner'
 import { Lock, User } from 'lucide-react'
-import { getAuthData, setAuthData, checkAndRefreshAuth } from '@/lib/admin-auth'
+import { getAuthData, setAuthData, checkAndRefreshAuth, getFirstAllowedPath } from '@/lib/admin-auth'
 import { LanguageProvider, useLanguage } from '@/contexts/LanguageContext'
 
 function isInvalidCredentialsErrorMessage(message?: string): boolean {
@@ -41,7 +41,7 @@ function AdminLoginForm() {
       if (isValid) {
         const { user } = getAuthData()
         console.log('User already logged in with valid token, redirecting to admin...', user)
-        router.replace('/admin/dashboard')
+        router.replace(getFirstAllowedPath(user) ?? '/admin/dashboard')
       }
     }
 
@@ -90,18 +90,27 @@ function AdminLoginForm() {
         if (result.data?.refresh_token) {
           localStorage.setItem('refresh_token', result.data.refresh_token)
         }
-        setAuthData(result.data.token, result.data.account)
+        const account = result.data.account ?? {}
+        const sessionUser = {
+          ...account,
+          roles: result.data.roles ?? [],
+          allowed_menus: result.data.allowed_menus ?? [],
+          order_actions: result.data.order_actions ?? [],
+        }
+        if (!sessionUser.allowed_menus?.length && !(sessionUser.roles ?? []).includes('admin')) {
+          toast.error(t('noMenuAccess'))
+          return
+        }
+        setAuthData(result.data.token, sessionUser)
         toast.success(t('adminLoginSuccess'))
 
-        console.log('Redirecting to admin dashboard...')
-        console.log('Current URL before redirect:', window.location.href)
+        const redirectTo =
+          getFirstAllowedPath(sessionUser) ?? result.data.redirect ?? '/admin/dashboard'
 
         try {
-          router.replace('/admin/dashboard')
-          console.log('Router replace executed')
-        } catch (error) {
-          console.log('Router replace failed, using window.location')
-          window.location.href = '/admin/dashboard'
+          router.replace(redirectTo)
+        } catch {
+          window.location.href = redirectTo
         }
       } else {
         toast.error(

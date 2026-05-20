@@ -24,6 +24,7 @@ import {
   sumConversationUnread,
 } from '@/lib/admin-messenger-unread'
 import { cn } from '@/lib/utils'
+import { getBackendApiV1Base } from '@/app/api/backend/config'
 
 interface Conversation {
   conversation_id: number
@@ -230,17 +231,7 @@ function AdminMessengerPageInner() {
   const getAdminToken = () => {
     return localStorage.getItem('adminToken')
   }
-  // Resolve backend base URL for both local dev and production.
-  // - Production (deployed Next at :3000): call backend via same host on default web port (nginx).
-  // - Local dev: fallback to localhost:8000 unless NEXT_PUBLIC_BACKEND_URL is provided.
-  const API_BASE =
-    process.env.NEXT_PUBLIC_BACKEND_URL
-      ? `${process.env.NEXT_PUBLIC_BACKEND_URL.replace(/\/$/, '')}/api/backend/v1`
-      : (typeof window !== 'undefined'
-          ? (window.location.hostname === 'localhost'
-              ? 'http://103.90.225.212:8000/api/backend/v1'
-              : `${window.location.protocol}//${window.location.hostname}/api/backend/v1`)
-          : 'http://103.90.225.212:8000/api/backend/v1')
+  const API_BASE = getBackendApiV1Base()
 
   const forwardPickConversations = useMemo(() => {
     const q = forwardRecipientSearch.trim().toLowerCase()

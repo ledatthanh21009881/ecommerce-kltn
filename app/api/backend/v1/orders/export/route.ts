@@ -1,3 +1,4 @@
+import { getBackendBaseUrl } from '@/app/api/backend/config'
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function GET(request: NextRequest) {
@@ -14,7 +15,7 @@ export async function GET(request: NextRequest) {
     if (dateTo) params.append('date_to', dateTo)
 
     // Forward request to backend
-    const backendUrl = `${process.env.BACKEND_URL || 'http://103.90.225.212:8000'}/api/v1/orders/export?${params.toString()}`
+    const backendUrl = `${getBackendBaseUrl()}/api/v1/orders/export?${params.toString()}`
     
     const response = await fetch(backendUrl, {
       headers: {

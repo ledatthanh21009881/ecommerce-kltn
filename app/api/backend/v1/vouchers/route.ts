@@ -1,6 +1,5 @@
+import { getBackendBaseUrl } from '@/app/api/backend/config'
 import { NextRequest, NextResponse } from 'next/server'
-
-const BACKEND_URL = process.env.BACKEND_URL || 'http://103.90.225.212:8000'
 
 export async function GET(request: NextRequest) {
   try {
@@ -16,7 +15,7 @@ export async function GET(request: NextRequest) {
       ...(search && { search })
     })
     
-    const url = `${BACKEND_URL}/api/backend/v1/vouchers?${queryParams}`
+    const url = `${getBackendBaseUrl()}/api/backend/v1/vouchers?${queryParams}`
     
     console.log('🌐 Fetching vouchers from:', url)
     
@@ -59,7 +58,7 @@ export async function POST(request: NextRequest) {
     
     console.log('🌐 Creating voucher:', body)
     
-    const response = await fetch(`${BACKEND_URL}/api/backend/v1/vouchers`, {
+    const response = await fetch(`${getBackendBaseUrl()}/api/backend/v1/vouchers`, {
       method: 'POST',
       headers: {
         'Authorization': request.headers.get('Authorization') || '',

@@ -144,7 +144,8 @@ export default function AdminUsersPage() {
 
       const data = await response.json()
       if (data.success) {
-        setRoles(data.data || [])
+        const allRoles = data.data || []
+        setRoles(allRoles.filter((r: { role_name: string }) => ['customer', 'shipper'].includes(r.role_name)))
       }
     } catch (error) {
       console.error('Error fetching roles:', error)
@@ -164,7 +165,7 @@ export default function AdminUsersPage() {
       }
 
       console.log('📡 Making request to /api/backend/v1/users')
-      const response = await fetch('/api/backend/v1/users', {
+      const response = await fetch('/api/backend/v1/users?scope=external', {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
@@ -974,7 +975,7 @@ function AddUserForm({
         return
       }
 
-      const payload: Record<string, unknown> = { ...formData }
+      const payload: Record<string, unknown> = { ...formData, scope: 'external' }
       if (addressFieldsFilled(addressForm)) {
         const receiver =
           addressForm.receiver_name.trim() ||
@@ -1243,7 +1244,7 @@ function EditUserForm({
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({ ...formData, scope: 'external' }),
       })
       const userData = await userRes.json()
       if (!userRes.ok || !userData.success) {

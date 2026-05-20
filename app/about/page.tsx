@@ -1,10 +1,11 @@
-const BACKEND_URL = process.env.BACKEND_URL || 'http://103.90.225.212:8000'
+import { getBackendBaseUrl } from '@/app/api/backend/config'
+
 const ABOUT_PATH = '/about'
 
 async function getAboutPageHtml(): Promise<string> {
   try {
     const slug = ABOUT_PATH.replace(/^\/+|\/+$/g, '')
-    const response = await fetch(`${BACKEND_URL}/api/backend/v1/content/public/slug/${slug}`, {
+    const response = await fetch(`${getBackendBaseUrl()}/api/backend/v1/content/public/slug/${slug}`, {
       cache: 'no-store',
     })
     const payload = await response.json()

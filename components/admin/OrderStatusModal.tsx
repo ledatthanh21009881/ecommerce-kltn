@@ -8,8 +8,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Textarea } from '@/components/ui/textarea'
 import { toast } from 'sonner'
 import { Order } from '@/lib/types'
-import { getAuthData } from '@/lib/admin-auth'
+import { hasOrderAction } from '@/lib/admin-auth'
+import { ordersApi } from '@/lib/api'
 import { useLanguage } from '@/contexts/LanguageContext'
+import type { TranslationKey } from '@/lib/ui-translations'
 
 interface OrderStatusModalProps {
   isOpen: boolean
@@ -18,7 +20,7 @@ interface OrderStatusModalProps {
   onStatusUpdate?: () => void
 }
 
-const getStatusOptions = (t: (key: string) => string) => [
+const getStatusOptions = (t: (key: TranslationKey) => string) => [
   { value: 'pending', label: t('pending'), icon: Clock, color: 'bg-amber-50 text-amber-700 border-amber-200' },
   { value: 'processing', label: t('processing'), icon: Package, color: 'bg-blue-50 text-blue-700 border-blue-200' },
   { value: 'shipping', label: t('shipping'), icon: Truck, color: 'bg-purple-50 text-purple-700 border-purple-200' },
@@ -36,57 +38,20 @@ export default function OrderStatusModal({ isOpen, onClose, order, onStatusUpdat
   const handleSubmit = async () => {
     if (!selectedStatus || !order) return
 
+    if (!hasOrderAction('orders.manage')) {
+      toast.error(t('noMenuAccess'))
+      return
+    }
+
     try {
       setLoading(true)
-      const { token } = getAuthData()
-      
-      console.log('Updating order status:', {
-        orderId: order.order_id,
-        status: selectedStatus,
-        reason: reason,
-        token: token ? 'Present' : 'Missing'
-      })
-      
 
-      
-      const response = await fetch(`/api/orders/${order.order_id}/status`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          status: selectedStatus,
-          reason: reason || undefined
-        })
-      })
-      
-      console.log('Response status:', response.status)
-      console.log('Response ok:', response.ok)
+      const data = await ordersApi.updateStatus(
+        order.order_id.toString(),
+        selectedStatus,
+        reason || undefined,
+      )
 
-      // Kiểm tra HTTP status code
-      if (!response.ok) {
-        const contentType = response.headers.get('content-type')
-        if (contentType && contentType.includes('application/json')) {
-          const errorData = await response.json()
-          throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`)
-        } else {
-          const textResponse = await response.text()
-          console.error('Error response:', textResponse)
-          throw new Error(`HTTP ${response.status}: ${response.statusText}`)
-        }
-      }
-
-      // Kiểm tra content type trước khi parse JSON
-      const contentType = response.headers.get('content-type')
-      if (!contentType || !contentType.includes('application/json')) {
-        const textResponse = await response.text()
-        console.error('Non-JSON response:', textResponse)
-        throw new Error('Server returned non-JSON response. Please try again.')
-      }
-
-      const data = await response.json()
-      
       if (data.success) {
         toast.success('Order status updated successfully')
         onStatusUpdate?.()
@@ -96,22 +61,17 @@ export default function OrderStatusModal({ isOpen, onClose, order, onStatusUpdat
       } else {
         toast.error(data.message || 'Failed to update order status')
       }
-    } catch (error) {
-      console.error('Error updating order status:', error)
-      console.error('Network error details:', {
-        message: (error as Error).message,
-        stack: (error as Error).stack,
-        type: (error as Error).constructor.name
-      })
-      
-      // Hiển thị thông báo lỗi thân thiện hơn
+    } catch (error: unknown) {
+      const err = error instanceof Error ? error : new Error(String(error))
+      console.error('Error updating order status:', err)
+
       let errorMessage = 'Có lỗi xảy ra khi cập nhật trạng thái đơn hàng'
-      if (error.message.includes('non-JSON response')) {
+      if (err.message.includes('non-JSON response')) {
         errorMessage = 'Lỗi kết nối server. Vui lòng thử lại sau.'
-      } else if (error.message.includes('Failed to fetch')) {
-        errorMessage = 'Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.'
+      } else if (err.message.includes('Failed to fetch') || err.message.includes('API Error: 403')) {
+        errorMessage = t('noMenuAccess')
       } else {
-        errorMessage = error.message
+        errorMessage = err.message
       }
       
       toast.error(errorMessage)
@@ -160,6 +120,12 @@ export default function OrderStatusModal({ isOpen, onClose, order, onStatusUpdat
 
   if (!isOpen) return null
 
+  const currentStatus = order?.status ?? ''
+  const statusLabel = currentStatus
+    ? t(currentStatus as TranslationKey) ||
+      `${currentStatus.charAt(0).toUpperCase()}${currentStatus.slice(1)}`
+    : ''
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Backdrop */}
@@ -203,10 +169,10 @@ export default function OrderStatusModal({ isOpen, onClose, order, onStatusUpdat
             </div>
             <Badge 
               variant="outline" 
-              className={`flex items-center gap-2 px-3 py-1 text-xs font-medium w-fit ${getStatusColor(order?.status || '')}`}
+              className={`flex items-center gap-2 px-3 py-1 text-xs font-medium w-fit ${getStatusColor(currentStatus)}`}
             >
-              {getStatusIcon(order?.status || '')}
-              {t(order?.status as any) || order?.status?.charAt(0).toUpperCase() + order?.status?.slice(1)}
+              {getStatusIcon(currentStatus)}
+              {statusLabel}
             </Badge>
           </div>
 

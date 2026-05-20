@@ -1,9 +1,9 @@
-const DEFAULT_VIDEO_URL = 'https://res.cloudinary.com/dknwpznzc/video/upload/v1754842411/1_fqyrll.mp4'
-const BACKEND_URL = process.env.BACKEND_URL || 'http://103.90.225.212:8000'
+import { getBackendBaseUrl } from '@/app/api/backend/config'
 
+const DEFAULT_VIDEO_URL = 'https://res.cloudinary.com/dknwpznzc/video/upload/v1754842411/1_fqyrll.mp4'
 async function getHomepageVideoUrl(): Promise<string> {
   try {
-    const response = await fetch(`${BACKEND_URL}/api/backend/v1/content/public/slug/home-hero-video`, {
+    const response = await fetch(`${getBackendBaseUrl()}/api/backend/v1/content/public/slug/home-hero-video`, {
       cache: 'no-store',
     })
     const payload = await response.json()

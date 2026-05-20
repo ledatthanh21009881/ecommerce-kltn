@@ -9,7 +9,6 @@ import {
   DollarSign,
   Package,
   Wallet,
-  Trophy,
   ArrowUpRight,
   Sparkles,
   BarChart3,
@@ -48,6 +47,7 @@ interface DashboardStats {
   total_orders: number
   total_users: number
   total_revenue: number
+  total_cogs: number
   total_purchase_cost: number
   gross_profit: number
   best_selling_product: {
@@ -122,6 +122,7 @@ export default function AdminDashboardPage() {
     total_orders: 0,
     total_users: 0,
     total_revenue: 0,
+    total_cogs: 0,
     total_purchase_cost: 0,
     gross_profit: 0,
     best_selling_product: null,
@@ -170,6 +171,7 @@ export default function AdminDashboardPage() {
             total_orders: d.total_orders ?? 0,
             total_users: d.total_users ?? 0,
             total_revenue: parseFloat(String(d.total_revenue ?? 0)) || 0,
+            total_cogs: parseFloat(String(d.total_cogs ?? 0)) || 0,
             total_purchase_cost: parseFloat(String(d.total_purchase_cost ?? 0)) || 0,
             gross_profit: parseFloat(String(d.gross_profit ?? 0)) || 0,
             best_selling_product: d.best_selling_product
@@ -297,9 +299,9 @@ export default function AdminDashboardPage() {
       iconBg: 'bg-emerald-500/15 text-emerald-700',
     },
     {
-      title: t('dashboardPurchaseCost'),
-      value: formatPrice(stats.total_purchase_cost),
-      subtitle: t('dashboardStatsSelectedPeriod'),
+      title: t('dashboardCostOfGoodsSold'),
+      value: formatPrice(stats.total_cogs),
+      subtitle: t('dashboardCogsHint'),
       icon: Wallet,
       accent: 'from-sky-500/15 to-transparent',
       iconBg: 'bg-sky-500/15 text-sky-700',
@@ -307,20 +309,16 @@ export default function AdminDashboardPage() {
     {
       title: t('dashboardGrossProfit'),
       value: formatPrice(stats.gross_profit),
-      subtitle: t('dashboardStatsSelectedPeriod'),
+      subtitle: t('dashboardGrossProfitHint'),
       icon: TrendingUp,
       accent: 'from-violet-500/15 to-transparent',
       iconBg: stats.gross_profit >= 0 ? 'bg-violet-500/15 text-violet-700' : 'bg-rose-500/15 text-rose-700',
     },
     {
-      title: t('dashboardBestSellingProduct'),
-      value: stats.best_selling_product
-        ? stats.best_selling_product.product_name
-        : t('dashboardBestSellingFallback'),
-      subtitle: stats.best_selling_product
-        ? t('dashboardUnitsSold', { count: String(stats.best_selling_product.sales_count) })
-        : t('dashboardStatsSelectedPeriod'),
-      icon: Trophy,
+      title: t('totalOrders'),
+      value: new Intl.NumberFormat(language === 'vi' ? 'vi-VN' : 'en-US').format(stats.total_orders),
+      subtitle: t('dashboardStatsSelectedPeriod'),
+      icon: ShoppingCart,
       accent: 'from-amber-500/15 to-transparent',
       iconBg: 'bg-amber-500/15 text-amber-800',
     },

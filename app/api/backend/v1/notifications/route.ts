@@ -1,6 +1,5 @@
+import { getBackendBaseUrl } from '@/app/api/backend/config'
 import { NextRequest, NextResponse } from 'next/server'
-
-const BACKEND_URL = process.env.BACKEND_URL || 'http://103.90.225.212:8000'
 
 export async function GET(request: NextRequest) {
   try {
@@ -9,7 +8,7 @@ export async function GET(request: NextRequest) {
     
     // Forward all query parameters
     const queryString = searchParams.toString()
-    const backendUrl = `${BACKEND_URL}/api/backend/v1/notifications${queryString ? `?${queryString}` : ''}`
+    const backendUrl = `${getBackendBaseUrl()}/api/backend/v1/notifications${queryString ? `?${queryString}` : ''}`
 
     const response = await fetch(backendUrl, {
       headers: {
@@ -37,7 +36,7 @@ export async function POST(request: NextRequest) {
   try {
     const token = request.headers.get('authorization')
     const body = await request.json()
-    const backendUrl = `${BACKEND_URL}/api/backend/v1/notifications`
+    const backendUrl = `${getBackendBaseUrl()}/api/backend/v1/notifications`
 
     const response = await fetch(backendUrl, {
       method: 'POST',

@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { toast } from 'sonner'
 import { Order, Shipper } from '@/lib/types'
-import { getAuthData } from '@/lib/admin-auth'
+import { hasOrderAction } from '@/lib/admin-auth'
 import { shippersApi } from '@/lib/api'
 import { useLanguage } from '@/contexts/LanguageContext'
 
@@ -27,9 +27,14 @@ export default function AssignShipperModal({ isOpen, onClose, order, onShipperAs
 
   useEffect(() => {
     if (isOpen) {
+      if (!hasOrderAction('orders.assign_shipper')) {
+        toast.error(t('noMenuAccess'))
+        onClose()
+        return
+      }
       fetchAvailableShippers()
     }
-  }, [isOpen])
+  }, [isOpen, onClose, t])
 
   const translateAssignShipperError = (message?: string) => {
     if (!message) return t('failedToAssignShipper')
@@ -86,31 +91,19 @@ export default function AssignShipperModal({ isOpen, onClose, order, onShipperAs
   const handleAssignShipper = async () => {
     if (!selectedShipper || !order) return
 
+    if (!hasOrderAction('orders.assign_shipper')) {
+      toast.error(t('noMenuAccess'))
+      return
+    }
+
     try {
       setLoading(true)
-      const { token } = getAuthData()
-      
-      console.log('Assigning shipper:', {
-        orderId: order.order_id,
-        shipperId: selectedShipper.user_id,
-        token: token ? 'Present' : 'Missing'
-      })
-      
-      const response = await fetch(`/api/orders/${order.order_id}/assign-shipper`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          shipper_id: selectedShipper.user_id
-        })
-      })
 
-      console.log('Response status:', response.status)
-      const data = await response.json()
-      console.log('Response data:', data)
-      
+      const data = await shippersApi.assign(
+        order.order_id.toString(),
+        String(selectedShipper.user_id),
+      )
+
       if (data.success) {
         // Check if it's a reassignment or already assigned
         const message = data.message || 'Shipper assigned successfully'

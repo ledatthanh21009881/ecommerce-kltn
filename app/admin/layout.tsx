@@ -18,11 +18,23 @@ import {
   Building2,
   FileText,
   CreditCard,
+  UserCog,
+  Shield,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
 import UserHeader from '@/components/ui/user-header'
-import { getAuthData, clearAuthData, AdminUser, checkAndRefreshAuth, updateAdminUserPreferredLocale } from '@/lib/admin-auth'
+import {
+  getAuthData,
+  clearAuthData,
+  AdminUser,
+  checkAndRefreshAuth,
+  updateAdminUserPreferredLocale,
+  syncAdminMenusFromApi,
+  getAllowedMenuPaths,
+  isAdminPanelPathAllowed,
+  getFirstAllowedPath,
+} from '@/lib/admin-auth'
 import { LanguageProvider, useLanguage } from '@/contexts/LanguageContext'
 import {
   Select,
@@ -85,15 +97,29 @@ function AdminLayoutContent({
         return
       }
 
-      const { user: authUser } = getAuthData()
+      let authUser = (await syncAdminMenusFromApi()) ?? getAuthData().user
 
-      // If we're on the root admin page, redirect to dashboard
-      if (pathname === '/admin') {
-        router.replace('/admin/dashboard')
+      if (!authUser) {
+        clearAuthData()
+        router.push('/admin-login')
+        setIsLoading(false)
         return
       }
 
-      console.log('User authenticated successfully:', authUser)
+      if (pathname && !isAdminPanelPathAllowed(pathname, authUser)) {
+        const fallback = getFirstAllowedPath(authUser) ?? '/admin/dashboard'
+        toast.error(t('noMenuAccess'))
+        router.replace(fallback)
+        setUser(authUser)
+        setIsLoading(false)
+        return
+      }
+
+      if (pathname === '/admin') {
+        router.replace(getFirstAllowedPath(authUser) ?? '/admin/dashboard')
+        return
+      }
+
       setUser(authUser)
       setIsLoading(false)
     }
@@ -132,7 +158,17 @@ function AdminLayoutContent({
         name: t('users'),
         icon: Users,
         href: '/admin/users'
-    },
+      },
+      {
+        name: t('navRoles'),
+        icon: Shield,
+        href: '/admin/roles'
+      },
+      {
+        name: t('navAccounts'),
+        icon: UserCog,
+        href: '/admin/accounts'
+      },
     {
       name: t('inventory'),
       icon: Package,
@@ -180,6 +216,14 @@ function AdminLayoutContent({
     }
   ]
 
+  const allowedPaths = getAllowedMenuPaths(user)
+  const visibleMenuItems =
+    allowedPaths.size > 0
+      ? menuItems.filter((item) => allowedPaths.has(item.href))
+      : user?.roles?.includes('admin')
+        ? menuItems
+        : []
+
   const isShipperDetailPage = pathname?.match(/^\/admin\/tracking\/shipper\/[^/]+$/)
   const isMessengerPage = pathname === '/admin/messenger'
 
@@ -224,7 +268,7 @@ function AdminLayoutContent({
               </Button>
             </div>
             <nav className="flex-1 space-y-1 px-2 py-4">
-              {menuItems.map((item) => (
+              {visibleMenuItems.map((item) => (
                 <Link
                   key={item.name}
                   href={item.href}
@@ -251,7 +295,7 @@ function AdminLayoutContent({
             {sidebarOpen && <h1 className="text-xl font-bold text-gray-900 whitespace-nowrap">{t('adminPanel')}</h1>}
           </div>
           <nav className="flex-1 space-y-1 px-2 py-4 overflow-x-hidden">
-            {menuItems.map((item) => (
+            {visibleMenuItems.map((item) => (
               <Link
                 key={item.name}
                 href={item.href}

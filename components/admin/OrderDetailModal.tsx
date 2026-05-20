@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { X, Package, Truck, CheckCircle, Clock, XCircle, MapPin, Phone, Mail, FileText, Calendar, DollarSign, User, ShoppingBag } from 'lucide-react'
+import { X, Package, Truck, CheckCircle, Clock, XCircle, MapPin, Phone, Mail, FileText, Calendar, DollarSign, User, ShoppingBag, QrCode } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -15,9 +15,10 @@ interface OrderDetailModalProps {
   onClose: () => void
   order: Order | null
   onStatusUpdate?: () => void
+  onShowPaymentQr?: (order: Order) => void
 }
 
-export default function OrderDetailModal({ isOpen, onClose, order, onStatusUpdate }: OrderDetailModalProps) {
+export default function OrderDetailModal({ isOpen, onClose, order, onStatusUpdate, onShowPaymentQr }: OrderDetailModalProps) {
   const { t } = useLanguage()
   const [loading, setLoading] = useState(false)
   const [orderDetails, setOrderDetails] = useState<Order | null>(null)
@@ -384,6 +385,22 @@ export default function OrderDetailModal({ isOpen, onClose, order, onStatusUpdat
                         </div>
                       </div>
                     </div>
+                    {onShowPaymentQr &&
+                      order &&
+                      ['payos', 'bank_transfer'].includes(
+                        String(orderDetails.payment.method || '').toLowerCase()
+                      ) &&
+                      String(orderDetails.payment.status || '').toLowerCase() !== 'confirmed' && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="mt-4 w-full sm:w-auto"
+                          onClick={() => onShowPaymentQr(order)}
+                        >
+                          <QrCode className="mr-2 h-4 w-4" />
+                          {t('showPaymentQr')}
+                        </Button>
+                      )}
                   </CardContent>
                 </Card>
               )}

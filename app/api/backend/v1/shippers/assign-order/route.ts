@@ -1,12 +1,11 @@
+import { getBackendBaseUrl } from '@/app/api/backend/config'
 import { NextRequest, NextResponse } from 'next/server'
-
-const BACKEND_URL = process.env.BACKEND_URL || 'http://103.90.225.212:8000'
 
 export async function POST(request: NextRequest) {
   try {
     const token = request.headers.get('authorization')
     const body = await request.json()
-    const backendUrl = `${BACKEND_URL}/api/backend/v1/shippers/assign-order`
+    const backendUrl = `${getBackendBaseUrl()}/api/backend/v1/shippers/assign-order`
 
     const response = await fetch(backendUrl, {
       method: 'POST',

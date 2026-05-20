@@ -69,24 +69,24 @@ export const ordersApi = {
     apiFetch(`api/backend/v1/orders${params ? `?${params}` : ''}`),
   
   getById: (id: string) => 
-    apiFetch(`api/orders/${id}`),
+    apiFetch(`api/backend/v1/orders/${id}`),
   
   getStatistics: () => 
-    apiFetch('api/orders/statistics'),
+    apiFetch('api/backend/v1/orders/statistics'),
   
   updateStatus: (id: string, status: string, reason?: string) => 
-    apiFetch(`api/orders/${id}/status`, {
+    apiFetch(`api/backend/v1/orders/${id}/status`, {
       method: 'PUT',
       body: JSON.stringify({ status, reason }),
     }),
   
   delete: (id: string) => 
-    apiFetch(`api/orders/${id}`, {
+    apiFetch(`api/backend/v1/orders/${id}`, {
       method: 'DELETE',
     }),
   
   sendInvoice: (id: string, data?: any) => 
-    apiFetch(`api/orders/${id}/send-invoice`, {
+    apiFetch(`api/backend/v1/orders/${id}/send-invoice`, {
       method: 'POST',
       body: JSON.stringify(data || {}),
     }),
@@ -211,10 +211,10 @@ export const adminApi = {
 
 export const shippersApi = {
   getAvailable: () => 
-    apiFetch('api/test/available-shippers'),
+    apiFetch('api/backend/v1/orders/available-shippers'),
   
   assign: (orderId: string, shipperId: string) => 
-    apiFetch(`api/orders/${orderId}/assign-shipper`, {
+    apiFetch(`api/backend/v1/orders/${orderId}/assign-shipper`, {
       method: 'POST',
       body: JSON.stringify({ shipper_id: shipperId }),
     }),

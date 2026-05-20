@@ -1,6 +1,5 @@
+import { getBackendBaseUrl } from '@/app/api/backend/config'
 import { NextRequest, NextResponse } from 'next/server'
-
-const BACKEND_URL = process.env.BACKEND_URL || 'http://103.90.225.212:8000'
 
 export async function GET(request: NextRequest) {
   try {
@@ -17,7 +16,7 @@ export async function GET(request: NextRequest) {
     params.append('page', page)
     params.append('limit', limit)
 
-    const response = await fetch(`${BACKEND_URL}/api/backend/v1/stock-adjustments?${params.toString()}`, {
+    const response = await fetch(`${getBackendBaseUrl()}/api/backend/v1/stock-adjustments?${params.toString()}`, {
       headers: {
         'Content-Type': 'application/json',
         ...(token && { Authorization: token }),
@@ -40,7 +39,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const token = request.headers.get('authorization')
 
-    const response = await fetch(`${BACKEND_URL}/api/backend/v1/stock-adjustments`, {
+    const response = await fetch(`${getBackendBaseUrl()}/api/backend/v1/stock-adjustments`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -73,7 +72,7 @@ export async function DELETE(request: NextRequest) {
       )
     }
 
-    const response = await fetch(`${BACKEND_URL}/api/backend/v1/stock-adjustments?id=${id}`, {
+    const response = await fetch(`${getBackendBaseUrl()}/api/backend/v1/stock-adjustments?id=${id}`, {
       method: 'DELETE',
       headers: {
         'Content-Type': 'application/json',

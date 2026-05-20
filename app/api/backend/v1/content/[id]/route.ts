@@ -1,6 +1,5 @@
+import { getBackendBaseUrl } from '@/app/api/backend/config'
 import { NextRequest, NextResponse } from 'next/server'
-
-const BACKEND_URL = process.env.BACKEND_URL || 'http://103.90.225.212:8000'
 
 export async function GET(
   request: NextRequest,
@@ -11,7 +10,7 @@ export async function GET(
     const resolvedParams = params instanceof Promise ? await params : params
     const token = request.headers.get('authorization')
     const contentId = resolvedParams.id
-    const backendUrl = `${BACKEND_URL}/api/backend/v1/content/${contentId}`
+    const backendUrl = `${getBackendBaseUrl()}/api/backend/v1/content/${contentId}`
 
     const response = await fetch(backendUrl, {
       headers: {
@@ -50,7 +49,7 @@ export async function PUT(
     const token = request.headers.get('authorization')
     const contentId = resolvedParams.id
     const body = await request.json()
-    const backendUrl = `${BACKEND_URL}/api/backend/v1/content/${contentId}`
+    const backendUrl = `${getBackendBaseUrl()}/api/backend/v1/content/${contentId}`
 
     const response = await fetch(backendUrl, {
       method: 'PUT',
@@ -110,7 +109,7 @@ export async function DELETE(
       )
     }
     
-    const backendUrl = `${BACKEND_URL}/api/backend/v1/content/${contentId}`
+    const backendUrl = `${getBackendBaseUrl()}/api/backend/v1/content/${contentId}`
 
     console.log('[DELETE Proxy] Request:', { 
       contentId, 

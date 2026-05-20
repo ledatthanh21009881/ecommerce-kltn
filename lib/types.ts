@@ -204,6 +204,8 @@ export interface Payment {
   callback_payload?: string
   confirmed_at?: string
   failure_reason?: string
+  payment_url?: string | null
+  qr_code?: string | null
   created_at: string
   updated_at: string
 }

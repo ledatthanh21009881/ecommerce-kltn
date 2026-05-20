@@ -10,10 +10,15 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { cn } from '@/lib/utils'
 import { useLanguage } from '@/contexts/LanguageContext'
 import { toast } from 'sonner'
+import AddressMapboxAutocomplete, { type MapboxParsedAddress } from '@/components/AddressMapboxAutocomplete'
+import type { MapboxFeature } from '@/lib/mapbox-address'
+import { applyResolvedVnAddressToForm, resolveMapboxToVnAdmin } from '@/lib/vn-admin-resolve'
 
 export function isInsideAddressDropdown(target: unknown): boolean {
   if (!(target instanceof Element)) return false
-  return Boolean(target.closest('[data-address-picker]'))
+  return Boolean(
+    target.closest('[data-address-picker]') || target.closest('[data-address-suggestions]')
+  )
 }
 
 function normalizeAdminName(s: string): string {
@@ -72,6 +77,23 @@ export function AdminVnAddressFields({ value, onChange, enableNameSync, dialogCo
   const [provinceOpen, setProvinceOpen] = useState(false)
   const [districtOpen, setDistrictOpen] = useState(false)
   const [wardOpen, setWardOpen] = useState(false)
+  const handleMapboxPlaceSelect = async (_parsed: MapboxParsedAddress, feature: MapboxFeature) => {
+    const resolved = await resolveMapboxToVnAdmin(feature, provinces)
+    await applyResolvedVnAddressToForm(resolved, {
+      setFormFields: (fields) =>
+        onChange({
+          address_line: fields.address_line,
+          ward: fields.ward,
+          district: fields.district,
+          province: fields.province,
+        }),
+      setDistricts,
+      setWards,
+      setSelectedProvinceCode,
+      setSelectedDistrictCode,
+      setSelectedWardCode,
+    })
+  }
 
   const loadProvinces = async () => {
     try {
@@ -207,11 +229,13 @@ export function AdminVnAddressFields({ value, onChange, enableNameSync, dialogCo
         <label htmlFor="admin-addr-line" className={labelCaps}>
           {t('adminUserAddressStreetLabel')}
         </label>
-        <Input
+        <AddressMapboxAutocomplete
           id="admin-addr-line"
           value={value.address_line}
-          onChange={(e) => onChange({ address_line: e.target.value })}
-          className={fieldClass}
+          onValueChange={(address_line) => onChange({ address_line })}
+          onPlaceSelect={handleMapboxPlaceSelect}
+          inputClassName={fieldClass}
+          required
         />
       </div>
 

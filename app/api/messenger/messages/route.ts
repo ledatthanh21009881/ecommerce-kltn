@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getBackendApiV1Base } from '@/app/api/backend/config'
 
-const BACKEND_BASE_URL = 'http://103.90.225.212:8000/api/backend/v1'
+const BACKEND_BASE_URL = getBackendApiV1Base()
 
 export async function POST(request: NextRequest) {
   try {

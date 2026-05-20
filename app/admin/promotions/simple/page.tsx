@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
 import ConfirmModal from '@/components/ui/confirm-modal'
+import { getBackendApiV1Base } from '@/app/api/backend/config'
 
 interface Voucher {
   voucher_id: number
@@ -27,7 +28,7 @@ export default function SimplePromotionsPage() {
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [deletingVoucherId, setDeletingVoucherId] = useState<number | null>(null)
 
-  const API_BASE = 'http://103.90.225.212:8000/api/backend/v1'
+  const API_BASE = getBackendApiV1Base()
   const ADMIN_TOKEN = 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJhY2NvdW50X2lkIjoxLCJhY2NvdW50X25hbWUiOiJhZG1pbiIsImFjY291bnRfdHlwZSI6ImxvY2FsIiwicm9sZXMiOlsiYWRtaW4iXSwiaXNfYWRtaW4iOnRydWUsImlhdCI6MTc1NjAyNTI0NiwiZXhwIjoxNzU2MDI4ODQ2fQ.KqNDJswMrgIVw_Y6N0FGJX-bWe65I8xe1iiXPNmKecI'
 
   const fetchVouchers = async () => {

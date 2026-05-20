@@ -1,3 +1,4 @@
+import { getBackendBaseUrl } from '@/app/api/backend/config'
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function GET(
@@ -8,7 +9,7 @@ export async function GET(
     const id = params.id
     
     // Call backend API
-    const backendUrl = `${process.env.BACKEND_URL || 'http://103.90.225.212:8000'}/api/test/orders/${id}`
+    const backendUrl = `${getBackendBaseUrl()}/api/test/orders/${id}`
     
     const response = await fetch(backendUrl, {
       headers: { 'Content-Type': 'application/json' }
@@ -40,7 +41,7 @@ export async function DELETE(
     const token = request.headers.get('authorization')
     
     // Call backend API
-    const backendUrl = `${process.env.BACKEND_URL || 'http://103.90.225.212:8000'}/api/v1/orders/${id}`
+    const backendUrl = `${getBackendBaseUrl()}/api/v1/orders/${id}`
     
     const response = await fetch(backendUrl, {
       method: 'DELETE',

@@ -13,6 +13,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { cn } from '@/lib/utils'
 import { getAuthData } from '@/lib/admin-auth'
 import { useLanguage } from '@/contexts/LanguageContext'
+import CounterPayOsQrDialog, { type CounterPayOsPaymentInfo } from '@/components/admin/CounterPayOsQrDialog'
 
 interface ShippingMethod {
   shipping_method_id: number
@@ -102,6 +103,7 @@ export default function OrderCreateModal({ isOpen, onClose, onCreated }: OrderCr
   const [note, setNote] = useState('')
   const [internalNote, setInternalNote] = useState('')
   const [items, setItems] = useState<OrderItemForm[]>([{ ...DEFAULT_ITEM }])
+  const [payOsDialog, setPayOsDialog] = useState<CounterPayOsPaymentInfo | null>(null)
 
   const ensureArray = (data: unknown): any[] => {
     if (Array.isArray(data)) return data
@@ -121,7 +123,16 @@ export default function OrderCreateModal({ isOpen, onClose, onCreated }: OrderCr
     setNote('')
     setInternalNote('')
     setItems([{ ...DEFAULT_ITEM }])
+    setPayOsDialog(null)
   }
+
+  const resolvePaymentMethodForApi = (method: string) => {
+    if (method === 'bank_transfer') return 'payos'
+    return method
+  }
+
+  const isPayOsMethod = (method: string) =>
+    method === 'payos' || method === 'bank_transfer'
 
   useEffect(() => {
     if (!isOpen) return
@@ -293,20 +304,8 @@ export default function OrderCreateModal({ isOpen, onClose, onCreated }: OrderCr
   }
 
   const validateForm = (): boolean => {
-    if (!selectedCustomerId || Number(selectedCustomerId) <= 0) {
-      toast.error(t('customerRequired'))
-      return false
-    }
-
     if (!shippingMethodId || Number(shippingMethodId) <= 0) {
       toast.error(t('shippingMethodRequired'))
-      return false
-    }
-
-    if (!addressId || Number(addressId) <= 0) {
-      toast.error(
-        customerAddresses.length === 0 ? t('customerHasNoAddresses') : t('shippingAddressRequired')
-      )
       return false
     }
 
@@ -341,15 +340,19 @@ export default function OrderCreateModal({ isOpen, onClose, onCreated }: OrderCr
     try {
       const { token } = getAuthData()
       const payload: Record<string, unknown> = {
-        customer_id: Number(selectedCustomerId),
+        counter_order: true,
         shipping_method_id: Number(shippingMethodId),
         items: items.map(item => ({
           variant_id: item.variant_id,
           quantity: item.quantity,
         })),
-        payment_method: paymentMethod,
+        payment_method: resolvePaymentMethodForApi(paymentMethod),
         note,
         internal_note: internalNote,
+      }
+
+      if (selectedCustomerId && Number(selectedCustomerId) > 0) {
+        payload.customer_id = Number(selectedCustomerId)
       }
 
       if (addressId && Number(addressId) > 0) {
@@ -367,9 +370,32 @@ export default function OrderCreateModal({ isOpen, onClose, onCreated }: OrderCr
 
       const data = await response.json()
       if (data.success) {
-        toast.success(t('orderCreatedSuccessfully'))
-        onCreated()
-        onClose()
+        const order = data.data ?? {}
+        const paymentId = Number(order.payment_id) || 0
+        const orderId = Number(order.order_id) || 0
+
+        if (isPayOsMethod(paymentMethod)) {
+          if (paymentId > 0) {
+            toast.success(t('orderCreatedSuccessfully'))
+            setPayOsDialog({
+              payment_id: paymentId,
+              order_id: orderId,
+              payment_url: order.payment_url ?? null,
+              qr_code: order.payment_qr_code ?? null,
+              total_amount: Number(order.total_amount) || estimatedTotal,
+            })
+            onCreated()
+          } else {
+            toast.success(t('orderCreatedSuccessfully'))
+            toast.warning(t('counterPayOsNoQr'))
+            onCreated()
+            onClose()
+          }
+        } else {
+          toast.success(t('orderCreatedSuccessfully'))
+          onCreated()
+          onClose()
+        }
       } else {
         toast.error(data.message || t('failedToCreateOrder'))
       }
@@ -382,7 +408,8 @@ export default function OrderCreateModal({ isOpen, onClose, onCreated }: OrderCr
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+    <>
+    <Dialog open={isOpen && !payOsDialog} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="w-[calc(100vw-1.5rem)] max-w-6xl sm:max-w-6xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{t('createCounterOrder')}</DialogTitle>
@@ -392,7 +419,10 @@ export default function OrderCreateModal({ isOpen, onClose, onCreated }: OrderCr
         <form onSubmit={handleSubmit} className="space-y-5">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2 md:col-span-2">
-              <Label>{t('customer')}</Label>
+              <Label>
+                {t('customer')}{' '}
+                <span className="font-normal text-muted-foreground">({t('optionalField')})</span>
+              </Label>
               <div className="relative">
                 <Button
                   type="button"
@@ -404,7 +434,9 @@ export default function OrderCreateModal({ isOpen, onClose, onCreated }: OrderCr
                   onClick={() => setCustomerComboboxOpen((prev) => !prev)}
                 >
                   <span className="truncate text-left">
-                    {selectedCustomer ? formatCustomerLabel(selectedCustomer) : t('selectCustomer')}
+                    {selectedCustomer
+                      ? formatCustomerLabel(selectedCustomer)
+                      : t('walkInCustomer')}
                   </span>
                   <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
@@ -416,6 +448,22 @@ export default function OrderCreateModal({ isOpen, onClose, onCreated }: OrderCr
                       <CommandList>
                         <CommandEmpty>{t('noCustomersInList')}</CommandEmpty>
                         <CommandGroup>
+                          <CommandItem
+                            value="__walk_in__"
+                            onSelect={() => {
+                              setSelectedCustomerId('')
+                              setAddressId('')
+                              setCustomerComboboxOpen(false)
+                            }}
+                          >
+                            <Check
+                              className={cn(
+                                'mr-2 h-4 w-4',
+                                !selectedCustomerId ? 'opacity-100' : 'opacity-0'
+                              )}
+                            />
+                            <span className="truncate">{t('walkInCustomer')}</span>
+                          </CommandItem>
                           {customers.map((customer) => {
                             const label = formatCustomerLabel(customer)
                             const searchBlob = [
@@ -456,7 +504,10 @@ export default function OrderCreateModal({ isOpen, onClose, onCreated }: OrderCr
             </div>
 
             <div className="space-y-2 md:col-span-2">
-              <Label htmlFor="counter-address-select">{t('shippingAddress')}</Label>
+              <Label htmlFor="counter-address-select">
+                {t('shippingAddress')}{' '}
+                <span className="font-normal text-muted-foreground">({t('optionalField')})</span>
+              </Label>
               <Select
                 value={addressId}
                 onValueChange={setAddressId}
@@ -466,7 +517,7 @@ export default function OrderCreateModal({ isOpen, onClose, onCreated }: OrderCr
                   <SelectValue
                     placeholder={
                       !selectedCustomerId
-                        ? t('selectCustomer')
+                        ? t('walkInAddressHint')
                         : loadingAddresses
                           ? t('loading')
                           : t('selectCustomerAddress')
@@ -514,7 +565,7 @@ export default function OrderCreateModal({ isOpen, onClose, onCreated }: OrderCr
                 <SelectContent>
                   <SelectItem value="cod">{t('cod')}</SelectItem>
                   <SelectItem value="cash">{t('cash')}</SelectItem>
-                  <SelectItem value="bank_transfer">{t('bank_transfer')}</SelectItem>
+                  <SelectItem value="payos">{t('bank_transfer')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -673,5 +724,18 @@ export default function OrderCreateModal({ isOpen, onClose, onCreated }: OrderCr
         </form>
       </DialogContent>
     </Dialog>
+    <CounterPayOsQrDialog
+      open={payOsDialog != null}
+      initial={payOsDialog}
+      onClose={() => {
+        setPayOsDialog(null)
+        onClose()
+      }}
+      onPaid={() => {
+        setPayOsDialog(null)
+        onClose()
+      }}
+    />
+    </>
   )
 }

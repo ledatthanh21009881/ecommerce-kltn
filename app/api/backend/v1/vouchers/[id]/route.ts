@@ -1,6 +1,5 @@
+import { getBackendBaseUrl } from '@/app/api/backend/config'
 import { NextRequest, NextResponse } from 'next/server'
-
-const BACKEND_URL = process.env.BACKEND_URL || 'http://103.90.225.212:8000'
 
 export async function GET(
   request: NextRequest,
@@ -11,7 +10,7 @@ export async function GET(
     
     console.log('🌐 Fetching voucher by ID:', id)
     
-    const response = await fetch(`${BACKEND_URL}/api/backend/v1/vouchers/${id}`, {
+    const response = await fetch(`${getBackendBaseUrl()}/api/backend/v1/vouchers/${id}`, {
       method: 'GET',
       headers: {
         'Authorization': request.headers.get('Authorization') || '',
@@ -54,7 +53,7 @@ export async function PUT(
     
     console.log('🌐 Updating voucher:', id, body)
     
-    const response = await fetch(`${BACKEND_URL}/api/backend/v1/vouchers/${id}`, {
+    const response = await fetch(`${getBackendBaseUrl()}/api/backend/v1/vouchers/${id}`, {
       method: 'PUT',
       headers: {
         'Authorization': request.headers.get('Authorization') || '',
@@ -97,7 +96,7 @@ export async function DELETE(
     
     console.log('🌐 Deleting voucher:', id)
     
-    const response = await fetch(`${BACKEND_URL}/api/backend/v1/vouchers/${id}`, {
+    const response = await fetch(`${getBackendBaseUrl()}/api/backend/v1/vouchers/${id}`, {
       method: 'DELETE',
       headers: {
         'Authorization': request.headers.get('Authorization') || '',

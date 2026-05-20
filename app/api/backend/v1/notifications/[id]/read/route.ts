@@ -1,6 +1,5 @@
+import { getBackendBaseUrl } from '@/app/api/backend/config'
 import { NextRequest, NextResponse } from 'next/server'
-
-const BACKEND_URL = process.env.BACKEND_URL || 'http://103.90.225.212:8000'
 
 export async function PUT(
   request: NextRequest,
@@ -9,7 +8,7 @@ export async function PUT(
   try {
     const token = request.headers.get('authorization')
     const notificationId = params.id
-    const backendUrl = `${BACKEND_URL}/api/backend/v1/notifications/${notificationId}/read`
+    const backendUrl = `${getBackendBaseUrl()}/api/backend/v1/notifications/${notificationId}/read`
 
     const response = await fetch(backendUrl, {
       method: 'PUT',

@@ -13,6 +13,9 @@ import { authUtils, type User } from "@/lib/auth"
 import { userOrdersApi } from "@/lib/userOrdersApi"
 import { profileApi } from "@/lib/profileApi"
 import { addressesApi, type AddressItem, type AddressPayload } from "@/lib/addressesApi"
+import AddressMapboxAutocomplete from "@/components/AddressMapboxAutocomplete"
+import type { MapboxFeature, MapboxParsedAddress } from "@/lib/mapbox-address"
+import { applyResolvedVnAddressToForm, resolveMapboxToVnAdmin } from "@/lib/vn-admin-resolve"
 import { OrderListSection, type Order, mapApiOrdersToOrders } from "@/components/account/OrderListSection"
 import {
   Dialog,
@@ -52,7 +55,9 @@ interface ProvinceOption {
 /** Combobox/popover được portal ra ngoài Dialog — không preventDefault sẽ bị Modal chặn focus & cuộn. */
 function isInsideAddressDropdown(target: unknown): boolean {
   if (!(target instanceof Element)) return false
-  return Boolean(target.closest("[data-address-picker]"))
+  return Boolean(
+    target.closest("[data-address-picker]") || target.closest("[data-address-suggestions]")
+  )
 }
 interface DistrictOption {
   name: string
@@ -111,6 +116,8 @@ export default function AccountPage() {
     district: "",
     province: "",
     is_default: false,
+    lat: null,
+    lng: null,
   })
   const [addressSaving, setAddressSaving] = useState(false)
   const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null)
@@ -330,6 +337,27 @@ export default function AccountPage() {
     }
   }, [addressDialogOpen, editingAddress, wards, addressForm.ward, selectedWardCode])
 
+  const handleMapboxPlaceSelect = async (_parsed: MapboxParsedAddress, feature: MapboxFeature) => {
+    const resolved = await resolveMapboxToVnAdmin(feature, provinces)
+    await applyResolvedVnAddressToForm(resolved, {
+      setFormFields: (fields) =>
+        setAddressForm((p) => ({
+          ...p,
+          address_line: fields.address_line,
+          ward: fields.ward,
+          district: fields.district,
+          province: fields.province,
+          lat: fields.lat ?? null,
+          lng: fields.lng ?? null,
+        })),
+      setDistricts,
+      setWards,
+      setSelectedProvinceCode,
+      setSelectedDistrictCode,
+      setSelectedWardCode,
+    })
+  }
+
   const handleProfileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
     if (name === "phone") {
@@ -358,6 +386,8 @@ export default function AccountPage() {
       district: "",
       province: "",
       is_default: false,
+      lat: null,
+      lng: null,
     })
     setAddressDialogOpen(true)
   }
@@ -377,6 +407,8 @@ export default function AccountPage() {
       district: addr.district,
       province: addr.province,
       is_default: !!addr.is_default,
+      lat: addr.lat ?? null,
+      lng: addr.lng ?? null,
     })
     setAddressDialogOpen(true)
   }
@@ -409,6 +441,8 @@ export default function AccountPage() {
       district: addressForm.district.trim(),
       province: addressForm.province.trim(),
       is_default: addressForm.is_default,
+      lat: addressForm.lat ?? undefined,
+      lng: addressForm.lng ?? undefined,
     }
     if (editingAddress) {
       const { ok, data } = await addressesApi.update(editingAddress.address_id, payload)
@@ -866,10 +900,13 @@ export default function AccountPage() {
                       </div>
                       <div>
                         <label className={labelClass}>{t("account.field.addressLine")}</label>
-                        <Input
-                          className={inputClass}
+                        <AddressMapboxAutocomplete
                           value={addressForm.address_line}
-                          onChange={(e) => setAddressForm((p) => ({ ...p, address_line: e.target.value }))}
+                          onValueChange={(address_line) =>
+                            setAddressForm((p) => ({ ...p, address_line }))
+                          }
+                          onPlaceSelect={handleMapboxPlaceSelect}
+                          inputClassName={inputClass}
                           required
                         />
                       </div>

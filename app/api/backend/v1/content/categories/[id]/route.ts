@@ -1,6 +1,5 @@
+import { getBackendBaseUrl } from '@/app/api/backend/config'
 import { NextRequest, NextResponse } from 'next/server'
-
-const BACKEND_URL = process.env.BACKEND_URL || 'http://103.90.225.212:8000'
 
 export async function GET(
   request: NextRequest,
@@ -9,7 +8,7 @@ export async function GET(
   try {
     const token = request.headers.get('authorization')
     const categoryId = params.id
-    const backendUrl = `${BACKEND_URL}/api/backend/v1/content/categories/${categoryId}`
+    const backendUrl = `${getBackendBaseUrl()}/api/backend/v1/content/categories/${categoryId}`
 
     const response = await fetch(backendUrl, {
       headers: {
@@ -46,7 +45,7 @@ export async function PUT(
     const token = request.headers.get('authorization')
     const categoryId = params.id
     const body = await request.json()
-    const backendUrl = `${BACKEND_URL}/api/backend/v1/content/categories/${categoryId}`
+    const backendUrl = `${getBackendBaseUrl()}/api/backend/v1/content/categories/${categoryId}`
 
     const response = await fetch(backendUrl, {
       method: 'PUT',
@@ -85,7 +84,7 @@ export async function DELETE(
   try {
     const token = request.headers.get('authorization')
     const categoryId = params.id
-    const backendUrl = `${BACKEND_URL}/api/backend/v1/content/categories/${categoryId}`
+    const backendUrl = `${getBackendBaseUrl()}/api/backend/v1/content/categories/${categoryId}`
 
     const response = await fetch(backendUrl, {
       method: 'DELETE',

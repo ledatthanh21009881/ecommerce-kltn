@@ -1,6 +1,5 @@
+import { getBackendBaseUrl } from '@/app/api/backend/config'
 import { NextRequest, NextResponse } from 'next/server'
-
-const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'http://103.90.225.212:8000'
 
 export async function POST(
   request: NextRequest,
@@ -10,7 +9,7 @@ export async function POST(
     const token = request.headers.get('authorization')
     const body = await request.json()
     
-    const response = await fetch(`${BACKEND_URL}/api/v1/invoice/generate?order_id=${params.id}&format=email`, {
+    const response = await fetch(`${getBackendBaseUrl()}/api/v1/invoice/generate?order_id=${params.id}&format=email`, {
       method: 'POST',
       headers: {
         'Authorization': token || '',

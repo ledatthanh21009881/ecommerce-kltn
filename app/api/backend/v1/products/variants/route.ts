@@ -1,11 +1,10 @@
+import { getBackendBaseUrl } from '@/app/api/backend/config'
 import { NextRequest, NextResponse } from 'next/server'
-
-const BACKEND_URL = process.env.BACKEND_URL || 'http://103.90.225.212:8000'
 
 export async function GET(request: NextRequest) {
   try {
     const token = request.headers.get('authorization')
-    const backendUrl = `${BACKEND_URL}/api/v1/products/variants`
+    const backendUrl = `${getBackendBaseUrl()}/api/v1/products/variants`
 
     const response = await fetch(backendUrl, {
       headers: {
