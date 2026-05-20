@@ -1,0 +1,19 @@
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ecommerce-frontend
+    ports:
+      - "8081:3000"
+    environment:
+      # nginx-shopswift là container nginx của backend, cổng 80 bên trong network
+      BACKEND_URL: http://nginx-shopswift:80
+    networks:
+      - shopswift-network
+    restart: unless-stopped
+
+networks:
+  shopswift-network:
+    external: true
+    name: shopswift-network
