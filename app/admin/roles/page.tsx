@@ -20,6 +20,7 @@ import { translateAdminMenuLabel, type TranslationKey } from '@/lib/ui-translati
 interface PanelRole {
   role_id: number
   role_name: string
+  display_name?: string | null
   user_count?: number
 }
 
@@ -60,6 +61,7 @@ export default function AdminRolesPage() {
   const [showRoleModal, setShowRoleModal] = useState(false)
   const [editingRole, setEditingRole] = useState<PanelRole | null>(null)
   const [roleNameInput, setRoleNameInput] = useState('')
+  const [displayNameInput, setDisplayNameInput] = useState('')
   const [savingRole, setSavingRole] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<PanelRole | null>(null)
 
@@ -71,6 +73,12 @@ export default function AdminRolesPage() {
   const roleLabel = (name: string) => {
     const key = ROLE_KEYS[name.trim().toLowerCase()]
     return key ? t(key) : name
+  }
+
+  const roleDisplayTitle = (role: PanelRole) => {
+    const d = role.display_name?.trim()
+    if (d) return d
+    return roleLabel(role.role_name)
   }
 
   const canAccess = () => {
@@ -107,9 +115,6 @@ export default function AdminRolesPage() {
     if (menusData.success) {
       setSelectedPermissionIds(new Set((menusData.data || []).map((m: MenuItem) => m.permission_id)))
     }
-    // #region agent log
-    fetch('http://127.0.0.1:7321/ingest/f2f3a4ec-56d7-4905-bcec-0faf157590e4',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'31c426'},body:JSON.stringify({sessionId:'31c426',hypothesisId:'H2',location:'roles/page.tsx:fetchRoleMenus',message:'load role permissions',data:{roleId,menusOk:menusData.success,menusStatus:menusRes.status,actionsOk:actionsData.success,actionsStatus:actionsRes.status,actionsData:actionsData.data,actionsMessage:actionsData.message},timestamp:Date.now()})}).catch(()=>{});
-    // #endregion
     if (actionsData.success) {
       setSelectedOrderActions(new Set((actionsData.data || []) as string[]))
     }
@@ -141,19 +146,26 @@ export default function AdminRolesPage() {
   const openCreateRole = () => {
     setEditingRole(null)
     setRoleNameInput('')
+    setDisplayNameInput('')
     setShowRoleModal(true)
   }
 
   const openEditRole = (role: PanelRole) => {
     setEditingRole(role)
     setRoleNameInput(role.role_name)
+    setDisplayNameInput(role.display_name ?? '')
     setShowRoleModal(true)
   }
 
   const handleSaveRole = async () => {
     const name = roleNameInput.trim()
+    const displayName = displayNameInput.trim()
     if (!name) {
       toast.error(t('roleName'))
+      return
+    }
+    if (!displayName) {
+      toast.error(t('roleDisplayNameRequired'))
       return
     }
     setSavingRole(true)
@@ -164,7 +176,7 @@ export default function AdminRolesPage() {
       const res = await fetch(url, {
         method: editingRole ? 'PUT' : 'POST',
         headers: authHeaders(),
-        body: JSON.stringify({ role_name: name }),
+        body: JSON.stringify({ role_name: name, display_name: displayName }),
       })
       const data = await res.json()
       if (data.success) {
@@ -172,7 +184,13 @@ export default function AdminRolesPage() {
         setShowRoleModal(false)
         await fetchPanelRoles()
       } else {
-        toast.error(data.message || t('operationFailed'))
+        const msg =
+          data?.message ||
+          (data?.errors && typeof data.errors === 'object'
+            ? Object.values(data.errors).flat().join(' ')
+            : null) ||
+          t('operationFailed')
+        toast.error(msg)
       }
     } catch {
       toast.error(t('operationFailed'))
@@ -242,10 +260,6 @@ export default function AdminRolesPage() {
           ? Array.from(selectedOrderActions)
           : []
 
-      // #region agent log
-      fetch('http://127.0.0.1:7321/ingest/f2f3a4ec-56d7-4905-bcec-0faf157590e4',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'31c426'},body:JSON.stringify({sessionId:'31c426',hypothesisId:'H3',location:'roles/page.tsx:handleSaveMenus',message:'save payload',data:{selectedRoleId,hasOrdersMenu,ordersMenuId,selectedOrderActions:Array.from(selectedOrderActions),orderActionKeys,selectedRoleIsAdmin},timestamp:Date.now()})}).catch(()=>{});
-      // #endregion
-
       const [menusRes, actionsRes] = await Promise.all([
         fetch(`/api/backend/v1/roles/${selectedRoleId}/menus`, {
           method: 'PUT',
@@ -260,9 +274,6 @@ export default function AdminRolesPage() {
       ])
       const menusData = await menusRes.json()
       const actionsData = await actionsRes.json()
-      // #region agent log
-      fetch('http://127.0.0.1:7321/ingest/f2f3a4ec-56d7-4905-bcec-0faf157590e4',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'31c426'},body:JSON.stringify({sessionId:'31c426',hypothesisId:'H3',location:'roles/page.tsx:handleSaveMenus',message:'save response',data:{menusStatus:menusRes.status,menusSuccess:menusData.success,actionsStatus:actionsRes.status,actionsSuccess:actionsData.success,actionsData:actionsData.data,actionsMessage:actionsData.message},timestamp:Date.now()})}).catch(()=>{});
-      // #endregion
       if (menusData.success && actionsData.success) {
         toast.success(t('roleConfigSaved'))
       } else {
@@ -289,17 +300,23 @@ export default function AdminRolesPage() {
         title={t('rolesManagement')}
         description={t('rolesManagementDesc')}
         actions={
-          <Button
-            variant="outline"
-            className="bg-white/80 border-slate-200"
-            onClick={() => {
-              void fetchPanelRoles()
-              void fetchMenus()
-            }}
-          >
-            <RefreshCw className="h-4 w-4 mr-2" />
-            {t('refresh')}
-          </Button>
+          <>
+            <Button
+              variant="outline"
+              className="bg-white/80 border-slate-200"
+              onClick={() => {
+                void fetchPanelRoles()
+                void fetchMenus()
+              }}
+            >
+              <RefreshCw className="h-4 w-4 mr-2" />
+              {t('refresh')}
+            </Button>
+            <Button onClick={openCreateRole}>
+              <Plus className="h-4 w-4 mr-2" />
+              {t('addRole')}
+            </Button>
+          </>
         }
       />
 
@@ -310,12 +327,6 @@ export default function AdminRolesPage() {
         </TabsList>
 
         <TabsContent value="list" className="mt-6">
-          <div className="flex justify-end mb-4">
-            <Button onClick={openCreateRole}>
-              <Plus className="h-4 w-4 mr-2" />
-              {t('addRole')}
-            </Button>
-          </div>
           {roles.length === 0 ? (
             <Card className="border-slate-200/80 bg-white/90 shadow-sm">
               <CardContent className="p-12 text-center text-slate-600">{t('noRolesFound')}</CardContent>
@@ -328,17 +339,19 @@ export default function AdminRolesPage() {
                   <Card key={role.role_id} className="border-slate-200/80 bg-white/90 shadow-sm">
                     <CardContent className="p-4 flex flex-wrap items-center justify-between gap-3">
                       <div>
-                        <p className="font-semibold text-slate-900">{roleLabel(role.role_name)}</p>
+                        <p className="font-semibold text-slate-900">{roleDisplayTitle(role)}</p>
                         <p className="text-sm text-slate-500 font-mono">{role.role_name}</p>
                         <p className="text-xs text-slate-500 mt-1">
                           {t('roleUsersCount')}: {role.user_count ?? 0}
                         </p>
                       </div>
                       <div className="flex gap-2">
-                        <Button variant="outline" size="sm" onClick={() => openEditRole(role)}>
-                          <Pencil className="h-4 w-4 mr-1" />
-                          {t('edit')}
-                        </Button>
+                        {!isAdmin && (
+                          <Button variant="outline" size="sm" onClick={() => openEditRole(role)}>
+                            <Pencil className="h-4 w-4 mr-1" />
+                            {t('edit')}
+                          </Button>
+                        )}
                         {!isAdmin && (
                           <Button
                             variant="outline"
@@ -374,7 +387,7 @@ export default function AdminRolesPage() {
                         : 'text-slate-600 hover:bg-slate-50'
                     }`}
                   >
-                    {roleLabel(role.role_name)}
+                    {roleDisplayTitle(role)}
                   </button>
                 ))}
               </CardContent>
@@ -442,6 +455,16 @@ export default function AdminRolesPage() {
             <DialogTitle>{editingRole ? t('editRole') : t('addRole')}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
+            <div>
+              <Label htmlFor="display_name">{t('roleDisplayName')}</Label>
+              <Input
+                id="display_name"
+                value={displayNameInput}
+                onChange={(e) => setDisplayNameInput(e.target.value)}
+                placeholder={t('roleDisplayNamePlaceholder')}
+              />
+              <p className="text-xs text-slate-500 mt-1">{t('roleDisplayNameHint')}</p>
+            </div>
             <div>
               <Label htmlFor="role_name">{t('roleName')}</Label>
               <Input

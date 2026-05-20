@@ -6,8 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Label } from '@/components/ui/label'
-import { Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { toast } from 'sonner'
 import { getAuthData, checkAndRefreshAuth } from '@/lib/admin-auth'
@@ -65,11 +64,8 @@ export default function AdminPaymentsPage() {
     if (typeof window !== 'undefined') return (localStorage.getItem('admin_payments_view') as 'list' | 'grid') || 'list'
     return 'list'
   })
-  const [isProcessModalOpen, setIsProcessModalOpen] = useState(false)
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false)
   const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null)
-  const [processForm, setProcessForm] = useState({ order_id: '', method: 'cod', amount: '' })
-  const [submitting, setSubmitting] = useState(false)
 
   const setViewModeAndStore = (mode: 'list' | 'grid') => {
     setViewMode(mode)
@@ -109,44 +105,6 @@ export default function AdminPaymentsPage() {
   useEffect(() => {
     fetchPayments()
   }, [])
-
-  const handleProcessSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    const orderId = parseInt(processForm.order_id, 10)
-    const amount = parseFloat(processForm.amount)
-    if (!orderId || orderId < 1 || !amount || amount <= 0) {
-      toast.error(t('pleaseEnterValidOrderIdAndAmount'))
-      return
-    }
-    try {
-      setSubmitting(true)
-      const ok = await checkAndRefreshAuth()
-      if (!ok) {
-        if (typeof window !== 'undefined') window.location.href = '/admin-login'
-        return
-      }
-      const { token } = getAuthData()
-      const res = await fetch('/api/backend/v1/payments/create', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-        body: JSON.stringify({ order_id: orderId, method: processForm.method, amount }),
-      })
-      const data = await res.json()
-      if (data.success) {
-        toast.success(t('paymentCreatedSuccessfully'))
-        setIsProcessModalOpen(false)
-        setProcessForm({ order_id: '', method: 'cod', amount: '' })
-        fetchPayments()
-      } else {
-        toast.error(data.message || t('failedToCreatePayment'))
-      }
-    } catch (err) {
-      console.error(err)
-      toast.error(t('failedToCreatePayment'))
-    } finally {
-      setSubmitting(false)
-    }
-  }
 
   const handleApprove = async (payment: Payment) => {
     try {
@@ -326,10 +284,6 @@ export default function AdminPaymentsPage() {
             <Button variant="outline" onClick={fetchPayments} disabled={loading} className="flex items-center gap-2 bg-white/80 backdrop-blur-sm border-slate-200 hover:bg-white">
               <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
               {t('refresh')}
-            </Button>
-            <Button onClick={() => setIsProcessModalOpen(true)} className="flex items-center gap-2">
-              <CreditCard className="h-4 w-4" />
-              {t('processPayment')}
             </Button>
           </div>
         </div>
@@ -640,58 +594,6 @@ export default function AdminPaymentsPage() {
             </CardContent>
           </Card>
         )}
-
-        {/* Process Payment Modal (Create) */}
-        <Dialog open={isProcessModalOpen} onOpenChange={setIsProcessModalOpen}>
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle>{t('processPaymentModal')}</DialogTitle>
-            </DialogHeader>
-            <form onSubmit={handleProcessSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="order_id">{t('orderId')}</Label>
-                <Input
-                  id="order_id"
-                  type="number"
-                  min={1}
-                  placeholder="e.g. 123"
-                  value={processForm.order_id}
-                  onChange={(e) => setProcessForm(f => ({ ...f, order_id: e.target.value }))}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="method">{t('paymentMethod')}</Label>
-                <select
-                  id="method"
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                  value={processForm.method}
-                  onChange={(e) => setProcessForm(f => ({ ...f, method: e.target.value }))}
-                >
-                  <option value="cod">{t('cod')}</option>
-                  <option value="payos">PayOS</option>
-                  <option value="vnpay">VNPay</option>
-                  <option value="vietqr">VietQR</option>
-                  <option value="mock_qr">Mock QR</option>
-                </select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="amount">{t('amountVnd')}</Label>
-                <Input
-                  id="amount"
-                  type="number"
-                  min={1}
-                  placeholder="e.g. 100000"
-                  value={processForm.amount}
-                  onChange={(e) => setProcessForm(f => ({ ...f, amount: e.target.value }))}
-                />
-              </div>
-              <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setIsProcessModalOpen(false)}>{t('cancel')}</Button>
-                <Button type="submit" disabled={submitting}>{submitting ? t('creatingPayment') : t('createPayment')}</Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
 
         {/* View Details Modal (Read) */}
         <Dialog open={isDetailModalOpen} onOpenChange={setIsDetailModalOpen}>

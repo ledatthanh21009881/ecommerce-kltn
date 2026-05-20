@@ -104,6 +104,8 @@ export default function OrderCreateModal({ isOpen, onClose, onCreated }: OrderCr
   const [internalNote, setInternalNote] = useState('')
   const [items, setItems] = useState<OrderItemForm[]>([{ ...DEFAULT_ITEM }])
   const [payOsDialog, setPayOsDialog] = useState<CounterPayOsPaymentInfo | null>(null)
+  /** Hàng nào đang mở dropdown chọn sản phẩm — `null` là đóng hết */
+  const [productPickerOpenRow, setProductPickerOpenRow] = useState<number | null>(null)
 
   const ensureArray = (data: unknown): any[] => {
     if (Array.isArray(data)) return data
@@ -124,6 +126,7 @@ export default function OrderCreateModal({ isOpen, onClose, onCreated }: OrderCr
     setInternalNote('')
     setItems([{ ...DEFAULT_ITEM }])
     setPayOsDialog(null)
+    setProductPickerOpenRow(null)
   }
 
   const resolvePaymentMethodForApi = (method: string) => {
@@ -282,11 +285,18 @@ export default function OrderCreateModal({ isOpen, onClose, onCreated }: OrderCr
   }, [items, variantMap])
 
   const addItem = () => {
+    setProductPickerOpenRow(null)
     setItems(prev => [...prev, { ...DEFAULT_ITEM }])
   }
 
   const removeItem = (index: number) => {
     if (items.length === 1) return
+    setProductPickerOpenRow((prev) => {
+      if (prev === null) return null
+      if (prev === index) return null
+      if (prev > index) return prev - 1
+      return prev
+    })
     setItems(prev => prev.filter((_, i) => i !== index))
   }
 
@@ -431,7 +441,10 @@ export default function OrderCreateModal({ isOpen, onClose, onCreated }: OrderCr
                   aria-expanded={customerComboboxOpen}
                   className="w-full justify-between font-normal"
                   disabled={loadingData}
-                  onClick={() => setCustomerComboboxOpen((prev) => !prev)}
+                  onClick={() => {
+                    setProductPickerOpenRow(null)
+                    setCustomerComboboxOpen((prev) => !prev)
+                  }}
                 >
                   <span className="truncate text-left">
                     {selectedCustomer
@@ -592,18 +605,57 @@ export default function OrderCreateModal({ isOpen, onClose, onCreated }: OrderCr
                 >
                   <div className="space-y-1 min-w-0">
                     <Label>{t('product')}</Label>
-                    <Select value={item.product_id > 0 ? String(item.product_id) : ''} onValueChange={(value) => setItemProduct(index, value)}>
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder={t('selectProduct')} />
-                      </SelectTrigger>
-                      <SelectContent className="max-w-[min(28rem,calc(100vw-2rem))]">
-                        {uniqueProducts.map((p) => (
-                          <SelectItem key={p.product_id} value={String(p.product_id)}>
-                            <span className="truncate">{p.product_name}</span>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <div className="relative">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        role="combobox"
+                        aria-expanded={productPickerOpenRow === index}
+                        className="w-full justify-between font-normal h-10"
+                        disabled={loadingData}
+                        onClick={() =>
+                          setProductPickerOpenRow((prev) => (prev === index ? null : index))
+                        }
+                      >
+                        <span className="truncate text-left">
+                          {item.product_id > 0
+                            ? uniqueProducts.find((p) => p.product_id === item.product_id)
+                                ?.product_name ?? t('selectProduct')
+                            : t('selectProduct')}
+                        </span>
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                      {productPickerOpenRow === index && (
+                        <div className="absolute top-[calc(100%+4px)] left-0 right-0 z-[60] rounded-md border bg-popover shadow-md max-w-[min(28rem,calc(100vw-2rem))]">
+                          <Command shouldFilter>
+                            <CommandInput placeholder={t('searchProducts')} />
+                            <CommandList className="max-h-[min(320px,50vh)]">
+                              <CommandEmpty>{t('noProductsFound')}</CommandEmpty>
+                              <CommandGroup>
+                                {uniqueProducts.map((p) => (
+                                  <CommandItem
+                                    key={p.product_id}
+                                    value={`${p.product_id} ${p.product_name}`}
+                                    onSelect={() => {
+                                      setItemProduct(index, String(p.product_id))
+                                      setProductPickerOpenRow(null)
+                                    }}
+                                  >
+                                    <Check
+                                      className={cn(
+                                        'mr-2 h-4 w-4 shrink-0',
+                                        item.product_id === p.product_id ? 'opacity-100' : 'opacity-0'
+                                      )}
+                                    />
+                                    <span className="truncate">{p.product_name}</span>
+                                  </CommandItem>
+                                ))}
+                              </CommandGroup>
+                            </CommandList>
+                          </Command>
+                        </div>
+                      )}
+                    </div>
                   </div>
 
                   <div className="space-y-1 min-w-0">

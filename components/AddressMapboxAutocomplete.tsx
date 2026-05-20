@@ -1,6 +1,7 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Loader2, MapPin } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
@@ -44,11 +45,37 @@ export default function AddressMapboxAutocomplete({
   const [loading, setLoading] = useState(false)
   const [resolving, setResolving] = useState(false)
   const [suggestions, setSuggestions] = useState<MapboxFeature[]>([])
+  const [dropdownPos, setDropdownPos] = useState<{ top: number; left: number; width: number } | null>(null)
   const wrapperRef = useRef<HTMLDivElement>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const abortRef = useRef<AbortController | null>(null)
 
   const mapboxEnabled = isMapboxAddressEnabled()
+
+  const updateDropdownPos = useCallback(() => {
+    if (!wrapperRef.current) return
+    const r = wrapperRef.current.getBoundingClientRect()
+    setDropdownPos({ top: r.bottom + 4, left: r.left, width: Math.max(r.width, 200) })
+  }, [])
+
+  useLayoutEffect(() => {
+    if (!open || !mapboxEnabled) {
+      setDropdownPos(null)
+      return
+    }
+    updateDropdownPos()
+  }, [open, mapboxEnabled, updateDropdownPos, loading, suggestions.length, value, resolving])
+
+  useEffect(() => {
+    if (!mapboxEnabled || !open) return
+    const onScrollResize = () => updateDropdownPos()
+    window.addEventListener('scroll', onScrollResize, true)
+    window.addEventListener('resize', onScrollResize)
+    return () => {
+      window.removeEventListener('scroll', onScrollResize, true)
+      window.removeEventListener('resize', onScrollResize)
+    }
+  }, [open, mapboxEnabled, updateDropdownPos])
 
   const runSearch = useCallback(async (query: string) => {
     abortRef.current?.abort()
@@ -92,7 +119,10 @@ export default function AddressMapboxAutocomplete({
 
   useEffect(() => {
     const onDocClick = (e: MouseEvent) => {
-      if (!wrapperRef.current?.contains(e.target as Node)) setOpen(false)
+      const target = e.target as Node
+      if (wrapperRef.current?.contains(target)) return
+      if (target instanceof Element && target.closest?.('[data-address-suggestions]')) return
+      setOpen(false)
     }
     document.addEventListener('mousedown', onDocClick)
     return () => document.removeEventListener('mousedown', onDocClick)
@@ -141,6 +171,74 @@ export default function AddressMapboxAutocomplete({
     )
   }
 
+  const showListPanel = open && (loading || suggestions.length > 0)
+  const showEmptyPanel = open && !loading && value.trim().length >= 3 && suggestions.length === 0
+
+  const listDropdown =
+    mapboxEnabled &&
+    dropdownPos &&
+    showListPanel &&
+    typeof document !== 'undefined'
+      ? createPortal(
+          <ul
+            data-address-suggestions
+            style={{
+              position: 'fixed',
+              top: dropdownPos.top,
+              left: dropdownPos.left,
+              width: dropdownPos.width,
+              zIndex: 9999,
+            }}
+            className="max-h-80 overflow-y-auto rounded-md border bg-popover py-1 text-sm shadow-lg"
+            role="listbox"
+          >
+            {suggestions.map((f) => (
+              <li key={f.id}>
+                <button
+                  type="button"
+                  className="flex w-full items-start gap-2 px-3 py-2 text-left hover:bg-accent"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => handleSelect(f)}
+                >
+                  <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+                  <span className="line-clamp-2">{f.place_name}</span>
+                </button>
+              </li>
+            ))}
+            {loading && (
+              <li className="flex items-center gap-2 px-3 py-2 text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span>{t('addressMapboxSearching')}</span>
+              </li>
+            )}
+          </ul>,
+          document.body
+        )
+      : null
+
+  const emptyDropdown =
+    mapboxEnabled &&
+    dropdownPos &&
+    showEmptyPanel &&
+    typeof document !== 'undefined'
+      ? createPortal(
+          <p
+            data-address-suggestions
+            style={{
+              position: 'fixed',
+              top: dropdownPos.top,
+              left: dropdownPos.left,
+              width: dropdownPos.width,
+              zIndex: 9999,
+            }}
+            className="rounded-md border bg-popover px-3 py-2 text-sm text-muted-foreground shadow"
+          >
+            {t('addressMapboxNoResults')}
+          </p>,
+          document.body
+        )
+      : null
+
   return (
     <div ref={wrapperRef} className={cn('relative', className)}>
       <div className="relative">
@@ -163,42 +261,8 @@ export default function AddressMapboxAutocomplete({
           <MapPin className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         )}
       </div>
-      {open && (loading || suggestions.length > 0) && (
-        <ul
-          data-address-suggestions
-          className="relative z-[200] mt-1 max-h-80 w-full overflow-y-auto rounded-md border bg-popover py-1 text-sm shadow-lg"
-          role="listbox"
-        >
-          {suggestions.map((f) => (
-            <li key={f.id}>
-              <button
-                type="button"
-                className="flex w-full items-start gap-2 px-3 py-2 text-left hover:bg-accent"
-                onMouseDown={(e) => e.preventDefault()}
-                onClick={() => handleSelect(f)}
-              >
-                <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-                <span className="line-clamp-2">{f.place_name}</span>
-              </button>
-            </li>
-          ))}
-          {loading && (
-            <li className="flex items-center gap-2 px-3 py-2 text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              <span>{t('addressMapboxSearching')}</span>
-            </li>
-          )}
-        </ul>
-      )}
-
-      {open && !loading && value.trim().length >= 3 && suggestions.length === 0 && (
-        <p
-          data-address-suggestions
-          className="relative z-[200] mt-1 w-full rounded-md border bg-popover px-3 py-2 text-sm text-muted-foreground shadow"
-        >
-          {t('addressMapboxNoResults')}
-        </p>
-      )}
+      {listDropdown}
+      {emptyDropdown}
     </div>
   )
 }

@@ -146,13 +146,19 @@ export default function InventoryModal({ isOpen, onClose, variant, products, cat
       console.log('🔍 Original formData:', JSON.stringify(formData, null, 2))
       
       // For update, only send fields that can be changed
-      const requestData = variant 
+      const requestData = variant
         ? {
             size_id: formData.size_id,
             sku: formData.sku,
-            status: formData.status
+            status: formData.status,
           }
-        : formData
+        : {
+            product_id: formData.product_id,
+            size_id: formData.size_id,
+            sku: formData.sku,
+            stock_quantity: 0,
+            status: formData.status,
+          }
       
       console.log('🔍 Is update mode:', !!variant)
       
@@ -376,24 +382,23 @@ export default function InventoryModal({ isOpen, onClose, variant, products, cat
             </p>
           </div>
 
-          {/* Stock Quantity */}
+          {/* Stock Quantity — locked; increase via purchase receipts only */}
           <div className="space-y-2">
             <Label htmlFor="stock_quantity" className="text-sm font-medium text-gray-700">
-              {t('stockQuantity')} *
+              {t('stockQuantity')}
             </Label>
             <Input
               id="stock_quantity"
               type="number"
-              value={formData.stock_quantity}
-              onChange={(e) => handleInputChange('stock_quantity', parseInt(e.target.value) || 0)}
+              value={variant ? formData.stock_quantity : 0}
+              readOnly
+              disabled
               placeholder="0"
               min="0"
-              className="w-full"
-              disabled={!!variant}
-              required
+              className="w-full bg-slate-50 text-slate-600 cursor-not-allowed"
             />
             <p className="text-xs text-gray-500">
-              {variant ? t('stockUpdateViaReceiptsOrAdjustment') : t('stockQuantityHelperText')}
+              {t('stockIncreaseViaPurchaseReceipt')}
             </p>
           </div>
 

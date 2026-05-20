@@ -3,12 +3,12 @@
 import { useState, useEffect } from 'react'
 import { AdminVnAddressFields, isInsideAddressDropdown, type AdminAddressValue } from '@/components/admin/AdminVnAddressFields'
 import { useRouter } from 'next/navigation'
-import { Search, RefreshCw, Users, UserPlus, Mail, Phone, Calendar, Shield, Truck, LayoutList, LayoutGrid, ChevronLeft, ChevronRight, Edit, Trash2 } from 'lucide-react'
+import { Search, RefreshCw, Users, UserPlus, Mail, Phone, Calendar, Shield, Truck, LayoutList, LayoutGrid, ChevronLeft, ChevronRight, Edit, Trash2, KeyRound } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { toast } from 'sonner'
@@ -103,6 +103,11 @@ export default function AdminUsersPage() {
   })
   const [addDialogContentEl, setAddDialogContentEl] = useState<HTMLElement | null>(null)
   const [editDialogContentEl, setEditDialogContentEl] = useState<HTMLElement | null>(null)
+  const [showSetPasswordModal, setShowSetPasswordModal] = useState(false)
+  const [setPasswordUser, setSetPasswordUser] = useState<User | null>(null)
+  const [setPasswordNew, setSetPasswordNew] = useState('')
+  const [setPasswordConfirm, setSetPasswordConfirm] = useState('')
+  const [setPasswordSubmitting, setSetPasswordSubmitting] = useState(false)
 
   const setViewModeAndStore = (mode: 'list' | 'grid') => {
     setViewMode(mode)
@@ -326,6 +331,63 @@ export default function AdminUsersPage() {
   const handleDeleteUser = (userId: number) => {
     setDeletingUserId(userId)
     setShowDeleteModal(true)
+  }
+
+  const handleOpenSetPassword = (user: User) => {
+    setSetPasswordUser(user)
+    setSetPasswordNew('')
+    setSetPasswordConfirm('')
+    setShowSetPasswordModal(true)
+  }
+
+  const submitSetPassword = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!setPasswordUser) return
+    if (setPasswordNew.length < 6) {
+      toast.error(t('settingsPasswordMinLength'))
+      return
+    }
+    if (setPasswordNew !== setPasswordConfirm) {
+      toast.error(t('settingsPasswordMismatch'))
+      return
+    }
+    setSetPasswordSubmitting(true)
+    try {
+      const token = localStorage.getItem('adminToken')
+      if (!token) {
+        toast.error(t('authenticationFailed'))
+        return
+      }
+      const response = await fetch(`/api/backend/v1/users/update?id=${setPasswordUser.user_id}`, {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ password: setPasswordNew, scope: 'external' }),
+      })
+      const data = await response.json()
+      if (!response.ok || !data.success) {
+        const msg =
+          data?.message ||
+          (data?.errors && typeof data.errors === 'object'
+            ? Object.values(data.errors).flat().join(' ')
+            : null) ||
+          t('failedToUpdateUser')
+        toast.error(msg)
+        return
+      }
+      toast.success(t('adminUserPasswordSetSuccess'))
+      setShowSetPasswordModal(false)
+      setSetPasswordUser(null)
+      setSetPasswordNew('')
+      setSetPasswordConfirm('')
+    } catch (err) {
+      console.error('Set user password:', err)
+      toast.error(t('failedToUpdateUser'))
+    } finally {
+      setSetPasswordSubmitting(false)
+    }
   }
 
   const confirmDeleteUser = async () => {
@@ -642,6 +704,15 @@ export default function AdminUsersPage() {
                             <Button size="sm" variant="outline" onClick={() => handleEditUser(user)} className="bg-white/80 border-slate-200 hover:bg-white" title={t('edit')}>
                               <Edit className="h-4 w-4" />
                             </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleOpenSetPassword(user)}
+                              className="bg-white/80 border-slate-200 hover:bg-white text-amber-700 border-amber-200"
+                              title={t('adminSetUserPassword')}
+                            >
+                              <KeyRound className="h-4 w-4" />
+                            </Button>
                             <Button size="sm" variant="outline" onClick={() => handleDeleteUser(user.user_id)} className="text-red-600 border-red-200 hover:bg-red-50" title={t('delete')}>
                               <Trash2 className="h-4 w-4" />
                             </Button>
@@ -726,24 +797,33 @@ export default function AdminUsersPage() {
                     )}
 
                     {/* Actions */}
-                    <div className="flex gap-2 pt-2">
+                    <div className="grid grid-cols-3 gap-2 pt-2">
                       <Button
                         variant="outline"
                         size="sm"
-                        className="flex-1 bg-white/80 border-slate-200 hover:bg-white"
+                        className="bg-white/80 border-slate-200 hover:bg-white"
                         onClick={() => handleEditUser(user)}
                         title={t('edit')}
                       >
-                        <Edit className="h-4 w-4" />
+                        <Edit className="h-4 w-4 mx-auto" />
                       </Button>
                       <Button
                         variant="outline"
                         size="sm"
-                        className="flex-1 text-red-600 border-red-200 hover:bg-red-50"
+                        className="text-amber-700 border-amber-200 hover:bg-amber-50/80 bg-white/80"
+                        onClick={() => handleOpenSetPassword(user)}
+                        title={t('adminSetUserPassword')}
+                      >
+                        <KeyRound className="h-4 w-4 mx-auto" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-red-600 border-red-200 hover:bg-red-50"
                         onClick={() => handleDeleteUser(user.user_id)}
                         title={t('delete')}
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <Trash2 className="h-4 w-4 mx-auto" />
                       </Button>
                     </div>
                   </div>
@@ -877,6 +957,71 @@ export default function AdminUsersPage() {
                 />
               </div>
             )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Set password (storefront) — admin */}
+        <Dialog
+          open={showSetPasswordModal}
+          onOpenChange={(open) => {
+            setShowSetPasswordModal(open)
+            if (!open) {
+              setSetPasswordUser(null)
+              setSetPasswordNew('')
+              setSetPasswordConfirm('')
+            }
+          }}
+        >
+          <DialogContent className="max-w-md border-slate-200 bg-white sm:rounded-lg">
+            <DialogHeader>
+              <DialogTitle>
+                {setPasswordUser
+                  ? t('adminSetUserPasswordTitle', {
+                      name: `${setPasswordUser.first_name} ${setPasswordUser.last_name}`.trim() || setPasswordUser.account_name,
+                    })
+                  : t('adminSetUserPassword')}
+              </DialogTitle>
+              <DialogDescription>{t('adminSetUserPasswordDesc')}</DialogDescription>
+            </DialogHeader>
+            <form onSubmit={submitSetPassword} className="space-y-4">
+              <div>
+                <Label htmlFor="admin_set_pw_new">{t('adminResetPasswordNew')}</Label>
+                <Input
+                  id="admin_set_pw_new"
+                  type="password"
+                  autoComplete="new-password"
+                  className="mt-1.5 h-10"
+                  value={setPasswordNew}
+                  onChange={(e) => setSetPasswordNew(e.target.value)}
+                  required
+                />
+              </div>
+              <div>
+                <Label htmlFor="admin_set_pw_confirm">{t('confirmPassword')}</Label>
+                <Input
+                  id="admin_set_pw_confirm"
+                  type="password"
+                  autoComplete="new-password"
+                  className="mt-1.5 h-10"
+                  value={setPasswordConfirm}
+                  onChange={(e) => setSetPasswordConfirm(e.target.value)}
+                  required
+                />
+              </div>
+              <DialogFooter className="gap-2 sm:gap-0">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setShowSetPasswordModal(false)}
+                  disabled={setPasswordSubmitting}
+                >
+                  {t('cancel')}
+                </Button>
+                <Button type="submit" disabled={setPasswordSubmitting}>
+                  {setPasswordSubmitting ? t('adminResetPasswordSubmitting') : t('adminResetPasswordButton')}
+                </Button>
+              </DialogFooter>
+            </form>
           </DialogContent>
         </Dialog>
 
