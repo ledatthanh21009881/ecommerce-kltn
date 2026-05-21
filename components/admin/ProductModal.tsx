@@ -489,10 +489,13 @@ export default function ProductModal({ isOpen, onClose, product, categories, onS
                   id="stock"
                   type="number"
                   value={formData.stock}
-                  onChange={(e) => handleInputChange('stock', parseInt(e.target.value) || 0)}
+                  readOnly
+                  disabled
                   placeholder="0"
                   min="0"
+                  className="bg-slate-50 text-slate-600 cursor-not-allowed"
                 />
+                <p className="text-xs text-gray-500 mt-1">{t('stockIncreaseViaPurchaseReceipt')}</p>
               </div>
 
               <div>
@@ -581,10 +584,13 @@ export default function ProductModal({ isOpen, onClose, product, categories, onS
                     <Input
                       type="number"
                       value={variant.stock_quantity}
-                      onChange={(e) => handleVariantChange(index, 'stock_quantity', parseInt(e.target.value) || 0)}
+                      readOnly
+                      disabled
                       placeholder="0"
                       min="0"
+                      className="bg-slate-50 text-slate-600 cursor-not-allowed"
                     />
+                    <p className="text-xs text-gray-500 mt-1">{t('stockIncreaseViaPurchaseReceipt')}</p>
                   </div>
                   <div>
                     <Label>{t('status')}</Label>

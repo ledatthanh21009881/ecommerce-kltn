@@ -566,23 +566,24 @@ export default function AddProductPage() {
                 </div>
 
                 <div>
-                  <Label htmlFor="stock_quantity">Stock Quantity *</Label>
+                  <Label htmlFor="stock_quantity">Stock Quantity</Label>
                   <div className="relative">
                     <Input
                       id="stock_quantity"
                       type="number"
                       value={formData.stock_quantity}
-                      onChange={(e) => setFormData((prev: ProductFormData) => ({ ...prev, stock_quantity: parseInt(e.target.value) || 0 }))}
+                      readOnly
+                      disabled
                       placeholder="0"
                       min="0"
                       step="1"
-                      className="pr-12"
-                      required
+                      className="pr-12 bg-slate-50 text-slate-600 cursor-not-allowed"
                     />
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">
                       pcs
                     </span>
                   </div>
+                  <p className="text-xs text-gray-500 mt-1">{t('stockIncreaseViaPurchaseReceipt')}</p>
                 </div>
               </div>
 
