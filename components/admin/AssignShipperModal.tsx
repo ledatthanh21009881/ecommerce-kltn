@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { toast } from 'sonner'
 import { Order, Shipper } from '@/lib/types'
 import { hasOrderAction } from '@/lib/admin-auth'
-import { shippersApi } from '@/lib/api'
+import { fetchJsonSafe, shippersApi } from '@/lib/api'
 import { useLanguage } from '@/contexts/LanguageContext'
 
 interface AssignShipperModalProps {
@@ -99,13 +99,15 @@ export default function AssignShipperModal({ isOpen, onClose, order, onShipperAs
     try {
       setLoading(true)
 
-      const data = await shippersApi.assign(
-        order.order_id.toString(),
-        String(selectedShipper.user_id),
+      const { ok, data } = await fetchJsonSafe(
+        `api/backend/v1/orders/${order.order_id}/assign-shipper`,
+        {
+          method: 'POST',
+          body: JSON.stringify({ shipper_id: selectedShipper.user_id }),
+        },
       )
 
-      if (data.success) {
-        // Check if it's a reassignment or already assigned
+      if (ok && data?.success) {
         const message = data.message || 'Shipper assigned successfully'
         if (message.includes('reassigned')) {
           toast.success(t('shipperReassignedSuccessfully'))
@@ -118,7 +120,8 @@ export default function AssignShipperModal({ isOpen, onClose, order, onShipperAs
         onClose()
         setSelectedShipper(null)
       } else {
-        toast.error(translateAssignShipperError(data.message))
+        const msg = data?.message || (ok ? t('failedToAssignShipper') : t('errorAssigningShipper'))
+        toast.error(translateAssignShipperError(msg))
       }
     } catch (error) {
       console.error('Error assigning shipper:', error)

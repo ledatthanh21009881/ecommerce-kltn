@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { Bell, Check, Loader2 } from 'lucide-react'
+import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { adminNotificationsApi } from '@/lib/api'
 import { useLanguage } from '@/contexts/LanguageContext'
@@ -30,6 +31,12 @@ function typeBadgeClass(t: string): string {
       return 'bg-amber-100 text-amber-800'
     case 'order_assigned':
       return 'bg-sky-100 text-sky-800'
+    case 'order_rejected':
+      return 'bg-orange-100 text-orange-800'
+    case 'order_reassigned':
+      return 'bg-emerald-100 text-emerald-800'
+    case 'order_reassign_failed':
+      return 'bg-red-100 text-red-800'
     default:
       return 'bg-slate-100 text-slate-700'
   }
@@ -93,6 +100,21 @@ export default function AdminNotificationBell() {
     })
     if (isUnread({ ...payload, is_read: payload.is_read } as NotifRow)) {
       setUnreadCount((c) => c + 1)
+    }
+
+    const toastOpts = { description: payload.message, duration: 10_000 }
+    switch (payload.type) {
+      case 'order_rejected':
+        toast.warning(payload.title, toastOpts)
+        break
+      case 'order_reassigned':
+        toast.success(payload.title, toastOpts)
+        break
+      case 'order_reassign_failed':
+        toast.error(payload.title, toastOpts)
+        break
+      default:
+        break
     }
   }, [])
 
