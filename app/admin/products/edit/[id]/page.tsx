@@ -249,7 +249,7 @@ export default function EditProductPage() {
       }
 
       console.log('📤 Updating product with data:', updateData)
-      const productId = product.product_id || product.id
+      const productId = product.product_id
       console.log('🎯 Product ID for update:', productId)
 
       let result
@@ -358,7 +358,7 @@ export default function EditProductPage() {
     if (!token) return
 
     console.log('📸 Starting image updates...')
-    const productId = product?.product_id || product?.id
+    const productId = product?.product_id
     
     // Update existing images that were modified
     const imagesToUpdate = images.filter(img => img.existing && (img.modified || img.file))
@@ -544,7 +544,7 @@ export default function EditProductPage() {
     
     if (imageToRemove?.existing && product) {
       try {
-        await productApi.deleteProductImage(product.id, parseInt(id))
+        await productApi.deleteProductImage(product.product_id, parseInt(id, 10))
         toast({
           title: "Image Deleted",
           description: "Image removed successfully",

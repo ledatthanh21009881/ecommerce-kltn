@@ -42,6 +42,30 @@ export async function PUT(
   }
 }
 
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: { id: string } },
+) {
+  try {
+    const response = await fetch(backendUrl(`/api/v1/product-images/${params.id}`), {
+      method: 'DELETE',
+      headers: {
+        Accept: 'application/json',
+        Authorization: request.headers.get('Authorization') || '',
+      },
+    })
+
+    const data = await response.json().catch(() => ({ success: response.ok }))
+    return NextResponse.json(data, { status: response.status })
+  } catch (error) {
+    console.error('Product image DELETE proxy error:', error)
+    return NextResponse.json(
+      { success: false, message: error instanceof Error ? error.message : 'Unknown error' },
+      { status: 500 },
+    )
+  }
+}
+
 export async function OPTIONS() {
   return new NextResponse(null, {
     status: 200,

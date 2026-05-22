@@ -221,6 +221,36 @@ export async function getCategories(): Promise<CategoriesResponse> {
   }
 }
 
+function getAdminAuthToken(): string | null {
+  if (typeof window === 'undefined') return null
+  return localStorage.getItem('adminToken') || localStorage.getItem('auth_token')
+}
+
+/** Admin product API helpers (used by edit/details pages). */
+export const productApi = {
+  async getProduct(productId: number): Promise<{ success: boolean; data: Product; message?: string }> {
+    const data = await getProductById(productId)
+    return { success: true, data }
+  },
+
+  async deleteProductImage(_productId: number, imageId: number): Promise<unknown> {
+    const token = getAdminAuthToken()
+    const response = await fetch(`/api/backend/v1/product-images/${imageId}`, {
+      method: 'DELETE',
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    })
+    const body = await response.json().catch(() => null)
+    if (!response.ok) {
+      throw new Error(
+        (body as { message?: string })?.message || `Failed to delete image (${response.status})`,
+      )
+    }
+    return body
+  },
+}
+
 // Form data interface for product creation/editing
 export interface ProductFormData {
   product_name: string
