@@ -141,6 +141,7 @@ export interface Order {
   status_logs?: OrderStatusLog[]
   tracking?: ShippingTracking
   payment?: Payment
+  delivery_proofs?: DeliveryProof[]
 }
 
 export interface OrderItem {
@@ -170,6 +171,18 @@ export interface OrderStatusLog {
   // Joined fields
   first_name?: string
   last_name?: string
+}
+
+export interface DeliveryProof {
+  proof_id?: number
+  order_id?: number
+  shipper_id?: number
+  status?: string
+  proof_type: string
+  photo_url: string
+  latitude?: number | null
+  longitude?: number | null
+  captured_at?: string
 }
 
 export interface ShippingTracking {

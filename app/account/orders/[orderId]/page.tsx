@@ -11,6 +11,8 @@ import { ORDER_STATUS_CONFIG } from '@/lib/tracking-types'
 import { shipperDestinationDistanceKm } from '@/lib/orderCustomerTracking'
 import ProtectedRoute from '@/components/protected-route'
 import { CustomerOrderStatusBar } from '@/components/account/CustomerOrderStatusBar'
+import { DeliveryProofThumbnail } from '@/components/orders/DeliveryProofThumbnail'
+import { pickLatestProof, type DeliveryProof } from '@/lib/deliveryProofs'
 
 /** Resolve product image URL: use as-is if absolute, else prepend backend base from env. */
 function productImageSrc(url: string | null | undefined): string | null {
@@ -71,6 +73,7 @@ interface OrderDetail {
     vehicle_info?: string
     rating?: number
   } | null
+  delivery_proofs?: DeliveryProof[]
 }
 
 function getStatusBadgeClass(status: string | undefined | null): string {
@@ -480,6 +483,24 @@ export default function OrderDetailPage() {
                   </table>
                 </div>
               </div>
+
+              {order.status === 'completed' && (
+                <div className="border-t border-gray-100 pt-6 pb-6">
+                  <h2
+                    className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4"
+                    style={{ fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, sans-serif' }}
+                  >
+                    Ảnh xác nhận đã giao hàng
+                  </h2>
+                  <div className="max-w-md">
+                    <DeliveryProofThumbnail
+                      label="Ảnh xác nhận đã giao hàng"
+                      proof={pickLatestProof(order.delivery_proofs, 'delivery_photo')}
+                      emptyText="Chưa có ảnh xác nhận"
+                    />
+                  </div>
+                </div>
+              )}
 
               {/* Thanh toán */}
               <div className="border-t border-gray-100 pt-6 pb-6">

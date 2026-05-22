@@ -1,7 +1,11 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { X, Package, Truck, CheckCircle, Clock, XCircle, MapPin, Phone, Mail, FileText, Calendar, DollarSign, User, ShoppingBag, QrCode } from 'lucide-react'
+import { X, Package, Truck, CheckCircle, Clock, XCircle, MapPin, Phone, Mail, FileText, Calendar, DollarSign, User, ShoppingBag, QrCode, Camera } from 'lucide-react'
+import Image from 'next/image'
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
+import { DeliveryProofThumbnail } from '@/components/orders/DeliveryProofThumbnail'
+import { pickLatestProof } from '@/lib/deliveryProofs'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -22,6 +26,7 @@ export default function OrderDetailModal({ isOpen, onClose, order, onStatusUpdat
   const { t } = useLanguage()
   const [loading, setLoading] = useState(false)
   const [orderDetails, setOrderDetails] = useState<Order | null>(null)
+  const [proofPreviewUrl, setProofPreviewUrl] = useState<string | null>(null)
 
   useEffect(() => {
     if (isOpen && order) {
@@ -344,6 +349,33 @@ export default function OrderDetailModal({ isOpen, onClose, order, onStatusUpdat
                 </Card>
               )}
 
+              {orderDetails.status === 'completed' && (
+                <Card className="bg-white border-0 shadow-sm">
+                  <CardHeader className="pb-4">
+                    <CardTitle className="flex items-center gap-2 text-slate-900">
+                      <div className="h-8 w-8 bg-gradient-to-br from-sky-500 to-blue-600 rounded-lg flex items-center justify-center">
+                        <Camera className="h-4 w-4 text-white" />
+                      </div>
+                      {t('deliveryProofPhotos')}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                      <DeliveryProofThumbnail
+                        label={t('arrivalProofPhoto')}
+                        proof={pickLatestProof(orderDetails.delivery_proofs, 'arrival_photo')}
+                        onImageClick={setProofPreviewUrl}
+                      />
+                      <DeliveryProofThumbnail
+                        label={t('deliveryProofPhoto')}
+                        proof={pickLatestProof(orderDetails.delivery_proofs, 'delivery_photo')}
+                        onImageClick={setProofPreviewUrl}
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
               {/* Payment Information */}
               {orderDetails.payment && (
                 <Card className="bg-white border-0 shadow-sm">
@@ -478,6 +510,22 @@ export default function OrderDetailModal({ isOpen, onClose, order, onStatusUpdat
           )}
         </div>
       </div>
+      <Dialog open={!!proofPreviewUrl} onOpenChange={(open) => !open && setProofPreviewUrl(null)}>
+        <DialogContent className="max-w-3xl p-2 sm:p-4">
+          <DialogTitle className="sr-only">{t('deliveryProofPhotos')}</DialogTitle>
+          {proofPreviewUrl && (
+            <div className="relative aspect-[4/3] w-full min-h-[240px]">
+              <Image
+                src={proofPreviewUrl}
+                alt={t('deliveryProofPhotos')}
+                fill
+                className="object-contain"
+                unoptimized
+              />
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
