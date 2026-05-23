@@ -185,7 +185,7 @@ export default function OrderTrackingPage() {
       
       const token = authUtils.getToken()
       if (!token) {
-        setError('Missing authentication token')
+        setError(t('trackingMissingAuthToken'))
         setOrders([])
         setOrderPagination(null)
         return
@@ -225,20 +225,22 @@ export default function OrderTrackingPage() {
         return
       }
 
-      const apiMessage = data?.message || `Orders API failed (status ${status ?? 'unknown'})`
+      const apiMessage =
+        data?.message ||
+        t('trackingOrdersLoadFailed').replace('{status}', String(status ?? 'unknown'))
       setError(apiMessage)
       setOrders([])
       setOrderPagination(null)
     } catch (err) {
       console.error('Error fetching orders:', err)
-      toast.error('Network error - cannot load tracking orders')
-      setError('Network error while loading tracking orders')
+      toast.error(t('trackingNetworkError'))
+      setError(t('trackingNetworkErrorState'))
       setOrders([])
       setOrderPagination(null)
     } finally {
       setLoading(false)
     }
-  }, [filters])
+  }, [filters, t])
 
   const fetchStats = useCallback(async () => {
     try {
@@ -300,7 +302,7 @@ export default function OrderTrackingPage() {
     fetchOrders()
     fetchStats()
     fetchShippers()
-    toast.success('Data refreshed')
+    toast.success(t('trackingDataRefreshed'))
   }
 
   const handleShipperSelect = (shipperId: number) => {
@@ -309,7 +311,7 @@ export default function OrderTrackingPage() {
 
   const openRouteModalForOrder = (order: OrderTracking) => {
     if (!order.shipper_id) {
-      toast.error('Đơn hàng chưa được gán shipper')
+      toast.error(t('trackingOrderNoShipperAssigned'))
       return
     }
     const group = ensureArray<OrderTracking>(orders).filter(

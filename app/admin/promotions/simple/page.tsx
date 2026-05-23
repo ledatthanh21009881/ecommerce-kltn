@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
 import ConfirmModal from '@/components/ui/confirm-modal'
 import { getBackendApiV1Base } from '@/app/api/backend/config'
+import { useLanguage } from '@/contexts/LanguageContext'
 
 interface Voucher {
   voucher_id: number
@@ -23,6 +24,7 @@ interface Voucher {
 }
 
 export default function SimplePromotionsPage() {
+  const { t } = useLanguage()
   const [vouchers, setVouchers] = useState<Voucher[]>([])
   const [loading, setLoading] = useState(true)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
@@ -44,10 +46,10 @@ export default function SimplePromotionsPage() {
         const data = await response.json()
         setVouchers(data.data.items || [])
       } else {
-        toast.error('Failed to fetch vouchers')
+        toast.error(t('failedToFetchVouchers'))
       }
     } catch (error) {
-      toast.error('Error fetching vouchers')
+      toast.error(t('errorFetchingVouchers'))
     } finally {
       setLoading(false)
     }
@@ -75,14 +77,14 @@ export default function SimplePromotionsPage() {
       })
 
       if (response.ok) {
-        toast.success('Xóa phiếu giảm giá thành công')
+        toast.success(t('voucherDeletedSuccessfully'))
         fetchVouchers()
       } else {
-        toast.error('Không thể xóa phiếu giảm giá')
+        toast.error(t('failedToDeleteVoucher'))
       }
     } catch (error) {
       console.error('Error deleting voucher:', error)
-      toast.error('Có lỗi xảy ra khi xóa phiếu giảm giá')
+      toast.error(t('errorDeletingVoucher'))
     } finally {
       setShowDeleteModal(false)
       setDeletingVoucherId(null)
@@ -210,10 +212,10 @@ export default function SimplePromotionsPage() {
           setDeletingVoucherId(null)
         }}
         onConfirm={confirmDeleteVoucher}
-        title="Xóa Phiếu giảm giá"
-        description="Bạn có chắc chắn muốn xóa phiếu giảm giá này? Hành động này không thể hoàn tác."
-        confirmText="Xóa"
-        cancelText="Hủy"
+        title={t('deleteVoucher')}
+        description={t('deleteVoucherConfirm')}
+        confirmText={t('delete')}
+        cancelText={t('cancel')}
       />
     </div>
   )

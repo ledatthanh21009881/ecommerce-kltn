@@ -96,7 +96,7 @@ export default function AdminPaymentsPage() {
       }
     } catch (error) {
       console.error('Error fetching payments:', error)
-      toast.error('Error fetching payments')
+      toast.error(t('errorFetchingPayments'))
     } finally {
       setLoading(false)
     }

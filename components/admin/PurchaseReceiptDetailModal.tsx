@@ -118,7 +118,7 @@ export default function PurchaseReceiptDetailModal({ isOpen, onClose, receipt, o
         toast.success(t('receiptConfirmedAndStockUpdated'))
         onConfirmed()
       } else {
-        toast.error(data.message || 'Failed to confirm receipt')
+        toast.error(data.message || t('failedToConfirmReceipt'))
       }
     } catch (error) {
       console.error('Error confirming receipt:', error)
@@ -197,7 +197,7 @@ export default function PurchaseReceiptDetailModal({ isOpen, onClose, receipt, o
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="text-sm font-medium text-gray-600">{t('receiptSupplierLabel')}</label>
-                      <p className="text-lg font-semibold">{receiptDetails?.supplier_name || 'N/A'}</p>
+                      <p className="text-lg font-semibold">{receiptDetails?.supplier_name || t('valueNotAvailable')}</p>
                     </div>
                     <div>
                       <label className="text-sm font-medium text-gray-600">{t('receiptStatusHeader')}</label>

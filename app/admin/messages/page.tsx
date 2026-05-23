@@ -10,6 +10,27 @@ import { toast } from 'sonner'
 import { getAuthData } from '@/lib/admin-auth'
 import EmojiPicker from 'emoji-picker-react'
 import { useLanguage } from '@/contexts/LanguageContext'
+import type { TranslationKey } from '@/lib/ui-translations'
+
+const MSG_STATUS_KEYS: Record<string, TranslationKey> = {
+  unread: 'msgStatusUnread',
+  read: 'msgStatusRead',
+  replied: 'msgStatusReplied',
+  closed: 'msgStatusClosed',
+}
+
+const MSG_TYPE_KEYS: Record<string, TranslationKey> = {
+  support: 'msgTypeSupport',
+  inquiry: 'msgTypeInquiry',
+  complaint: 'msgTypeComplaint',
+  feedback: 'msgTypeFeedback',
+}
+
+const MSG_PRIORITY_KEYS: Record<string, TranslationKey> = {
+  high: 'msgPriorityHigh',
+  medium: 'msgPriorityMedium',
+  low: 'msgPriorityLow',
+}
 
 interface Message {
   message_id: number
@@ -27,6 +48,22 @@ interface Message {
 
 export default function AdminMessagesPage() {
   const { t } = useLanguage()
+
+  const translateMsgStatus = (status: string) => {
+    const key = MSG_STATUS_KEYS[status]
+    return key ? t(key) : status
+  }
+
+  const translateMsgType = (type: string) => {
+    const key = MSG_TYPE_KEYS[type]
+    return key ? t(key) : type
+  }
+
+  const translateMsgPriority = (priority: string) => {
+    const key = MSG_PRIORITY_KEYS[priority]
+    const level = key ? t(key) : priority
+    return t('msgPrioritySuffix').replace('{level}', level)
+  }
   const [messages, setMessages] = useState<Message[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
@@ -45,11 +82,11 @@ export default function AdminMessagesPage() {
       if (data.success) {
         setMessages(data.data || [])
       } else {
-        toast.error('Failed to fetch messages')
+        toast.error(t('failedToFetchMessages'))
       }
     } catch (error) {
       console.error('Error fetching messages:', error)
-      toast.error('Error fetching messages')
+      toast.error(t('errorFetchingMessages'))
     } finally {
       setLoading(false)
     }
@@ -169,7 +206,7 @@ export default function AdminMessagesPage() {
     if (file) {
       // TODO: Implement image/video upload to server
       console.log('Media selected:', file)
-      toast.info('Media upload feature coming soon!')
+      toast.info(t('messagesMediaUploadSoon'))
     }
   }
 
@@ -178,7 +215,7 @@ export default function AdminMessagesPage() {
     if (file) {
       // TODO: Implement file upload to server
       console.log('File selected:', file)
-      toast.info('File upload feature coming soon!')
+      toast.info(t('messagesFileUploadSoon'))
     }
   }
 
@@ -197,7 +234,7 @@ export default function AdminMessagesPage() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-slate-600">Total Messages</p>
+                  <p className="text-sm font-medium text-slate-600">{t('messagesTotal')}</p>
                   <p className="text-2xl font-bold text-slate-900">{stats.total}</p>
                 </div>
                 <div className="h-12 w-12 bg-blue-100 rounded-lg flex items-center justify-center">
@@ -211,7 +248,7 @@ export default function AdminMessagesPage() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-slate-600">Unread</p>
+                  <p className="text-sm font-medium text-slate-600">{t('messagesUnread')}</p>
                   <p className="text-2xl font-bold text-slate-900">{stats.unread}</p>
                 </div>
                 <div className="h-12 w-12 bg-red-100 rounded-lg flex items-center justify-center">
@@ -225,7 +262,7 @@ export default function AdminMessagesPage() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-slate-600">Read</p>
+                  <p className="text-sm font-medium text-slate-600">{t('messagesRead')}</p>
                   <p className="text-2xl font-bold text-slate-900">{stats.read}</p>
                 </div>
                 <div className="h-12 w-12 bg-blue-100 rounded-lg flex items-center justify-center">
@@ -239,7 +276,7 @@ export default function AdminMessagesPage() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-slate-600">Replied</p>
+                  <p className="text-sm font-medium text-slate-600">{t('messagesReplied')}</p>
                   <p className="text-2xl font-bold text-slate-900">{stats.replied}</p>
                 </div>
                 <div className="h-12 w-12 bg-green-100 rounded-lg flex items-center justify-center">
@@ -253,7 +290,7 @@ export default function AdminMessagesPage() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-slate-600">Support</p>
+                  <p className="text-sm font-medium text-slate-600">{t('messagesSupport')}</p>
                   <p className="text-2xl font-bold text-slate-900">{stats.support}</p>
                 </div>
                 <div className="h-12 w-12 bg-blue-100 rounded-lg flex items-center justify-center">
@@ -267,7 +304,7 @@ export default function AdminMessagesPage() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-slate-600">Inquiries</p>
+                  <p className="text-sm font-medium text-slate-600">{t('messagesInquiries')}</p>
                   <p className="text-2xl font-bold text-slate-900">{stats.inquiry}</p>
                 </div>
                 <div className="h-12 w-12 bg-green-100 rounded-lg flex items-center justify-center">
@@ -287,7 +324,7 @@ export default function AdminMessagesPage() {
                 <div className="relative flex-1 max-w-md">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 h-4 w-4" />
                   <Input
-                    placeholder="Search by customer name, email or subject..."
+                    placeholder={t('messagesSearchPlaceholder')}
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="pl-10"
@@ -300,11 +337,11 @@ export default function AdminMessagesPage() {
                   onChange={(e) => setStatusFilter(e.target.value)}
                   className="px-3 py-2 border border-slate-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
-                  <option value="">All Status</option>
-                  <option value="unread">Unread</option>
-                  <option value="read">Read</option>
-                  <option value="replied">Replied</option>
-                  <option value="closed">Closed</option>
+                  <option value="">{t('messagesAllStatus')}</option>
+                  <option value="unread">{t('msgStatusUnread')}</option>
+                  <option value="read">{t('msgStatusRead')}</option>
+                  <option value="replied">{t('msgStatusReplied')}</option>
+                  <option value="closed">{t('msgStatusClosed')}</option>
                 </select>
 
                 {/* Type Filter */}
@@ -313,11 +350,11 @@ export default function AdminMessagesPage() {
                   onChange={(e) => setTypeFilter(e.target.value)}
                   className="px-3 py-2 border border-slate-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
-                  <option value="">All Types</option>
-                  <option value="support">Support</option>
-                  <option value="inquiry">Inquiry</option>
-                  <option value="complaint">Complaint</option>
-                  <option value="feedback">Feedback</option>
+                  <option value="">{t('messagesAllTypes')}</option>
+                  <option value="support">{t('msgTypeSupport')}</option>
+                  <option value="inquiry">{t('msgTypeInquiry')}</option>
+                  <option value="complaint">{t('msgTypeComplaint')}</option>
+                  <option value="feedback">{t('msgTypeFeedback')}</option>
                 </select>
               </div>
 
@@ -329,7 +366,7 @@ export default function AdminMessagesPage() {
                   className="flex items-center gap-2"
                 >
                   <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-                  Refresh
+                  {t('refresh')}
                 </Button>
               </div>
             </div>
@@ -353,7 +390,7 @@ export default function AdminMessagesPage() {
                   variant="ghost"
                   size="sm"
                   className="p-2 h-10 w-10 rounded-full bg-gray-100 hover:bg-gray-200"
-                  title="Send Photo/Video"
+                  title={t('messagesSendPhotoVideo')}
                   onClick={() => document.getElementById('admin-image-upload')?.click()}
                 >
                   <ImageIcon className="w-5 h-5 text-gray-600" />
@@ -372,7 +409,7 @@ export default function AdminMessagesPage() {
                   variant="ghost"
                   size="sm"
                   className="p-2 h-10 w-10 rounded-full bg-gray-100 hover:bg-gray-200"
-                  title="Send File"
+                  title={t('messagesSendFile')}
                   onClick={() => document.getElementById('admin-file-upload')?.click()}
                 >
                   <Paperclip className="w-5 h-5 text-gray-600" />
@@ -385,7 +422,7 @@ export default function AdminMessagesPage() {
                   variant="ghost"
                   size="sm"
                   className="p-2 h-10 w-10 rounded-full bg-gray-100 hover:bg-gray-200"
-                  title="Emoji"
+                  title={t('messagesEmoji')}
                   onClick={(e) => {
                     e.stopPropagation();
                     setShowEmojiPicker(!showEmojiPicker);
@@ -412,7 +449,7 @@ export default function AdminMessagesPage() {
               <Input
                 value={newMessage}
                 onChange={(e) => setNewMessage(e.target.value)}
-                placeholder="Type your message..."
+                placeholder={t('messagesTypePlaceholder')}
                 className="flex-1"
               />
               
@@ -422,7 +459,7 @@ export default function AdminMessagesPage() {
                 disabled={!newMessage.trim()}
               >
                 <Send className="h-4 w-4" />
-                Send
+                {t('messagesSend')}
               </Button>
             </div>
           </CardContent>
@@ -447,8 +484,8 @@ export default function AdminMessagesPage() {
           <Card className="bg-white shadow-sm">
             <CardContent className="p-12 text-center">
               <MessageSquare className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No messages found</h3>
-              <p className="text-gray-500">No messages match your search criteria.</p>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">{t('messagesNoFound')}</h3>
+              <p className="text-gray-500">{t('messagesNoMatch')}</p>
             </CardContent>
           </Card>
         ) : (
@@ -469,20 +506,20 @@ export default function AdminMessagesPage() {
                               variant="outline" 
                               className={`flex items-center gap-1 ${getTypeColor(message.message_type)}`}
                             >
-                              {message.message_type.charAt(0).toUpperCase() + message.message_type.slice(1)}
+                              {translateMsgType(message.message_type)}
                             </Badge>
                             <Badge 
                               variant="outline" 
                               className={`flex items-center gap-1 ${getStatusColor(message.status)}`}
                             >
-                              {message.status.charAt(0).toUpperCase() + message.status.slice(1)}
+                              {translateMsgStatus(message.status)}
                             </Badge>
                             {message.priority && (
                               <Badge 
                                 variant="outline" 
                                 className={`flex items-center gap-1 ${getPriorityColor(message.priority)}`}
                               >
-                                {message.priority.charAt(0).toUpperCase() + message.priority.slice(1)} Priority
+                                {translateMsgPriority(message.priority)}
                               </Badge>
                             )}
                           </div>
@@ -491,7 +528,7 @@ export default function AdminMessagesPage() {
 
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
                         <div>
-                          <p className="text-gray-600">Customer</p>
+                          <p className="text-gray-600">{t('messagesCustomer')}</p>
                           <p className="font-medium">{message.customer_name}</p>
                           <p className="text-gray-500">{message.customer_email}</p>
                           {message.customer_phone && (
@@ -499,14 +536,14 @@ export default function AdminMessagesPage() {
                           )}
                         </div>
                         <div>
-                          <p className="text-gray-600">Message</p>
+                          <p className="text-gray-600">{t('messagesMessageLabel')}</p>
                           <p className="text-sm">{truncateMessage(message.message)}</p>
                         </div>
                         <div>
-                          <p className="text-gray-600">Timeline</p>
-                          <p className="text-xs text-gray-500">Received: {formatDate(message.created_at)}</p>
+                          <p className="text-gray-600">{t('messagesTimeline')}</p>
+                          <p className="text-xs text-gray-500">{t('messagesReceived')}: {formatDate(message.created_at)}</p>
                           {message.replied_at && (
-                            <p className="text-xs text-gray-500">Replied: {formatDate(message.replied_at)}</p>
+                            <p className="text-xs text-gray-500">{t('messagesRepliedAt')}: {formatDate(message.replied_at)}</p>
                           )}
                         </div>
                       </div>
@@ -520,7 +557,7 @@ export default function AdminMessagesPage() {
                         className="flex items-center gap-2"
                       >
                         <Mail className="h-4 w-4" />
-                        Reply
+                        {t('messagesReply')}
                       </Button>
                       <Button
                         variant="outline"
@@ -528,7 +565,7 @@ export default function AdminMessagesPage() {
                         className="flex items-center gap-2"
                       >
                         <MessageSquare className="h-4 w-4" />
-                        View Details
+                        {t('viewDetails')}
                       </Button>
                       {message.status === 'unread' && (
                         <Button
@@ -537,7 +574,7 @@ export default function AdminMessagesPage() {
                           className="flex items-center gap-2"
                         >
                           <CheckCircle className="h-4 w-4" />
-                          Mark Read
+                          {t('messagesMarkRead')}
                         </Button>
                       )}
                     </div>
