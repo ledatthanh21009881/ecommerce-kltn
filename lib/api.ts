@@ -5,10 +5,53 @@ export const apiUrl = (endpoint: string) => {
   return `/${cleanEndpoint}`;
 };
 
+/**
+ * Khi gặp 401, clear hết auth state và redirect về trang login phù hợp với context.
+ * Dùng guard để chỉ chạy 1 lần (tránh N request fail cùng lúc gây N lần redirect).
+ */
+let sessionExpiredHandled = false;
+const handleSessionExpired = () => {
+  if (typeof window === 'undefined') return;
+  if (sessionExpiredHandled) return;
+  sessionExpiredHandled = true;
+
+  try {
+    localStorage.removeItem('adminToken');
+    localStorage.removeItem('adminUser');
+    localStorage.removeItem('admin_avatar_url');
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('refresh_token');
+    localStorage.removeItem('token_expires_at');
+    localStorage.removeItem('auth_token');
+    localStorage.removeItem('user_data');
+  } catch {}
+
+  const path = window.location.pathname;
+  const isAdmin = path.startsWith('/admin');
+  const loginUrl = isAdmin ? '/admin-login' : '/login';
+  if (path !== loginUrl) {
+    const params = new URLSearchParams({ reason: 'expired' });
+    window.location.href = `${loginUrl}?${params.toString()}`;
+  }
+};
+
+const isSessionExpiredResponse = (status: number, data: any): boolean => {
+  if (status === 401 || status === 403) return true;
+  // Backend có thể trả 200 với status_code:401 trong body (legacy) hoặc message khớp.
+  if (data && typeof data === 'object') {
+    if (data.status_code === 401 || data.status_code === 403) return true;
+    const msg = String(data.message || '').toLowerCase();
+    if (msg.includes('invalid or expired token') || msg.includes('invalid token') || msg.includes('token expired')) {
+      return true;
+    }
+  }
+  return false;
+};
+
 // Common fetch wrapper with authentication
 export const apiFetch = async (endpoint: string, options: RequestInit = {}) => {
   const token = localStorage.getItem('adminToken');
-  
+
   const defaultHeaders = {
     'Content-Type': 'application/json',
     ...(token && { 'Authorization': `Bearer ${token}` }),
@@ -23,15 +66,24 @@ export const apiFetch = async (endpoint: string, options: RequestInit = {}) => {
   };
 
   const response = await fetch(apiUrl(endpoint), config);
-  
+
+  let data: any = null;
+  try { data = await response.clone().json(); } catch {}
+
+  if (isSessionExpiredResponse(response.status, data)) {
+    handleSessionExpired();
+    throw new Error('Session expired');
+  }
+
   if (!response.ok) {
     throw new Error(`API Error: ${response.status} ${response.statusText}`);
   }
-  
-  return response.json();
+
+  return data ?? response.json();
 };
 
-// Safe fetch (không throw), luôn trả { ok, status, data }
+// Safe fetch (không throw), luôn trả { ok, status, data }.
+// Nếu phát hiện session expired → tự logout + redirect và trả ok:false.
 export const fetchJsonSafe = async (
   endpoint: string,
   options: RequestInit = {}
@@ -56,6 +108,10 @@ export const fetchJsonSafe = async (
       data = await response.json();
     } catch (e) {
       data = null;
+    }
+    if (isSessionExpiredResponse(status, data)) {
+      handleSessionExpired();
+      return { ok: false, status: 401, data };
     }
     return { ok: response.ok, status, data };
   } catch (e) {

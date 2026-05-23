@@ -19,8 +19,9 @@ export async function GET(request: NextRequest) {
 
     let data: any = null
     try { data = await response.json() } catch {}
+    // Forward đúng status code để FE handle 401 đúng cách.
     if (!response.ok) {
-      return NextResponse.json({ success: false, status: response.status, message: 'Backend error', data }, { status: 200 })
+      return NextResponse.json(data ?? { success: false, message: 'Backend error' }, { status: response.status })
     }
     return NextResponse.json(data)
   } catch (error) {

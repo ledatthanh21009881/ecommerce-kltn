@@ -63,47 +63,47 @@ class ApiClient {
 
       const data = await response.json()
 
-      if (!response.ok) {
-        // Handle token expiration - try refresh once via tokenStore (similar to axios interceptor)
-        if (
-          response.status === 401 &&
-          !options._retry &&
-          !isAuthEndpoint
-        ) {
-          // Mark this request as retried to avoid infinite loop
-          options._retry = true
-          
-          try {
-            console.log('[ApiClient] Token expired (401), attempting refresh...')
-            
-            // Refresh token via tokenStore
-            const newTokenData = await tokenStore.refreshToken()
-            
-            // Update adminToken in localStorage if it exists (critical fix!)
-            if (typeof window !== 'undefined') {
-              const adminToken = localStorage.getItem('adminToken')
-              if (adminToken) {
-                localStorage.setItem('adminToken', newTokenData.token)
-                console.log('[ApiClient] Updated adminToken after refresh')
-              }
+      // Phát hiện 401 cả ở HTTP status lẫn body (backend legacy có thể trả 200 + status_code:401).
+      const bodyStatusCode = data && typeof data === 'object' ? (data as any).status_code : undefined
+      const bodyMsg = data && typeof data === 'object' ? String((data as any).message || '').toLowerCase() : ''
+      const isExpired =
+        response.status === 401 ||
+        bodyStatusCode === 401 ||
+        bodyMsg.includes('invalid or expired token') ||
+        bodyMsg.includes('token expired')
+
+      if (isExpired && !options._retry && !isAuthEndpoint) {
+        options._retry = true
+        try {
+          console.log('[ApiClient] Token expired, attempting refresh...')
+          const newTokenData = await tokenStore.refreshToken()
+          if (typeof window !== 'undefined') {
+            const adminToken = localStorage.getItem('adminToken')
+            if (adminToken) {
+              localStorage.setItem('adminToken', newTokenData.token)
             }
-            
-            // Retry the original request with new token
-            console.log('[ApiClient] Retrying request with new token')
-            return this.request<T>(endpoint, options)
-          } catch (refreshError) {
-            console.error('[ApiClient] Token refresh failed:', refreshError)
-            // Clear all tokens
-            tokenStore.clearTokens()
-            if (typeof window !== 'undefined') {
-              localStorage.removeItem('adminToken')
-              // Redirect to login
-              window.location.href = '/admin-login'
-            }
-            throw new Error('Authentication failed: Please login again.')
           }
+          return this.request<T>(endpoint, options)
+        } catch (refreshError) {
+          console.error('[ApiClient] Token refresh failed:', refreshError)
+          tokenStore.clearTokens()
+          if (typeof window !== 'undefined') {
+            localStorage.removeItem('adminToken')
+            localStorage.removeItem('adminUser')
+            localStorage.removeItem('admin_avatar_url')
+            // Redirect về login phù hợp với context (admin vs customer).
+            const path = window.location.pathname
+            const isAdminCtx = path.startsWith('/admin')
+            const loginUrl = isAdminCtx ? '/admin-login' : '/login'
+            if (path !== loginUrl) {
+              window.location.href = `${loginUrl}?reason=expired`
+            }
+          }
+          throw new Error('Authentication failed: Please login again.')
         }
-        
+      }
+
+      if (!response.ok) {
         throw new Error(data.message || `HTTP error! status: ${response.status}`)
       }
 

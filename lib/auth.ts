@@ -612,8 +612,18 @@ export const fetchWithAuth = async (url: string, options: RequestInit = {}): Pro
 
     console.log('fetchWithAuth response status:', response.status, 'statusText:', response.statusText)
 
-    // If token expired (401), try to refresh and retry
-    if (response.status === 401) {
+    // Phát hiện 401 cả ở HTTP status lẫn body (backend legacy có thể trả 200 + status_code:401).
+    let body: any = null
+    try { body = await response.clone().json() } catch {}
+    const bodyStatusCode = body && typeof body === 'object' ? body.status_code : undefined
+    const bodyMsg = body && typeof body === 'object' ? String(body.message || '').toLowerCase() : ''
+    const isExpired =
+      response.status === 401 ||
+      bodyStatusCode === 401 ||
+      bodyMsg.includes('invalid or expired token') ||
+      bodyMsg.includes('token expired')
+
+    if (isExpired) {
       try {
         console.log('Token expired, attempting to refresh...')
         await refreshToken()

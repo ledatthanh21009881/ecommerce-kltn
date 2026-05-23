@@ -19,9 +19,9 @@ export async function GET(request: NextRequest) {
 
     let data: any = null
     try { data = await response.json() } catch {}
+    // Forward đúng status code (đặc biệt 401/403) để client interceptor xử lý refresh/logout.
     if (!response.ok) {
-      // Không ném lỗi; trả về 200 với success=false để FE tự fallback demo
-      return NextResponse.json({ success: false, status: response.status, message: 'Backend error', data }, { status: 200 })
+      return NextResponse.json(data ?? { success: false, message: 'Backend error' }, { status: response.status })
     }
     return NextResponse.json(data)
   } catch (error) {
