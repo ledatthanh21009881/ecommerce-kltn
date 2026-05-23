@@ -6,6 +6,7 @@ import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Search } from "lucide-react"
 import { useLanguage } from "@/components/language-provider"
+import { storefrontCenteredClass, storefrontMainClass, storefrontProductGridClass } from "@/components/storefront/storefront-layout"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { motion } from "framer-motion"
@@ -105,7 +106,7 @@ function SearchPageInner() {
   }
 
   return (
-    <div className="p-8 max-w-[85%] ml-[224px] mr-8">
+    <div className={storefrontMainClass()}>
       <h1 className="mb-2 font-serif text-3xl font-light md:text-4xl">{t('search.title')}</h1>
       <p className="mb-6 text-sm text-gray-500">{t('search.subtitle')}</p>
 
@@ -126,7 +127,7 @@ function SearchPageInner() {
       </form>
 
       {loading && (
-        <div className="grid grid-cols-3 gap-6">
+        <div className={storefrontProductGridClass}>
           {[1, 2, 3, 4, 5, 6].map((i) => (
             <div key={i} className="animate-pulse">
               <div className="aspect-[4/5] rounded bg-gray-200" />
@@ -152,7 +153,7 @@ function SearchPageInner() {
       )}
 
       {!loading && products.length > 0 && (
-        <div className="grid grid-cols-3 gap-6">
+        <div className={storefrontProductGridClass}>
           {products.map((product, index) => {
             if (!product?.product_id || !product.product_name) return null
             const productPrice = getProductPrice(product)
@@ -172,7 +173,7 @@ function SearchPageInner() {
                       alt={product.product_name || "Product image"}
                       fill
                       className="object-cover transition-transform duration-700 group-hover:scale-105"
-                      sizes="33vw"
+                      sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
                     />
                   </div>
                   <div className="mt-4">
@@ -200,7 +201,7 @@ export default function SearchPage() {
   return (
     <Suspense
       fallback={
-        <div className="flex min-h-[40vh] items-center justify-center p-8 max-w-[85%] ml-[224px] mr-8">
+        <div className={storefrontCenteredClass('min-h-[40vh]')}>
           <p className="text-gray-500">Loading…</p>
         </div>
       }

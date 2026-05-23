@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { useLanguage } from "@/components/language-provider"
+import { storefrontMainClass } from "@/components/storefront/storefront-layout"
 
 export default function ContactPage() {
   const { t } = useLanguage()
@@ -28,8 +29,8 @@ export default function ContactPage() {
   }
 
   return (
-    <main className="pt-24">
-      <div className="container mx-auto px-4 py-12">
+    <main className={storefrontMainClass()}>
+      <div className="mx-auto w-full max-w-2xl py-6 md:py-12">
         <div className="mx-auto max-w-2xl">
           <h1 className="mb-8 text-center font-serif text-3xl font-light md:text-4xl">{t('contact.title')}</h1>
           <p className="mb-12 text-center text-gray-600">{t('contact.subtitle')}</p>

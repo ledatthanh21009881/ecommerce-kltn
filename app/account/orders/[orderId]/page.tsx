@@ -14,6 +14,7 @@ import { CustomerOrderStatusBar } from '@/components/account/CustomerOrderStatus
 import { DeliveryProofThumbnail } from '@/components/orders/DeliveryProofThumbnail'
 import { pickLatestProof, type DeliveryProof } from '@/lib/deliveryProofs'
 import { useLanguage } from '@/components/language-provider'
+import { storefrontMainClass } from '@/components/storefront/storefront-layout'
 
 /** Resolve product image URL: use as-is if absolute, else prepend backend base from env. */
 function productImageSrc(url: string | null | undefined): string | null {
@@ -314,8 +315,8 @@ export default function OrderDetailPage() {
   if (loading) {
     return (
       <ProtectedRoute>
-        <main className="min-h-screen bg-[#f9fafb] pt-24 pb-12">
-          <div className="container mx-auto px-4 sm:px-6">
+        <main className="min-h-screen bg-[#f9fafb]">
+          <div className={storefrontMainClass('max-w-4xl mx-auto')}>
             <div className="mx-auto max-w-4xl animate-pulse space-y-4">
               <div className="h-6 w-48 rounded-xl bg-gray-200" />
               <div className="h-32 rounded-2xl bg-gray-200" />
@@ -330,8 +331,8 @@ export default function OrderDetailPage() {
   if (error || !order) {
     return (
       <ProtectedRoute>
-        <main className="min-h-screen bg-[#f9fafb] pt-24 pb-12">
-          <div className="container mx-auto px-4 sm:px-6 max-w-4xl">
+        <main className="min-h-screen bg-[#f9fafb]">
+          <div className={storefrontMainClass('max-w-4xl mx-auto w-full')}>
             <Link
               href="/account"
               className="inline-flex items-center text-sm text-gray-600 hover:text-black mb-6"
@@ -373,8 +374,8 @@ export default function OrderDetailPage() {
 
   return (
     <ProtectedRoute>
-      <main className="min-h-screen bg-[#f9fafb] pt-24 pb-12">
-        <div className="container mx-auto px-4 sm:px-6">
+      <main className="min-h-screen bg-[#f9fafb]">
+        <div className={storefrontMainClass('max-w-4xl mx-auto w-full')}>
           <div className="mx-auto max-w-4xl space-y-6">
             {/* Header */}
             <header>
@@ -454,8 +455,8 @@ export default function OrderDetailPage() {
               {/* Sản phẩm */}
               <div className="border-t border-gray-100 pt-6 pb-6">
                 <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4" style={{ fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, sans-serif' }}>{t('orderDetail.items')}</h2>
-                <div className="border border-gray-200 rounded-xl overflow-hidden">
-                  <table className="w-full text-sm">
+                <div className="border border-gray-200 rounded-xl overflow-x-auto">
+                  <table className="w-full min-w-[480px] text-sm">
                     <thead>
                       <tr className="bg-gray-50 border-b border-gray-200">
                         <th className="text-left p-3 font-medium text-gray-600 w-16">{t('orderDetail.image')}</th>

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { getProducts, getCategories, type Product, type ProductsFilters, type Category } from "@/lib/products"
 import { toast } from "sonner"
 import { useLanguage } from "@/components/language-provider"
+import { storefrontMainClass, storefrontProductGridClass } from "@/components/storefront/storefront-layout"
 
 // Helper function to format price
 const formatPrice = (price: number): string => {
@@ -128,11 +129,11 @@ export default function AllProductsPage() {
   }, [])
 
   return (
-    <div className="p-8 max-w-[85%] ml-[224px] mr-8">
+    <div className={storefrontMainClass()}>
 
         {/* Loading State */}
         {loading && (
-          <div className="grid gap-6 grid-cols-3">
+          <div className={storefrontProductGridClass}>
             {[...Array(6)].map((_, index) => (
               <div key={index} className="animate-pulse">
                 <div className="aspect-[4/5] bg-gray-200 rounded"></div>
@@ -147,7 +148,7 @@ export default function AllProductsPage() {
 
         {/* Products Grid */}
         {!loading && (
-          <div className="grid gap-6 grid-cols-3">
+          <div className={storefrontProductGridClass}>
             {products.map((product, index) => {
               // Skip products without valid data
               if (!product || !product.product_id || !product.product_name) {

@@ -14,6 +14,7 @@ import {
 } from "@/lib/products"
 import { toast } from "sonner"
 import { useLanguage } from "@/components/language-provider"
+import { storefrontMainClass, storefrontProductGridClass } from "@/components/storefront/storefront-layout"
 
 const formatPrice = (price: number): string => {
   return (
@@ -206,7 +207,7 @@ export default function CategoryPage() {
 
   if (!slug || (categoryMissing && !loadingCategory)) {
     return (
-      <div className="p-8 max-w-[85%] ml-[224px] mr-8">
+      <div className={storefrontMainClass()}>
         <div className="py-16 text-center">
           <h1 className="font-sans text-lg font-bold uppercase tracking-wide text-gray-800">
             Category not found
@@ -225,8 +226,8 @@ export default function CategoryPage() {
 
   if (loadingCategory) {
     return (
-      <div className="p-8 max-w-[85%] ml-[224px] mr-8">
-        <div className="grid gap-6 grid-cols-3">
+      <div className={storefrontMainClass()}>
+        <div className={storefrontProductGridClass}>
           {[...Array(6)].map((_, index) => (
             <div key={index} className="animate-pulse">
               <div className="aspect-[4/5] bg-gray-200 rounded" />
@@ -244,13 +245,13 @@ export default function CategoryPage() {
   const title = category?.category_name || slug
 
   return (
-    <div className="p-8 max-w-[85%] ml-[224px] mr-8">
+    <div className={storefrontMainClass()}>
       <h1 className="font-sans text-sm font-bold uppercase tracking-wide text-gray-800 mb-8">
         {title}
       </h1>
 
       {loadingProducts && (
-        <div className="grid gap-6 grid-cols-3">
+        <div className={storefrontProductGridClass}>
           {[...Array(6)].map((_, index) => (
             <div key={index} className="animate-pulse">
               <div className="aspect-[4/5] bg-gray-200 rounded" />
@@ -264,7 +265,7 @@ export default function CategoryPage() {
       )}
 
       {!loadingProducts && (
-        <div className="grid gap-6 grid-cols-3">
+        <div className={storefrontProductGridClass}>
           {products.map((product) => {
             if (!product?.product_id || !product.product_name) return null
             const productPrice = getProductPrice(product)

@@ -12,6 +12,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet"
 import { useLanguage } from "@/components/language-provider"
+import { storefrontMainClass } from "@/components/storefront/storefront-layout"
 
 // Helper function to format price
 const formatPrice = (price: number): string => {
@@ -286,9 +287,9 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
   }
 
   return (
-    <main className="pt-8">
-      <div className="p-8 max-w-[85%] ml-[224px] mr-8">
-        <div className="grid gap-16 lg:grid-cols-5" style={{ minHeight: '100vh', alignContent: 'start', position: 'relative' }}>
+    <main>
+      <div className={storefrontMainClass()}>
+        <div className="grid gap-10 lg:gap-16 grid-cols-1 lg:grid-cols-5" style={{ minHeight: 'min(100vh, auto)', alignContent: 'start', position: 'relative' }}>
         {/* Product Images */}
         <div className="lg:col-span-3 space-y-6">
           {/* Main Image */}

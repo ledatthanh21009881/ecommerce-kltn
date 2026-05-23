@@ -10,6 +10,7 @@ import { toast } from 'sonner'
 import { tokenStore } from '@/lib/tokenStore'
 import { getProductById } from '@/lib/products'
 import { useLanguage } from '@/components/language-provider'
+import { storefrontMainClass } from '@/components/storefront/storefront-layout'
 
 interface CartItem {
   item_id: number
@@ -282,7 +283,7 @@ export default function CartPage() {
 
   if (loading) {
     return (
-      <div className="p-8 max-w-[85%] ml-[224px] mr-8">
+      <div className={storefrontMainClass()}>
         <div className="py-12 text-center text-gray-600">{t('common.loading')}</div>
       </div>
     )
@@ -292,7 +293,7 @@ export default function CartPage() {
     <>
       {/* Error Banner - Top Right */}
       {errorMessage && (
-        <div className="fixed top-4 right-4 z-50 max-w-md animate-in slide-in-from-top-5">
+        <div className="fixed top-[calc(3.5rem+env(safe-area-inset-top,0px)+0.5rem)] right-4 z-50 max-w-[calc(100vw-2rem)] sm:max-w-md animate-in slide-in-from-top-5">
           <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-lg shadow-lg">
             <div className="flex items-start">
               <div className="flex-shrink-0">
@@ -316,7 +317,7 @@ export default function CartPage() {
         </div>
       )}
 
-      <div className="p-8 max-w-[85%] ml-[224px] mr-8">
+      <div className={storefrontMainClass()}>
         {cartData.items.length === 0 ? (
           <div className="flex flex-col items-center justify-center pt-[82px] pb-[82px] text-center">
             <p className="mb-6 text-lg text-gray-600">{t('cart.empty')}</p>
@@ -340,7 +341,7 @@ export default function CartPage() {
                   return (
                     <div 
                       key={item.item_id} 
-                      className={`flex gap-6 pb-6 border-b border-gray-200 ${isOutOfStock ? 'opacity-50' : ''}`}
+                      className={`flex flex-col sm:flex-row gap-4 sm:gap-6 pb-6 border-b border-gray-200 ${isOutOfStock ? 'opacity-50' : ''}`}
                     >
                     {/* Product Image */}
                     <div className="relative w-24 h-32 flex-shrink-0 overflow-hidden bg-gray-100">

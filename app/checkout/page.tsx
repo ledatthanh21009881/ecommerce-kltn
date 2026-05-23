@@ -18,6 +18,7 @@ import AddressMapboxAutocomplete from '@/components/AddressMapboxAutocomplete'
 import type { MapboxFeature, MapboxParsedAddress } from '@/lib/mapbox-address'
 import { applyResolvedVnAddressToForm, resolveMapboxToVnAdmin } from '@/lib/vn-admin-resolve'
 import { useLanguage } from '@/components/language-provider'
+import { storefrontMainClass } from '@/components/storefront/storefront-layout'
 
 
 function parseVndAmount(value: unknown): number {
@@ -552,14 +553,15 @@ export default function CheckoutPage() {
 
   if (loading) {
     return (
-      <div className="container mx-auto px-4 py-12">
-        <div className="text-center">{t('common.loading')}</div>
+      <div className={storefrontMainClass()}>
+        <div className="mx-auto max-w-6xl w-full text-center py-6">{t('common.loading')}</div>
       </div>
     )
   }
 
   return (
-    <div className="container mx-auto px-4 py-12 max-w-6xl">
+    <div className={storefrontMainClass()}>
+      <div className="mx-auto w-full max-w-6xl py-6 md:py-12">
       <h1 className="text-3xl font-bold mb-8">{t('checkout.title')}</h1>
 
       <div className="grid gap-8 lg:grid-cols-3">
@@ -956,6 +958,7 @@ export default function CheckoutPage() {
             </CardContent>
           </Card>
         </div>
+      </div>
       </div>
     </div>
   )

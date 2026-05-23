@@ -1,4 +1,5 @@
 import { getBackendBaseUrl } from '@/app/api/backend/config'
+import { storefrontMainClass } from '@/components/storefront/storefront-layout'
 
 const ABOUT_PATH = '/about'
 
@@ -23,7 +24,7 @@ export default async function AboutPage() {
 
   return (
     <main className="min-h-screen">
-      <div className="ml-[224px] pl-[24px] pt-[26px] pb-[87px] pr-12 font-gotham">
+      <div className={storefrontMainClass('font-gotham')}>
         <div
           className="font-gotham text-black text-[17px] leading-[1.8] space-y-6"
           style={{ fontFamily: 'SVN-Gotham' }}

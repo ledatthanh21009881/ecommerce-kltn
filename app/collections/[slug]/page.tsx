@@ -10,6 +10,7 @@ import {
   type CollectionImage
 } from '@/lib/collections-api'
 import { useLanguage } from '@/components/language-provider'
+import { storefrontCenteredClass, storefrontMainClass } from '@/components/storefront/storefront-layout'
 
 export default function CollectionDetailPage() {
   const { t } = useLanguage()
@@ -47,7 +48,7 @@ export default function CollectionDetailPage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center p-12 ml-[224px]">
+      <div className={storefrontCenteredClass()}>
         <div className="text-sm text-gray-500">{t('common.loading')}</div>
       </div>
     )
@@ -55,31 +56,29 @@ export default function CollectionDetailPage() {
 
   if (error || !collection) {
     return (
-      <div className="flex min-h-screen items-center justify-center p-12 ml-[224px]">
+      <div className={storefrontCenteredClass()}>
         <p className="text-sm text-gray-500">{error || t('collections.notFound')}</p>
       </div>
     )
   }
 
   return (
-    <div className="flex min-h-screen ml-[264px] pl-[40px] items-start pt-0">
-      {/* Text block - SVN-Gotham như GIAN SAIGON */}
-      <div className="w-[360px] shrink-0 pt-0 pr-[48px] pb-12 pl-0 font-gotham">
-        <h1 className="font-gotham text-[19px] font-light uppercase tracking-[2px] leading-[12px] pt-9 pb-9 opacity-[0.98] text-black mb-8 border-0 rotate-[360deg]">
+    <div className={storefrontMainClass('flex flex-col lg:flex-row lg:items-start gap-8 lg:gap-12')}>
+      <div className="w-full shrink-0 lg:w-[360px] font-gotham">
+        <h1 className="font-gotham text-base sm:text-[19px] font-light uppercase tracking-[2px] leading-snug pt-2 pb-6 opacity-[0.98] text-black mb-4 lg:mb-8 border-0">
           {collection.collection_name}
         </h1>
         {collection.short_description && (
           <div
-            className="font-gotham text-[17px] leading-[1.8] max-w-[400px] whitespace-pre-line text-black"
+            className="font-gotham text-sm sm:text-[17px] leading-[1.8] max-w-full whitespace-pre-line text-black"
             style={{ fontFamily: 'SVN-Gotham' }}
           >
             {collection.short_description}
           </div>
         )}
       </div>
-      {/* Image grid - ảnh bự hơn */}
-      <div className="flex-1 min-w-0 pt-0 pb-12 pl-0 pr-6">
-        <div className="grid grid-cols-3 gap-x-6 gap-y-0">
+      <div className="flex-1 min-w-0 w-full pb-12">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-4 sm:gap-x-6 gap-y-4">
           {images.map((img, i) => (
             <div
               key={i}
@@ -90,7 +89,7 @@ export default function CollectionDetailPage() {
                 alt=""
                 fill
                 className="object-cover"
-                sizes="(min-width: 1200px) 28vw, 50vw"
+                sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 28vw"
                 priority={i < 6}
               />
             </div>

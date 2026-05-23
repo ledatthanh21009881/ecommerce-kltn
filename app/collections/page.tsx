@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { fetchCollections } from '@/lib/collections-api'
 import { useLanguage } from '@/components/language-provider'
+import { storefrontCenteredClass } from '@/components/storefront/storefront-layout'
 
 export default function CollectionsIndexPage() {
   const { t } = useLanguage()
@@ -23,14 +24,14 @@ export default function CollectionsIndexPage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center ml-[224px]">
+      <div className={storefrontCenteredClass()}>
         <div className="text-sm text-gray-500">{t('common.loading')}</div>
       </div>
     )
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center ml-[224px]">
+    <div className={storefrontCenteredClass()}>
       <p className="text-sm text-gray-500">{t('collections.noCollections')}</p>
     </div>
   )

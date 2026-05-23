@@ -45,6 +45,7 @@ import {
   CommandList,
 } from "@/components/ui/command"
 import { Check, ChevronsUpDown } from "lucide-react"
+import { storefrontMainClass } from "@/components/storefront/storefront-layout"
 
 interface ProvinceOption {
   name: string
@@ -584,31 +585,31 @@ export default function AccountPage() {
     <ProtectedRoute>
       <main className="min-h-screen">
         <div
-          className="ml-[224px] pl-[24px] pt-[26px] pb-[87px] pr-12 font-gotham"
+          className={storefrontMainClass('font-gotham')}
           style={{ fontFamily: "SVN-Gotham" }}
         >
           <div className={contentClass} style={{ fontFamily: "SVN-Gotham" }}>
-            <h1 className="font-gotham text-2xl font-bold uppercase tracking-wider text-black mb-8">
+            <h1 className="font-gotham text-xl sm:text-2xl font-bold uppercase tracking-wider text-black mb-6 sm:mb-8">
               {t("account.title")}
             </h1>
 
             <Tabs defaultValue="orders" className="w-full">
-              <TabsList className="mb-8 h-auto w-full max-w-md border-b border-black/20 bg-transparent p-0 pl-0 pr-0 justify-start">
+              <TabsList className="mb-6 sm:mb-8 grid h-auto w-full grid-cols-3 border-b border-black/20 bg-transparent p-0">
                 <TabsTrigger
                   value="orders"
-                  className="font-gotham text-xs font-bold uppercase tracking-wider rounded-none border-b-2 border-transparent pb-3 pt-0 data-[state=active]:border-black data-[state=active]:text-black text-black/70"
+                  className="font-gotham text-[10px] sm:text-xs font-bold uppercase tracking-wider rounded-none border-b-2 border-transparent pb-3 pt-0 px-1 sm:px-2 data-[state=active]:border-black data-[state=active]:text-black text-black/70 whitespace-normal text-center leading-tight"
                 >
                   {t("account.tabOrders")}
                 </TabsTrigger>
                 <TabsTrigger
                   value="profile"
-                  className="font-gotham text-xs font-bold uppercase tracking-wider rounded-none border-b-2 border-transparent pb-3 pt-0 data-[state=active]:border-black data-[state=active]:text-black text-black/70"
+                  className="font-gotham text-[10px] sm:text-xs font-bold uppercase tracking-wider rounded-none border-b-2 border-transparent pb-3 pt-0 px-1 sm:px-2 data-[state=active]:border-black data-[state=active]:text-black text-black/70 whitespace-normal text-center leading-tight"
                 >
                   {t("account.tabProfile")}
                 </TabsTrigger>
                 <TabsTrigger
                   value="addresses"
-                  className="font-gotham text-xs font-bold uppercase tracking-wider rounded-none border-b-2 border-transparent pb-3 pt-0 data-[state=active]:border-black data-[state=active]:text-black text-black/70"
+                  className="font-gotham text-[10px] sm:text-xs font-bold uppercase tracking-wider rounded-none border-b-2 border-transparent pb-3 pt-0 px-1 sm:px-2 data-[state=active]:border-black data-[state=active]:text-black text-black/70 whitespace-normal text-center leading-tight"
                 >
                   {t("account.tabAddresses")}
                 </TabsTrigger>
@@ -630,7 +631,7 @@ export default function AccountPage() {
                     <p className="text-sm text-red-600 mb-4">{profileError}</p>
                   )}
                   <form className="space-y-6" onSubmit={handleSaveChanges}>
-                    <div className="grid grid-cols-2 gap-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                       <div className="space-y-2">
                         <label htmlFor="firstName" className={labelClass}>
                           {t("account.firstName")}
@@ -694,20 +695,20 @@ export default function AccountPage() {
                     </div>
 
                     <div className="border-t border-black/10 pt-6">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <h3 className="font-gotham text-[17px] font-medium uppercase tracking-wider">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="min-w-0">
+                          <h3 className="font-gotham text-base sm:text-[17px] font-medium uppercase tracking-wider">
                             {t("account.passwordSection")}
                           </h3>
-                          <p className="text-[15px] text-black/60 mt-1">
+                          <p className="text-sm sm:text-[15px] text-black/60 mt-1">
                             {t("account.passwordChangeHint")}
                           </p>
                         </div>
-                        <Link href="/change-password">
+                        <Link href="/change-password" className="shrink-0">
                           <Button
                             variant="outline"
                             size="sm"
-                            className="font-gotham text-xs font-bold uppercase tracking-wider rounded-none border-black/30 hover:bg-black/5"
+                            className="font-gotham w-full sm:w-auto text-xs font-bold uppercase tracking-wider rounded-none border-black/30 hover:bg-black/5"
                           >
                             {t("account.changePasswordBtn")}
                           </Button>
@@ -726,8 +727,8 @@ export default function AccountPage() {
                 </div>
               </TabsContent>
 
-              <TabsContent value="addresses" className="mt-0">
-                <div className="space-y-6">
+              <TabsContent value="addresses" className="mt-0 min-w-0 overflow-x-hidden">
+                <div className="space-y-6 min-w-0">
                   {addressesError && (
                     <p className="text-sm text-red-600">{addressesError}</p>
                   )}
@@ -736,7 +737,7 @@ export default function AccountPage() {
                   ) : (
                     <>
                       {addressesList.length > 0 && (
-                        <div className="flex flex-wrap items-center gap-4 border-b border-black/10 pb-4">
+                        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4 border-b border-black/10 pb-4">
                           <label className="flex cursor-pointer items-center gap-2 font-gotham text-sm">
                             <Checkbox
                               checked={isAllAddressesSelected}
@@ -757,7 +758,7 @@ export default function AccountPage() {
                           )}
                         </div>
                       )}
-                      <div className="grid gap-6 md:grid-cols-2">
+                      <div className="grid gap-4 sm:gap-6 grid-cols-1 lg:grid-cols-2">
                         {addressesList.map((addr) => (
                           <div
                             key={addr.address_id}
@@ -771,14 +772,14 @@ export default function AccountPage() {
                               }
                             }}
                             className={cn(
-                              "cursor-pointer rounded-sm border p-6 font-gotham transition-colors hover:bg-black/[0.02] focus:outline-none focus:ring-2 focus:ring-black/20",
+                              "cursor-pointer rounded-sm border p-4 sm:p-6 font-gotham transition-colors hover:bg-black/[0.02] focus:outline-none focus:ring-2 focus:ring-black/20 min-w-0 overflow-hidden",
                               selectedAddressIds.includes(addr.address_id)
                                 ? "border-2 border-black bg-black/[0.02]"
                                 : "border border-black/10 hover:border-black/20"
                             )}
                           >
-                            <div className="mb-4 flex items-start justify-between gap-2">
-                              <div className="flex min-w-0 flex-1 items-start gap-3">
+                            <div className="mb-4 flex flex-col gap-3">
+                              <div className="flex min-w-0 items-start gap-3">
                                 <span onClick={(e) => e.stopPropagation()} className="shrink-0">
                                   <Checkbox
                                     checked={selectedAddressIds.includes(addr.address_id)}
@@ -786,20 +787,23 @@ export default function AccountPage() {
                                     className="mt-0.5 rounded border-black/30"
                                   />
                                 </span>
-                                <h3 className="text-[17px] font-medium uppercase tracking-wider">
+                                <h3 className="min-w-0 flex-1 text-base sm:text-[17px] font-medium uppercase tracking-wide break-words leading-snug">
                                   {addr.receiver_name}
                                   {addr.is_default ? (
-                                    <span className="ml-2 text-xs font-normal normal-case text-black/60">
+                                    <span className="mt-1 block text-xs font-normal normal-case text-black/60 sm:ml-2 sm:mt-0 sm:inline">
                                       {t("account.defaultBadge")}
                                     </span>
                                   ) : null}
                                 </h3>
                               </div>
-                              <div className="flex shrink-0 gap-2" onClick={(e) => e.stopPropagation()}>
+                              <div
+                                className="flex flex-wrap gap-2 w-full pl-9 sm:pl-0"
+                                onClick={(e) => e.stopPropagation()}
+                              >
                                 <Button
                                   variant="outline"
                                   size="sm"
-                                  className="font-gotham text-xs uppercase tracking-wider rounded-none border-black/30"
+                                  className="font-gotham h-9 flex-1 min-w-[4.5rem] sm:flex-none text-[10px] sm:text-xs uppercase tracking-wider rounded-none border-black/30 px-2 sm:px-3"
                                   onClick={() => openEditAddress(addr)}
                                 >
                                   {t("account.edit")}
@@ -808,24 +812,24 @@ export default function AccountPage() {
                                   <Button
                                     variant="outline"
                                     size="sm"
-                                    className="font-gotham text-xs uppercase tracking-wider rounded-none border-black/30"
+                                    className="font-gotham h-9 flex-1 min-w-0 sm:flex-none text-[10px] sm:text-xs uppercase tracking-wider rounded-none border-black/30 px-2 sm:px-3 whitespace-normal leading-tight"
                                     onClick={() => handleSetDefaultAddress(addr.address_id)}
                                   >
-                                    {t("account.setDefault")}
+                                    <span className="sm:hidden">{t("account.setDefaultShort")}</span>
+                                    <span className="hidden sm:inline">{t("account.setDefault")}</span>
                                   </Button>
                                 )}
                                 <Button
                                   variant="outline"
                                   size="sm"
-                                  className="font-gotham text-xs uppercase tracking-wider rounded-none border-red-300 text-red-700"
+                                  className="font-gotham h-9 flex-1 min-w-[4.5rem] sm:flex-none text-[10px] sm:text-xs uppercase tracking-wider rounded-none border-red-300 text-red-700 px-2 sm:px-3"
                                   onClick={() => setDeleteTargetId(addr.address_id)}
                                 >
                                   {t("common.delete")}
                                 </Button>
                               </div>
                             </div>
-                            <div className="space-y-1 text-[15px] text-black/80 leading-[1.8]">
-                              <p>{addr.receiver_name}</p>
+                            <div className="space-y-1 pl-9 sm:pl-0 text-sm sm:text-[15px] text-black/80 leading-relaxed break-words">
                               <p>{addr.phone}</p>
                               <p>{addr.address_line}</p>
                               <p>{[addr.ward, addr.district, addr.province].filter(Boolean).join(", ")}</p>
