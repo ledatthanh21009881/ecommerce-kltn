@@ -10,6 +10,7 @@ import { Order, Shipper } from '@/lib/types'
 import { hasOrderAction } from '@/lib/admin-auth'
 import { fetchJsonSafe, shippersApi } from '@/lib/api'
 import { useLanguage } from '@/contexts/LanguageContext'
+import { translateOrderStatus } from '@/lib/orderLabels'
 
 interface AssignShipperModalProps {
   isOpen: boolean
@@ -46,7 +47,7 @@ export default function AssignShipperModal({ isOpen, onClose, order, onShipperAs
     if (message.includes('Cannot assign shipper. Order status must be')) {
       const statusMatch = message.match(/Current status:\s*([a-z_]+)/i)
       const status = statusMatch?.[1] || 'unknown'
-      return t('cannotAssignShipperInvalidStatus').replace('{status}', status)
+      return t('cannotAssignShipperInvalidStatus').replace('{status}', translateOrderStatus(status, t))
     }
 
     if (message.includes('Order not found')) {
@@ -78,11 +79,11 @@ export default function AssignShipperModal({ isOpen, onClose, order, onShipperAs
         console.log('Shippers set:', data.data.length, 'shippers')
       } else {
         console.error('API returned error:', data)
-        toast.error('Failed to fetch available shippers')
+        toast.error(t('failedToFetchAvailableShippers'))
       }
     } catch (error) {
       console.error('Error fetching shippers:', error)
-      toast.error('Error fetching available shippers')
+      toast.error(t('errorFetchingAvailableShippers'))
     } finally {
       setFetchingShippers(false)
     }

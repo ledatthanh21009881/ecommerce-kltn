@@ -12,6 +12,7 @@ import { hasOrderAction } from '@/lib/admin-auth'
 import { ordersApi } from '@/lib/api'
 import { useLanguage } from '@/contexts/LanguageContext'
 import type { TranslationKey } from '@/lib/ui-translations'
+import { translateOrderStatus } from '@/lib/orderLabels'
 
 interface OrderStatusModalProps {
   isOpen: boolean
@@ -23,7 +24,7 @@ interface OrderStatusModalProps {
 const getStatusOptions = (t: (key: TranslationKey) => string) => [
   { value: 'pending', label: t('pending'), icon: Clock, color: 'bg-amber-50 text-amber-700 border-amber-200' },
   { value: 'processing', label: t('processing'), icon: Package, color: 'bg-blue-50 text-blue-700 border-blue-200' },
-  { value: 'shipping', label: t('shipping'), icon: Truck, color: 'bg-purple-50 text-purple-700 border-purple-200' },
+  { value: 'shipping', label: t('orderStatusShipping'), icon: Truck, color: 'bg-purple-50 text-purple-700 border-purple-200' },
   { value: 'completed', label: t('completed'), icon: CheckCircle, color: 'bg-green-100 text-green-800 border-green-200' },
   { value: 'cancelled', label: t('cancelled'), icon: XCircle, color: 'bg-red-50 text-red-700 border-red-200' },
   { value: 'returned', label: t('returned'), icon: XCircle, color: 'bg-orange-50 text-orange-700 border-orange-200' }
@@ -53,24 +54,24 @@ export default function OrderStatusModal({ isOpen, onClose, order, onStatusUpdat
       )
 
       if (data.success) {
-        toast.success('Order status updated successfully')
+        toast.success(t('orderStatusUpdatedSuccess'))
         onStatusUpdate?.()
         onClose()
         setSelectedStatus('')
         setReason('')
       } else {
-        toast.error(data.message || 'Failed to update order status')
+        toast.error(data.message || t('failedToUpdateOrderStatus'))
       }
     } catch (error: unknown) {
       const err = error instanceof Error ? error : new Error(String(error))
       console.error('Error updating order status:', err)
 
-      let errorMessage = 'Có lỗi xảy ra khi cập nhật trạng thái đơn hàng'
+      let errorMessage = t('errorUpdatingOrderStatus')
       if (err.message.includes('non-JSON response')) {
-        errorMessage = 'Lỗi kết nối server. Vui lòng thử lại sau.'
+        errorMessage = t('errorServerConnectionRetry')
       } else if (err.message.includes('Failed to fetch') || err.message.includes('API Error: 403')) {
         errorMessage = t('noMenuAccess')
-      } else {
+      } else if (err.message.trim()) {
         errorMessage = err.message
       }
       
@@ -121,10 +122,7 @@ export default function OrderStatusModal({ isOpen, onClose, order, onStatusUpdat
   if (!isOpen) return null
 
   const currentStatus = order?.status ?? ''
-  const statusLabel = currentStatus
-    ? t(currentStatus as TranslationKey) ||
-      `${currentStatus.charAt(0).toUpperCase()}${currentStatus.slice(1)}`
-    : ''
+  const statusLabel = translateOrderStatus(currentStatus, t)
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -185,7 +183,7 @@ export default function OrderStatusModal({ isOpen, onClose, order, onStatusUpdat
               <span className="text-sm font-semibold text-slate-900">{t('statusFlowGuide')}</span>
             </div>
             <div className="text-xs text-slate-700 space-y-1">
-              <p><strong>{t('normal')}:</strong> {t('pending')} → {t('processing')} → {t('shipping')} → {t('completed')}</p>
+              <p><strong>{t('normal')}:</strong> {t('pending')} → {t('processing')} → {t('orderStatusShipping')} → {t('completed')}</p>
               <p><strong>{t('cancel')}:</strong> {t('anyStatus')} → {t('cancelled')}</p>
               <p><strong>{t('return')}:</strong> {t('completed')} → {t('returned')}</p>
             </div>

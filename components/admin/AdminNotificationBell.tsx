@@ -7,6 +7,7 @@ import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { adminNotificationsApi } from '@/lib/api'
 import { useLanguage } from '@/contexts/LanguageContext'
+import { translateNotificationType } from '@/lib/orderLabels'
 import { useAdminNotificationWebSocket } from '@/hooks/useAdminNotificationWebSocket'
 
 type NotifRow = {
@@ -226,7 +227,7 @@ export default function AdminNotificationBell() {
                             typeBadgeClass(n.type)
                           )}
                         >
-                          {n.type.replace(/_/g, ' ')}
+                          {translateNotificationType(n.type, t)}
                         </span>
                         <span className="text-[10px] text-gray-400">
                           {formatTime(n.created_at, language)}

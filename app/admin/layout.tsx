@@ -181,7 +181,7 @@ function AdminLayoutContent({
       href: '/admin/inventory'
     },
     {
-      name: t('shipping'),
+      name: t('menuShipping'),
       icon: Truck,
       href: '/admin/shipping'
     },

@@ -19,6 +19,7 @@ import ConfirmModal from '@/components/ui/confirm-modal'
 import { getAuthData, checkAndRefreshAuth, hasOrderAction, syncAdminMenusFromApi } from '@/lib/admin-auth'
 import { ordersApi } from '@/lib/api'
 import { useLanguage } from '@/contexts/LanguageContext'
+import { translateOrderStatus } from '@/lib/orderLabels'
 import { AdminPageHeading } from '@/components/admin/AdminPageHeading'
 import {
   DropdownMenu,
@@ -69,7 +70,7 @@ export default function AdminOrdersPage() {
       // Check and refresh token if needed
       const isAuthValid = await checkAndRefreshAuth()
       if (!isAuthValid) {
-        toast.error('Please login to view orders')
+        toast.error(t('pleaseLoginViewOrders'))
         window.location.href = '/admin-login'
         return
       }
@@ -77,7 +78,7 @@ export default function AdminOrdersPage() {
       // Get admin token (after refresh if needed)
       const { token } = getAuthData()
       if (!token) {
-        toast.error('Please login to view orders')
+        toast.error(t('pleaseLoginViewOrders'))
         window.location.href = '/admin-login'
         return
       }
@@ -118,11 +119,11 @@ export default function AdminOrdersPage() {
         }
       } else {
         console.error('Failed to fetch orders:', data)
-        toast.error('Failed to fetch orders')
+        toast.error(t('failedToFetchOrders'))
       }
     } catch (error) {
       console.error('Error fetching orders:', error)
-      toast.error('Error fetching orders')
+      toast.error(t('errorFetchingOrders'))
     } finally {
       setLoading(false)
     }
@@ -632,7 +633,7 @@ export default function AdminOrdersPage() {
                       <SelectItem value="all">{t('allStatus')}</SelectItem>
                       <SelectItem value="pending">{t('pending')}</SelectItem>
                       <SelectItem value="processing">{t('processing')}</SelectItem>
-                      <SelectItem value="shipping">{t('shipping')}</SelectItem>
+                      <SelectItem value="shipping">{t('orderStatusShipping')}</SelectItem>
                       <SelectItem value="completed">{t('completed')}</SelectItem>
                       <SelectItem value="cancelled">{t('cancelled')}</SelectItem>
                       <SelectItem value="returned">{t('returned')}</SelectItem>
@@ -722,8 +723,9 @@ export default function AdminOrdersPage() {
                         <p className="text-xs text-slate-500">#{order.order_id}</p>
                       </div>
                     </div>
-                    <Badge variant="outline" className={`shrink-0 text-xs ${getStatusColor(order.status)}`}>
+                    <Badge variant="outline" className={`shrink-0 text-xs gap-1 ${getStatusColor(order.status)}`}>
                       {getStatusIcon(order.status)}
+                      <span className="hidden sm:inline">{translateOrderStatus(order.status, t)}</span>
                     </Badge>
                   </div>
                   <p className="text-sm text-slate-700 truncate">{order.first_name} {order.last_name}</p>
@@ -770,7 +772,7 @@ export default function AdminOrdersPage() {
                         </div>
                         <Badge variant="outline" className={`flex items-center gap-1 px-3 py-1 ${getStatusColor(order.status)}`}>
                           {getStatusIcon(order.status)}
-                          {t(order.status)}
+                          {translateOrderStatus(order.status, t)}
                         </Badge>
                       </div>
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -789,7 +791,9 @@ export default function AdminOrdersPage() {
                         </div>
                         <div className="space-y-1">
                           <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">{t('items')}</p>
-                          <p className="font-semibold text-slate-900">{order.item_count || 'N/A'} items</p>
+                          <p className="font-semibold text-slate-900">
+                            {order.item_count ?? t('valueNotAvailable')} {t('orderItemsCountSuffix')}
+                          </p>
                         </div>
                       </div>
                       <div className="text-xs text-slate-400 border-t border-slate-100 pt-3">

@@ -13,6 +13,7 @@ import { toast } from 'sonner'
 import { Order, OrderItem, OrderStatusLog, ShippingTracking, Payment } from '@/lib/types'
 import { ordersApi } from '@/lib/api'
 import { useLanguage } from '@/contexts/LanguageContext'
+import { translateOrderStatus, translateShipperDeliveryStatus } from '@/lib/orderLabels'
 
 interface OrderDetailModalProps {
   isOpen: boolean
@@ -44,7 +45,7 @@ export default function OrderDetailModal({ isOpen, onClose, order, onStatusUpdat
       setOrderDetails(data.data)
     } catch (error) {
       console.error('Error fetching order details:', error)
-      toast.error('Error fetching order details')
+      toast.error(t('errorFetchingOrderDetails'))
     } finally {
       setLoading(false)
     }
@@ -194,7 +195,7 @@ export default function OrderDetailModal({ isOpen, onClose, order, onStatusUpdat
                           className={`flex items-center gap-2 px-4 py-2 text-sm font-medium w-fit ${getStatusColor(orderDetails.status)}`}
                         >
                           {getStatusIcon(orderDetails.status)}
-                          {t(orderDetails.status)}
+                          {translateOrderStatus(orderDetails.status, t)}
                         </Badge>
                       </div>
                       <div>
@@ -267,7 +268,7 @@ export default function OrderDetailModal({ isOpen, onClose, order, onStatusUpdat
                           <div>
                             <p className="font-semibold text-slate-900">{item.product_name_snapshot}</p>
                             <p className="text-sm text-slate-600">
-                              SKU: {item.sku || 'N/A'} | Size: {item.size_name || 'N/A'}
+                              {t('sku')}: {item.sku || t('valueNotAvailable')} | {t('size')}: {item.size_name || t('valueNotAvailable')}
                             </p>
                           </div>
                         </div>
@@ -318,7 +319,7 @@ export default function OrderDetailModal({ isOpen, onClose, order, onStatusUpdat
               </Card>
 
               {/* Shipping Information */}
-              {orderDetails.tracking && (
+              {(orderDetails.tracking || (orderDetails as { shipping_status?: string }).shipping_status) && (
                 <Card className="bg-white border-0 shadow-sm">
                   <CardHeader className="pb-4">
                     <CardTitle className="flex items-center gap-2 text-slate-900">
@@ -333,17 +334,33 @@ export default function OrderDetailModal({ isOpen, onClose, order, onStatusUpdat
                       <div className="space-y-3">
                         <div>
                           <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">{t('shipper')}</p>
-                          <p className="font-semibold text-slate-900">{orderDetails.tracking.first_name} {orderDetails.tracking.last_name}</p>
-                          <p className="text-sm text-slate-600">{orderDetails.tracking.phone}</p>
+                          {orderDetails.tracking ? (
+                            <>
+                              <p className="font-semibold text-slate-900">{orderDetails.tracking.first_name} {orderDetails.tracking.last_name}</p>
+                              <p className="text-sm text-slate-600">{orderDetails.tracking.phone}</p>
+                            </>
+                          ) : (
+                            <p className="text-sm text-slate-600">{t('notAssignedShipper')}</p>
+                          )}
                         </div>
+                        {(orderDetails as { shipping_status?: string }).shipping_status && (
+                          <div>
+                            <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">{t('shippingDeliveryStatus')}</p>
+                            <Badge variant="outline" className="mt-1 bg-purple-50 text-purple-800 border-purple-200">
+                              {translateShipperDeliveryStatus((orderDetails as { shipping_status?: string }).shipping_status, t)}
+                            </Badge>
+                          </div>
+                        )}
                       </div>
-                      <div className="space-y-3">
-                        <div>
-                          <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">{t('rating')}</p>
-                          <p className="font-semibold text-slate-900">{orderDetails.tracking.rating || 'N/A'}/5</p>
-                          <p className="text-sm text-slate-600">{t('phone')}: {orderDetails.tracking.phone || 'N/A'}</p>
+                      {orderDetails.tracking && (
+                        <div className="space-y-3">
+                          <div>
+                            <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">{t('rating')}</p>
+                            <p className="font-semibold text-slate-900">{orderDetails.tracking.rating ?? t('valueNotAvailable')}/5</p>
+                            <p className="text-sm text-slate-600">{t('phone')}: {orderDetails.tracking.phone || t('valueNotAvailable')}</p>
+                          </div>
                         </div>
-                      </div>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
@@ -365,11 +382,15 @@ export default function OrderDetailModal({ isOpen, onClose, order, onStatusUpdat
                         label={t('pickupProofPhoto')}
                         proof={pickLatestProof(orderDetails.delivery_proofs, 'pickup_photo')}
                         onImageClick={setProofPreviewUrl}
+                        emptyText={t('proofPhotoMissing')}
+                        unviewableText={t('proofPhotoUnviewable')}
                       />
                       <DeliveryProofThumbnail
                         label={t('deliveryProofPhoto')}
                         proof={pickLatestProof(orderDetails.delivery_proofs, 'delivery_photo')}
                         onImageClick={setProofPreviewUrl}
+                        emptyText={t('proofPhotoMissing')}
+                        unviewableText={t('proofPhotoUnviewable')}
                       />
                     </div>
                   </CardContent>
@@ -456,7 +477,7 @@ export default function OrderDetailModal({ isOpen, onClose, order, onStatusUpdat
                             {getStatusIcon(log.status)}
                           </div>
                           <div className="flex-1">
-                            <p className="font-semibold text-slate-900">{t(log.status as any) || log.status}</p>
+                            <p className="font-semibold text-slate-900">{translateOrderStatus(log.status, t)}</p>
                             {log.reason && <p className="text-sm text-slate-600">{log.reason}</p>}
                           </div>
                           <div className="text-right">
