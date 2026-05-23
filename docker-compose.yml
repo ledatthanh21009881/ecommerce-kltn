@@ -1,9 +1,21 @@
+# Compose tự đọc file .env cùng thư mục để thay ${VAR} trong build.args.
+# Sau khi sửa .env: docker compose build --no-cache frontend && docker compose up -d frontend
+
 services:
   frontend:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_BACKEND_URL: ${NEXT_PUBLIC_BACKEND_URL}
+        NEXT_PUBLIC_BACKEND_URL_VPS: ${NEXT_PUBLIC_BACKEND_URL_VPS}
+        NEXT_PUBLIC_WEBSOCKET_URL: ${NEXT_PUBLIC_WEBSOCKET_URL}
+        NEXT_PUBLIC_WEBSOCKET_PORT: ${NEXT_PUBLIC_WEBSOCKET_PORT}
+        NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN: ${NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN}
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
     container_name: ecommerce-frontend
+    env_file:
+      - .env
     ports:
       - "8081:3000"
     networks:

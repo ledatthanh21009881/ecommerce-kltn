@@ -362,8 +362,8 @@ export default function OrderDetailModal({ isOpen, onClose, order, onStatusUpdat
                   <CardContent>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                       <DeliveryProofThumbnail
-                        label={t('arrivalProofPhoto')}
-                        proof={pickLatestProof(orderDetails.delivery_proofs, 'arrival_photo')}
+                        label={t('pickupProofPhoto')}
+                        proof={pickLatestProof(orderDetails.delivery_proofs, 'pickup_photo')}
                         onImageClick={setProofPreviewUrl}
                       />
                       <DeliveryProofThumbnail
