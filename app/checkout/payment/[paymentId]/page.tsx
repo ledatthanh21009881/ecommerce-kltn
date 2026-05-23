@@ -7,6 +7,7 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { tokenStore } from '@/lib/tokenStore'
+import { useLanguage } from '@/components/language-provider'
 
 interface PaymentData {
   payment_id: number
@@ -52,6 +53,7 @@ function debugIngest(payload: unknown) {
 }
 
 export default function PaymentPage() {
+  const { t } = useLanguage()
   const router = useRouter()
   const params = useParams()
   const paymentId = params?.paymentId as string
@@ -132,7 +134,7 @@ export default function PaymentPage() {
       }
       
       if (!token) {
-        toast.error('Vui lòng đăng nhập để xem thanh toán')
+        toast.error(t('payment.loginToView'))
         router.push('/login')
         return
       }
@@ -147,7 +149,7 @@ export default function PaymentPage() {
       if (!response.ok) {
         const text = await response.text()
         console.error('Payment status API error:', response.status, text.substring(0, 200))
-        toast.error(`Failed to load payment: HTTP ${response.status}`)
+        toast.error(t('payment.loadFailedHttp', { status: String(response.status) }))
         setLoading(false)
         return
       }
@@ -157,7 +159,7 @@ export default function PaymentPage() {
       if (!contentType || !contentType.includes('application/json')) {
         const text = await response.text()
         console.error('Payment status API returned non-JSON:', contentType, text.substring(0, 200))
-        toast.error('Server returned invalid response')
+        toast.error(t('payment.invalidResponse'))
         setLoading(false)
         return
       }
@@ -210,11 +212,15 @@ export default function PaymentPage() {
           window.location.href = data.data.payment_url
         }
       } else {
-        toast.error(data.message || 'Failed to load payment')
+        toast.error(data.message || t('payment.loadFailed'))
       }
     } catch (error) {
       console.error('Error loading payment:', error)
-      toast.error('Failed to load payment: ' + (error instanceof Error ? error.message : 'Unknown error'))
+      toast.error(
+        t('payment.loadFailedDetail', {
+          detail: error instanceof Error ? error.message : t('common.unknownError'),
+        }),
+      )
     } finally {
       setLoading(false)
     }
@@ -344,7 +350,7 @@ export default function PaymentPage() {
                   })
 
                   // Show success message
-                  toast.success('Thanh toán thành công!')
+                  toast.success(t('payment.success'))
 
                   // Redirect to success page
                   setTimeout(() => {
@@ -403,7 +409,7 @@ export default function PaymentPage() {
   if (loading) {
     return (
       <div className="container mx-auto px-4 py-12">
-        <div className="text-center">Loading...</div>
+        <div className="text-center">{t('common.loading')}</div>
       </div>
     )
   }
@@ -413,7 +419,7 @@ export default function PaymentPage() {
       <div className="container mx-auto px-4 py-12">
         <div className="text-center">
           <h1 className="text-2xl font-bold mb-4">Payment not found</h1>
-          <Button onClick={() => router.push('/checkout')}>Back to Checkout</Button>
+          <Button onClick={() => router.push('/checkout')}>{t('payment.backToCheckout')}</Button>
         </div>
       </div>
     )
@@ -475,7 +481,7 @@ export default function PaymentPage() {
                     </div>
                     {countdown < 60 && (
                       <div className="text-xs text-red-600 mt-1">
-                        Vui lòng hoàn tất thanh toán trước khi hết thời gian!
+                        {t('payment.completeBeforeExpire')}
                       </div>
                     )}
                   </div>
@@ -543,7 +549,7 @@ export default function PaymentPage() {
                       </p>
                     )}
                     <p className="text-sm text-gray-500 mt-2">
-                      Vui lòng ghi đúng nội dung chuyển khoản để hệ thống tự động xác nhận
+                      {t('payment.transferMemoHint')}
                     </p>
                   </div>
                 </div>

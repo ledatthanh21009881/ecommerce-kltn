@@ -13,6 +13,7 @@ import {
   type Category,
 } from "@/lib/products"
 import { toast } from "sonner"
+import { useLanguage } from "@/components/language-provider"
 
 const formatPrice = (price: number): string => {
   return (
@@ -131,6 +132,7 @@ async function resolveCategoryBySlug(slug: string): Promise<Category | null> {
 }
 
 export default function CategoryPage() {
+  const { t } = useLanguage()
   const params = useParams()
   const rawSlug = (params?.slug as string) || ""
 
@@ -182,13 +184,13 @@ export default function CategoryPage() {
         if (response.success) {
           setProducts(response.data.items)
         } else {
-          toast.error("Failed to load products")
+          toast.error(t('catalog.failedProducts'))
           setProducts([])
         }
       } catch (e) {
         console.error(e)
         if (!cancelled) {
-          toast.error("Failed to load products")
+          toast.error(t('catalog.failedProducts'))
           setProducts([])
         }
       } finally {

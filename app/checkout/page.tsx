@@ -17,6 +17,7 @@ import { cn } from '@/lib/utils'
 import AddressMapboxAutocomplete from '@/components/AddressMapboxAutocomplete'
 import type { MapboxFeature, MapboxParsedAddress } from '@/lib/mapbox-address'
 import { applyResolvedVnAddressToForm, resolveMapboxToVnAdmin } from '@/lib/vn-admin-resolve'
+import { useLanguage } from '@/components/language-provider'
 
 
 function parseVndAmount(value: unknown): number {
@@ -106,6 +107,7 @@ interface Ward {
 }
 
 export default function CheckoutPage() {
+  const { t } = useLanguage()
   const router = useRouter()
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
@@ -239,11 +241,11 @@ export default function CheckoutPage() {
         setProvinces(data)
       } else {
         console.error('Failed to load provinces')
-        toast.error('Không thể tải danh sách tỉnh/thành phố')
+        toast.error(t('checkout.err.provinces'))
       }
     } catch (error) {
       console.error('Error loading provinces:', error)
-      toast.error('Lỗi khi tải danh sách tỉnh/thành phố')
+      toast.error(t('checkout.err.provincesNetwork'))
     }
   }
 
@@ -318,7 +320,7 @@ export default function CheckoutPage() {
       }
       
       if (!token) {
-        toast.error('Vui lòng đăng nhập để thanh toán')
+        toast.error(t('checkout.err.loginRequired'))
         router.push('/login')
         return
       }
@@ -409,11 +411,11 @@ export default function CheckoutPage() {
         }
       } else {
         console.error('Failed to load shipping methods:', shippingData)
-        toast.error('Không thể tải phương thức vận chuyển')
+        toast.error(t('checkout.err.shippingMethods'))
       }
     } catch (error) {
       console.error('Error loading checkout data:', error)
-      toast.error('Failed to load checkout data')
+      toast.error(t('checkout.err.loadData'))
     } finally {
       setLoading(false)
     }
@@ -430,23 +432,23 @@ export default function CheckoutPage() {
           !address.ward?.trim() ||
           !address.district?.trim() ||
           !address.province?.trim()) {
-        toast.error('Vui lòng điền đầy đủ thông tin địa chỉ giao hàng')
+        toast.error(t('checkout.err.addressRequired'))
         return
       }
     }
 
     if (!selectedShippingId) {
-      toast.error('Vui lòng chọn phương thức vận chuyển')
+      toast.error(t('checkout.err.selectShipping'))
       return
     }
 
     if (!selectedPaymentMethod) {
-      toast.error('Vui lòng chọn phương thức thanh toán')
+      toast.error(t('checkout.err.selectPayment'))
       return
     }
 
     if (cartItems.length === 0) {
-      toast.error('Giỏ hàng trống')
+      toast.error(t('checkout.err.emptyCart'))
       return
     }
 
@@ -461,14 +463,14 @@ export default function CheckoutPage() {
           token = newTokenData.token
         } catch (refreshError) {
           console.error('Token refresh failed:', refreshError)
-          toast.error('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại')
+          toast.error(t('checkout.err.sessionExpired'))
           router.push('/login')
           return
         }
       }
       
       if (!token) {
-        toast.error('Vui lòng đăng nhập để thanh toán')
+        toast.error(t('checkout.err.loginRequired'))
         router.push('/login')
         return
       }
@@ -478,7 +480,7 @@ export default function CheckoutPage() {
       }).then(r => r.json())
 
       if (!customerData.success || !customerData.data?.customer_id) {
-        toast.error('Không tìm thấy thông tin khách hàng')
+        toast.error(t('checkout.err.customerNotFound'))
         return
       }
 
@@ -535,14 +537,14 @@ export default function CheckoutPage() {
           // COD - redirect to success
           router.push('/checkout/payment/success?order_id=' + order.order_id)
         } else {
-          toast.error('Không tìm thấy thông tin thanh toán')
+          toast.error(t('checkout.err.paymentNotFound'))
         }
       } else {
-        toast.error(orderResult.message || 'Failed to create order')
+        toast.error(orderResult.message || t('checkout.err.createOrder'))
       }
     } catch (error) {
       console.error('Error creating order:', error)
-      toast.error('Failed to create order')
+      toast.error(t('checkout.err.createOrder'))
     } finally {
       setSubmitting(false)
     }
@@ -551,14 +553,14 @@ export default function CheckoutPage() {
   if (loading) {
     return (
       <div className="container mx-auto px-4 py-12">
-        <div className="text-center">Loading...</div>
+        <div className="text-center">{t('common.loading')}</div>
       </div>
     )
   }
 
   return (
     <div className="container mx-auto px-4 py-12 max-w-6xl">
-      <h1 className="text-3xl font-bold mb-8">Thanh toán</h1>
+      <h1 className="text-3xl font-bold mb-8">{t('checkout.title')}</h1>
 
       <div className="grid gap-8 lg:grid-cols-3">
         {/* Left Column - Forms */}
@@ -566,13 +568,13 @@ export default function CheckoutPage() {
           {/* Address Selection */}
           <Card>
             <CardHeader>
-              <CardTitle>Địa chỉ giao hàng</CardTitle>
+              <CardTitle>{t('checkout.shippingAddress')}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
                 {savedAddresses.length > 0 && (
                   <div className="space-y-3">
-                    <Label className="text-sm font-medium">Chọn địa chỉ có sẵn hoặc nhập mới</Label>
+                    <Label className="text-sm font-medium">{t('checkout.selectOrNewAddress')}</Label>
                     <RadioGroup
                       value={useNewAddress ? 'new' : String(selectedAddressId ?? '')}
                       onValueChange={(v) => {
@@ -600,7 +602,7 @@ export default function CheckoutPage() {
                       <div className="flex items-start gap-3 rounded-lg border p-3">
                         <RadioGroupItem value="new" id="addr-new" />
                         <Label htmlFor="addr-new" className="flex-1 cursor-pointer text-sm font-medium">
-                          Giao đến địa chỉ khác (nhập mới)
+                          {t('checkout.altAddress')}
                         </Label>
                       </div>
                     </RadioGroup>
@@ -609,9 +611,9 @@ export default function CheckoutPage() {
 
                 {(!savedAddresses.length || useNewAddress) && (
                   <>
-                    <Label className="text-sm">Thông tin địa chỉ giao hàng</Label>
+                    <Label className="text-sm">{t('checkout.addressInfo')}</Label>
                     <Input
-                      placeholder="Tên người nhận"
+                      placeholder={t('checkout.receiverName')}
                       value={addresses[0]?.receiver_name || ''}
                       onChange={(e) => {
                         setAddresses(prev => {
@@ -625,7 +627,7 @@ export default function CheckoutPage() {
                       }}
                     />
                     <Input
-                      placeholder="Số điện thoại"
+                      placeholder={t('checkout.phone')}
                       value={addresses[0]?.phone || ''}
                       onChange={(e) => {
                         setAddresses(prev => {
@@ -649,11 +651,11 @@ export default function CheckoutPage() {
                         })
                       }}
                       onPlaceSelect={handleMapboxPlaceSelect}
-                      placeholder="Số nhà, tên đường"
+                      placeholder={t('checkout.addressLine')}
                     />
                     <div className="grid grid-cols-3 gap-4">
                       <div>
-                        <Label className="text-sm mb-2 block">Tỉnh/Thành phố</Label>
+                        <Label className="text-sm mb-2 block">{t('checkout.province')}</Label>
                     <Popover open={provinceOpen} onOpenChange={setProvinceOpen}>
                       <PopoverTrigger asChild>
                         <Button
@@ -664,15 +666,15 @@ export default function CheckoutPage() {
                         >
                           {selectedProvinceCode
                             ? provinces.find((p) => p.code === selectedProvinceCode)?.name
-                            : "Chọn Tỉnh/Thành phố"}
+                            : t('checkout.pickProvince')}
                           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                         </Button>
                       </PopoverTrigger>
                       <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
                         <Command>
-                          <CommandInput placeholder="Tìm kiếm tỉnh/thành phố..." />
+                          <CommandInput placeholder={t('checkout.searchProvince')} />
                           <CommandList>
-                            <CommandEmpty>Không tìm thấy.</CommandEmpty>
+                            <CommandEmpty>{t('checkout.cmdEmpty')}</CommandEmpty>
                             <CommandGroup>
                               {provinces.map((province) => (
                                 <CommandItem
@@ -715,7 +717,7 @@ export default function CheckoutPage() {
                     </Popover>
                   </div>
                   <div>
-                    <Label className="text-sm mb-2 block">Quận/Huyện</Label>
+                    <Label className="text-sm mb-2 block">{t('checkout.district')}</Label>
                     <Popover open={districtOpen} onOpenChange={setDistrictOpen}>
                       <PopoverTrigger asChild>
                         <Button
@@ -727,15 +729,15 @@ export default function CheckoutPage() {
                         >
                           {selectedDistrictCode
                             ? districts.find((d) => d.code === selectedDistrictCode)?.name
-                            : "Chọn Quận/Huyện"}
+                            : t('checkout.pickDistrict')}
                           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                         </Button>
                       </PopoverTrigger>
                       <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
                         <Command>
-                          <CommandInput placeholder="Tìm kiếm quận/huyện..." />
+                          <CommandInput placeholder={t('checkout.searchDistrict')} />
                           <CommandList>
-                            <CommandEmpty>Không tìm thấy.</CommandEmpty>
+                            <CommandEmpty>{t('checkout.cmdEmpty')}</CommandEmpty>
                             <CommandGroup>
                               {districts.map((district) => (
                                 <CommandItem
@@ -778,7 +780,7 @@ export default function CheckoutPage() {
                     </Popover>
                   </div>
                   <div>
-                    <Label className="text-sm mb-2 block">Phường/Xã</Label>
+                    <Label className="text-sm mb-2 block">{t('checkout.ward')}</Label>
                     <Popover open={wardOpen} onOpenChange={setWardOpen}>
                       <PopoverTrigger asChild>
                         <Button
@@ -790,15 +792,15 @@ export default function CheckoutPage() {
                         >
                           {selectedWardCode
                             ? wards.find((w) => w.code === selectedWardCode)?.name
-                            : "Chọn Phường/Xã"}
+                            : t('checkout.pickWard')}
                           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                         </Button>
                       </PopoverTrigger>
                       <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
                         <Command>
-                          <CommandInput placeholder="Tìm kiếm phường/xã..." />
+                          <CommandInput placeholder={t('checkout.searchWard')} />
                           <CommandList>
-                            <CommandEmpty>Không tìm thấy.</CommandEmpty>
+                            <CommandEmpty>{t('checkout.cmdEmpty')}</CommandEmpty>
                             <CommandGroup>
                               {wards.map((ward) => (
                                 <CommandItem
@@ -850,11 +852,11 @@ export default function CheckoutPage() {
           {/* Shipping Method */}
           <Card>
             <CardHeader>
-              <CardTitle>Phương thức vận chuyển</CardTitle>
+              <CardTitle>{t('checkout.shippingMethod')}</CardTitle>
             </CardHeader>
             <CardContent>
               {shippingMethods.length === 0 ? (
-                <p className="text-gray-500 text-sm">Không có phương thức vận chuyển nào. Vui lòng thử lại sau.</p>
+                <p className="text-gray-500 text-sm">{t('checkout.noShippingMethods')}</p>
               ) : (
                 <RadioGroup value={selectedShippingId?.toString()} onValueChange={(v) => setSelectedShippingId(parseInt(v))}>
                   {shippingMethods.map((method) => (
@@ -865,7 +867,7 @@ export default function CheckoutPage() {
                           <span>{method.name}</span>
                           <span className="font-semibold">{formatVnd(parseVndAmount(method.fee))}</span>
                         </div>
-                        <p className="text-sm text-gray-500">Giao hàng trong {method.estimated_days} ngày</p>
+                        <p className="text-sm text-gray-500">{t('checkout.deliveryInDays', { days: String(method.estimated_days) })}</p>
                       </Label>
                     </div>
                   ))}
@@ -877,7 +879,7 @@ export default function CheckoutPage() {
           {/* Payment Method */}
           <Card>
             <CardHeader>
-              <CardTitle>Phương thức thanh toán</CardTitle>
+              <CardTitle>{t('checkout.paymentMethod')}</CardTitle>
             </CardHeader>
             <CardContent>
               <RadioGroup value={selectedPaymentMethod} onValueChange={setSelectedPaymentMethod}>
@@ -885,13 +887,13 @@ export default function CheckoutPage() {
                   <div className="flex items-center space-x-2 border rounded p-4">
                     <RadioGroupItem value="cod" id="payment-cod" />
                     <Label htmlFor="payment-cod" className="flex-1 cursor-pointer">
-                      COD (Thanh toán khi nhận hàng)
+                      {t('checkout.paymentCod')}
                     </Label>
                   </div>
                   <div className="flex items-center space-x-2 border rounded p-4">
                     <RadioGroupItem value="payos" id="payment-payos" />
                     <Label htmlFor="payment-payos" className="flex-1 cursor-pointer">
-                      Chuyển khoản ngân hàng
+                      {t('checkout.paymentPayos')}
                     </Label>
                   </div>
                 </div>
@@ -902,11 +904,11 @@ export default function CheckoutPage() {
           {/* Note */}
           <Card>
             <CardHeader>
-              <CardTitle>Ghi chú</CardTitle>
+              <CardTitle>{t('checkout.notes')}</CardTitle>
             </CardHeader>
             <CardContent>
               <Textarea
-                placeholder="Ghi chú cho đơn hàng (tùy chọn)"
+                placeholder={t('checkout.notesPlaceholder')}
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
                 rows={3}
@@ -919,7 +921,7 @@ export default function CheckoutPage() {
         <div className="lg:col-span-1">
           <Card className="sticky top-4">
             <CardHeader>
-              <CardTitle>Tóm tắt đơn hàng</CardTitle>
+              <CardTitle>{t('checkout.orderSummary')}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
@@ -932,15 +934,15 @@ export default function CheckoutPage() {
               </div>
               <div className="border-t pt-4 space-y-2">
                 <div className="flex justify-between">
-                  <span>Tạm tính:</span>
+                  <span>{t('checkout.subtotal')}:</span>
                   <span>{formatVnd(parseVndAmount(subtotal))}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span>Phí vận chuyển:</span>
+                  <span>{t('checkout.shippingFee')}:</span>
                   <span>{formatVnd(parseVndAmount(shippingFee))}</span>
                 </div>
                 <div className="flex justify-between font-bold text-lg border-t pt-2">
-                  <span>Tổng cộng:</span>
+                  <span>{t('checkout.total')}:</span>
                   <span>{formatVnd(parseVndAmount(total))}</span>
                 </div>
               </div>
@@ -949,7 +951,7 @@ export default function CheckoutPage() {
                 onClick={handleSubmit}
                 disabled={submitting || !selectedPaymentMethod}
               >
-                {submitting ? 'Đang xử lý...' : 'Đặt hàng'}
+                {submitting ? t('checkout.processing') : t('checkout.placeOrder')}
               </Button>
             </CardContent>
           </Card>

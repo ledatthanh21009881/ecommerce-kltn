@@ -5,6 +5,7 @@ import Image from "next/image"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Search } from "lucide-react"
+import { useLanguage } from "@/components/language-provider"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { motion } from "framer-motion"
@@ -52,6 +53,7 @@ const getProductPrice = (product: Product): { price: string; originalPrice?: str
 }
 
 function SearchPageInner() {
+  const { t } = useLanguage()
   const router = useRouter()
   const searchParams = useSearchParams()
   const qParam = (searchParams.get("q") ?? "").trim()
@@ -77,11 +79,12 @@ function SearchPageInner() {
       } else {
         setProducts([])
         if (response.message) toast.error(response.message)
+        else toast.error(t('search.couldNotLoad'))
       }
     } catch (e) {
       console.error(e)
       setProducts([])
-      toast.error("Could not load search results")
+      toast.error(t('search.couldNotLoad'))
     } finally {
       setLoading(false)
     }
@@ -103,22 +106,22 @@ function SearchPageInner() {
 
   return (
     <div className="p-8 max-w-[85%] ml-[224px] mr-8">
-      <h1 className="mb-2 font-serif text-3xl font-light md:text-4xl">Search</h1>
-      <p className="mb-6 text-sm text-gray-500">Tìm kiếm sản phẩm</p>
+      <h1 className="mb-2 font-serif text-3xl font-light md:text-4xl">{t('search.title')}</h1>
+      <p className="mb-6 text-sm text-gray-500">{t('search.subtitle')}</p>
 
       <form onSubmit={handleSubmit} className="relative mb-10 max-w-xl">
         <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
         <Input
           type="search"
           name="q"
-          placeholder="Nhập tên sản phẩm..."
+          placeholder={t('search.placeholder')}
           value={input}
           onChange={(e) => setInput(e.target.value)}
           className="pl-12 pr-28 text-lg"
           autoComplete="off"
         />
         <Button type="submit" className="absolute right-1 top-1/2 h-9 -translate-y-1/2 px-4">
-          Tìm
+          {t('search.submit')}
         </Button>
       </form>
 
@@ -139,10 +142,10 @@ function SearchPageInner() {
       {!loading && qParam && (
         <p className="mb-6 text-sm text-gray-700">
           {products.length === 0 ? (
-            <>Không có sản phẩm cho từ khóa &quot;{qParam}&quot;</>
+            <>{t('search.noResults').replace('{q}', qParam)}</>
           ) : (
             <>
-              Có {products.length} sản phẩm — kết quả cho &quot;{qParam}&quot;
+              {t('search.resultsCount').replace('{count}', String(products.length)).replace('{q}', qParam)}
             </>
           )}
         </p>

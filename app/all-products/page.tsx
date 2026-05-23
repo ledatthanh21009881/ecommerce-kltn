@@ -6,6 +6,7 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { getProducts, getCategories, type Product, type ProductsFilters, type Category } from "@/lib/products"
 import { toast } from "sonner"
+import { useLanguage } from "@/components/language-provider"
 
 // Helper function to format price
 const formatPrice = (price: number): string => {
@@ -69,6 +70,7 @@ const getProductPrice = (product: Product): { price: string; originalPrice?: str
 }
 
 export default function AllProductsPage() {
+  const { t } = useLanguage()
   const [products, setProducts] = useState<Product[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(true)
@@ -83,7 +85,7 @@ export default function AllProductsPage() {
         if (response.success) {
           setCategories(response.data.items)
         } else {
-          toast.error("Failed to load categories")
+          toast.error(t('catalog.failedCategories'))
         }
       } catch (error) {
         console.error("Error fetching categories:", error)
@@ -112,7 +114,7 @@ export default function AllProductsPage() {
           console.log('Products data:', response.data.items)
           setProducts(response.data.items)
         } else {
-          toast.error("Failed to load products")
+          toast.error(t('catalog.failedProducts'))
         }
       } catch (error) {
         console.error("Error fetching products:", error)

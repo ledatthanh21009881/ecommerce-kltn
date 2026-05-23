@@ -13,6 +13,7 @@ import ProtectedRoute from '@/components/protected-route'
 import { CustomerOrderStatusBar } from '@/components/account/CustomerOrderStatusBar'
 import { DeliveryProofThumbnail } from '@/components/orders/DeliveryProofThumbnail'
 import { pickLatestProof, type DeliveryProof } from '@/lib/deliveryProofs'
+import { useLanguage } from '@/components/language-provider'
 
 /** Resolve product image URL: use as-is if absolute, else prepend backend base from env. */
 function productImageSrc(url: string | null | undefined): string | null {
@@ -85,22 +86,26 @@ function getStatusBadgeClass(status: string | undefined | null): string {
   return 'bg-gray-100 text-gray-800'
 }
 
-/** API người dùng có thể trả `processing`, `shipping`… không có trong ORDER_STATUS_CONFIG. */
-const USER_ORDER_EXTRA_LABELS: Record<string, string> = {
-  processing: 'Đang xử lý',
-  shipping: 'Đang giao',
-  completed: 'Hoàn thành',
-  packaged: 'Đang đóng gói',
-  packaging: 'Đang đóng gói',
-  ready_to_ship: 'Chuẩn bị giao',
-  payment_pending: 'Chờ thanh toán',
-}
+const ORDER_DETAIL_STATUS_KEYS = [
+  'processing',
+  'shipping',
+  'completed',
+  'packaged',
+  'packaging',
+  'ready_to_ship',
+  'payment_pending',
+] as const
 
-function getStatusLabel(status: string | undefined | null): string {
+function getStatusLabel(
+  status: string | undefined | null,
+  t: (key: string) => string,
+): string {
   const raw = (status ?? '').toString().trim()
   const s = raw.toLowerCase()
   if (!s) return '—'
-  if (USER_ORDER_EXTRA_LABELS[s]) return USER_ORDER_EXTRA_LABELS[s]
+  if ((ORDER_DETAIL_STATUS_KEYS as readonly string[]).includes(s)) {
+    return t(`orderDetail.status.${s}`)
+  }
   const key = s as keyof typeof ORDER_STATUS_CONFIG
   if (key in ORDER_STATUS_CONFIG) return ORDER_STATUS_CONFIG[key].label
   return raw
@@ -121,28 +126,36 @@ function formatDateTime(dateString: string) {
   return `${day}/${month}/${year} ${h}:${m}`
 }
 
-function getPaymentMethodLabel(method: string | undefined): string {
+function getPaymentMethodLabel(method: string | undefined, t: (key: string) => string): string {
   if (!method) return '—'
   const m = method.toLowerCase()
-  if (m === 'cod' || m === 'cash') return 'Tiền mặt (COD)'
-  if (m === 'payos' || m === 'bank_transfer') return 'Chuyển khoản ngân hàng'
-  if (m === 'vnpay') return 'VNPay'
-  if (m === 'momo') return 'Ví MoMo'
+  if (m === 'cod' || m === 'cash') return t('orderDetail.pay.cod')
+  if (m === 'payos' || m === 'bank_transfer') return t('orderDetail.pay.bank')
+  if (m === 'vnpay') return t('orderDetail.pay.vnpay')
+  if (m === 'momo') return t('orderDetail.pay.momo')
   return method
 }
 
-function getPaymentStatusLabel(status: string | undefined, method?: string | undefined): string {
+function getPaymentStatusLabel(
+  status: string | undefined,
+  t: (key: string) => string,
+  method?: string | undefined,
+): string {
   if (!status) return '—'
   const s = status.toLowerCase()
   const m = (method ?? '').toLowerCase()
   if (m === 'cod' || m === 'cash') {
-    if (s === 'pending') return 'Thanh toán khi nhận — chưa thu'
-    if (s === 'confirmed' || s === 'paid' || s === 'success' || s === 'completed') return 'Đã thu khi giao hàng'
+    if (s === 'pending') return t('orderDetail.codUnpaid')
+    if (s === 'confirmed' || s === 'paid' || s === 'success' || s === 'completed') {
+      return t('orderDetail.pay.codCollected')
+    }
   }
-  if (s === 'pending') return 'Chờ thanh toán'
-  if (s === 'confirmed' || s === 'paid' || s === 'success' || s === 'completed') return 'Đã thanh toán'
-  if (s === 'failed' || s === 'cancelled' || s === 'expired') return 'Thất bại / Đã hủy'
-  if (s === 'refunded' || s === 'partially_refunded') return 'Đã hoàn tiền'
+  if (s === 'pending') return t('orderDetail.pay.pending')
+  if (s === 'confirmed' || s === 'paid' || s === 'success' || s === 'completed') {
+    return t('orderDetail.pay.paid')
+  }
+  if (s === 'failed' || s === 'cancelled' || s === 'expired') return t('orderDetail.pay.failed')
+  if (s === 'refunded' || s === 'partially_refunded') return t('orderDetail.pay.refunded')
   return status
 }
 
@@ -170,6 +183,7 @@ function getPaymentStatusBadgeClass(status: string | undefined, method?: string 
 }
 
 export default function OrderDetailPage() {
+  const { t } = useLanguage()
   const params = useParams()
   const orderId = params?.orderId as string
   const [order, setOrder] = useState<OrderDetail | null>(null)
@@ -180,7 +194,7 @@ export default function OrderDetailPage() {
 
   useEffect(() => {
     if (!orderId) {
-      setError('Invalid order')
+      setError(t('orderDetail.invalidOrder'))
       setLoading(false)
       return
     }
@@ -194,14 +208,14 @@ export default function OrderDetailPage() {
       ])
 
       if (!detailRes.ok) {
-        setError((detailRes.data as { message?: string })?.message ?? 'Không tìm thấy đơn hàng')
+        setError((detailRes.data as { message?: string })?.message ?? t('orderDetail.notFound'))
         setLoading(false)
         return
       }
       const detailPayload = detailRes.data as { success?: boolean; data?: OrderDetail }
       const orderPayload = detailPayload?.data ?? detailRes.data
       if (!orderPayload || typeof orderPayload !== 'object') {
-        setError('Không tìm thấy đơn hàng')
+        setError(t('orderDetail.notFound'))
         setLoading(false)
         return
       }
@@ -229,7 +243,7 @@ export default function OrderDetailPage() {
     }
 
     void load()
-  }, [orderId])
+  }, [orderId, t])
 
   /** Cập nhật vị trí shipper định kỳ khi đơn đang giao (API cùng hệ `/admin/tracking`). */
   useEffect(() => {
@@ -323,14 +337,14 @@ export default function OrderDetailPage() {
               className="inline-flex items-center text-sm text-gray-600 hover:text-black mb-6"
             >
               <ArrowLeft className="mr-2 h-4 w-4" />
-              Quay lại trang tài khoản
+              {t('orderDetail.backToAccount')}
             </Link>
-            <p className="text-red-600">{error ?? 'Không tìm thấy đơn hàng'}</p>
+            <p className="text-red-600">{error ?? t('orderDetail.notFound')}</p>
             <Link
               href="/account"
               className="mt-4 inline-block rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
             >
-              Quay lại trang tài khoản
+              {t('orderDetail.backToAccount')}
             </Link>
           </div>
         </main>
@@ -369,14 +383,14 @@ export default function OrderDetailPage() {
                 className="inline-flex items-center text-sm text-gray-600 hover:text-black mb-4"
               >
                 <ArrowLeft className="mr-2 h-4 w-4" />
-                Quay lại trang tài khoản
+                {t('orderDetail.backToAccount')}
               </Link>
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <h1 className="font-sans text-2xl font-bold text-black">{orderLabel}</h1>
                 <span
                   className={`rounded-xl px-3 py-1 text-xs font-medium ${getStatusBadgeClass(order.status)}`}
                 >
-                  {getStatusLabel(order.status)}
+                  {getStatusLabel(order.status, t)}
                 </span>
               </div>
             </header>
@@ -391,31 +405,31 @@ export default function OrderDetailPage() {
             {/* Một khối chi tiết đơn (hóa đơn) */}
             <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm overflow-hidden">
               {/* Thông tin đơn hàng */}
-              <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4" style={{ fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, sans-serif' }}>Thông tin đơn hàng</h2>
+              <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4" style={{ fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, sans-serif' }}>{t('orderDetail.orderInfo')}</h2>
               <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 text-sm mb-5">
                 <div>
-                  <dt className="text-gray-500">Mã đơn hàng</dt>
+                  <dt className="text-gray-500">{t('orderDetail.orderId')}</dt>
                   <dd className="font-medium text-black">#{order.order_id}</dd>
                 </div>
                 <div>
-                  <dt className="text-gray-500">Mã hóa đơn</dt>
+                  <dt className="text-gray-500">{t('orderDetail.invoiceNumber')}</dt>
                   <dd className="font-medium text-black">{orderLabel}</dd>
                 </div>
                 <div>
-                  <dt className="text-gray-500">Ngày đặt hàng</dt>
+                  <dt className="text-gray-500">{t('orderDetail.orderDate')}</dt>
                   <dd className="text-gray-800">{formatDateTime(order.created_at)}</dd>
                 </div>
                 {order.estimated_delivery_at && (
                   <div>
-                    <dt className="text-gray-500">Dự kiến giao</dt>
+                    <dt className="text-gray-500">{t('orderDetail.estimatedDelivery')}</dt>
                     <dd className="text-gray-800">{formatDate(order.estimated_delivery_at)}</dd>
                   </div>
                 )}
                 <div>
-                  <dt className="text-gray-500">Trạng thái</dt>
+                  <dt className="text-gray-500">{t('orderDetail.status')}</dt>
                   <dd>
                     <span className={`rounded-lg px-2 py-0.5 text-xs font-medium ${getStatusBadgeClass(order.status)}`}>
-                      {getStatusLabel(order.status)}
+                      {getStatusLabel(order.status, t)}
                     </span>
                   </dd>
                 </div>
@@ -424,13 +438,13 @@ export default function OrderDetailPage() {
               {/* Địa chỉ giao hàng */}
               {(addressLine || shippingAddress?.recipient_name || shippingAddress?.phone) && (
                 <div className="border-t border-gray-100 pt-6 pb-6">
-                  <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3" style={{ fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, sans-serif' }}>Địa chỉ giao hàng</h2>
+                  <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3" style={{ fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, sans-serif' }}>{t('orderDetail.shippingAddress')}</h2>
                   <div className="text-sm space-y-1">
                     {shippingAddress?.recipient_name && (
                       <p className="font-medium text-black">{shippingAddress.recipient_name}</p>
                     )}
                     {shippingAddress?.phone && (
-                      <p className="text-gray-700">SĐT: {shippingAddress.phone}</p>
+                      <p className="text-gray-700">{t('orderDetail.phoneLabel')}: {shippingAddress.phone}</p>
                     )}
                     {addressLine && <p className="text-gray-800">{addressLine}</p>}
                   </div>
@@ -439,22 +453,22 @@ export default function OrderDetailPage() {
 
               {/* Sản phẩm */}
               <div className="border-t border-gray-100 pt-6 pb-6">
-                <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4" style={{ fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, sans-serif' }}>Sản phẩm</h2>
+                <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4" style={{ fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, sans-serif' }}>{t('orderDetail.items')}</h2>
                 <div className="border border-gray-200 rounded-xl overflow-hidden">
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="bg-gray-50 border-b border-gray-200">
-                        <th className="text-left p-3 font-medium text-gray-600 w-16">Ảnh</th>
-                        <th className="text-left p-3 font-medium text-gray-600">Tên sản phẩm</th>
-                        <th className="text-center p-3 font-medium text-gray-600 w-20">SL</th>
-                        <th className="text-right p-3 font-medium text-gray-600">Đơn giá</th>
-                        <th className="text-right p-3 font-medium text-gray-600">Thành tiền</th>
+                        <th className="text-left p-3 font-medium text-gray-600 w-16">{t('orderDetail.image')}</th>
+                        <th className="text-left p-3 font-medium text-gray-600">{t('orderDetail.productName')}</th>
+                        <th className="text-center p-3 font-medium text-gray-600 w-20">{t('orderDetail.qty')}</th>
+                        <th className="text-right p-3 font-medium text-gray-600">{t('orderDetail.unitPrice')}</th>
+                        <th className="text-right p-3 font-medium text-gray-600">{t('orderDetail.lineTotal')}</th>
                       </tr>
                     </thead>
                     <tbody>
                       {(order.items ?? []).map((item, i) => {
                         const imgSrc = productImageSrc(item.product_image)
-                        const name = item.product_name ?? 'Sản phẩm'
+                        const name = item.product_name ?? t('orderDetail.productFallback')
                         const qty = item.quantity ?? 1
                         const unitPrice = item.price ?? 0
                         const rowSubtotal = item.subtotal ?? unitPrice * qty
@@ -490,13 +504,13 @@ export default function OrderDetailPage() {
                     className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4"
                     style={{ fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, sans-serif' }}
                   >
-                    Ảnh xác nhận đã giao hàng
+                    {t('orderDetail.deliveryProofTitle')}
                   </h2>
                   <div className="max-w-md">
                     <DeliveryProofThumbnail
-                      label="Ảnh xác nhận đã giao hàng"
+                      label={t('orderDetail.deliveryProofTitle')}
                       proof={pickLatestProof(order.delivery_proofs, 'delivery_photo')}
-                      emptyText="Chưa có ảnh xác nhận"
+                      emptyText={t('orderDetail.noDeliveryProof')}
                     />
                   </div>
                 </div>
@@ -504,31 +518,31 @@ export default function OrderDetailPage() {
 
               {/* Thanh toán */}
               <div className="border-t border-gray-100 pt-6 pb-6">
-                <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4" style={{ fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, sans-serif' }}>Thanh toán</h2>
+                <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4" style={{ fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, sans-serif' }}>{t('orderDetail.payment')}</h2>
                 <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 text-sm">
                   <div>
-                    <dt className="text-gray-500">Hình thức</dt>
-                    <dd className="font-medium text-black">{getPaymentMethodLabel(payment?.method)}</dd>
+                    <dt className="text-gray-500">{t('orderDetail.paymentMethod')}</dt>
+                    <dd className="font-medium text-black">{getPaymentMethodLabel(payment?.method, t)}</dd>
                   </div>
                   <div>
-                    <dt className="text-gray-500">Trạng thái thanh toán</dt>
+                    <dt className="text-gray-500">{t('orderDetail.paymentStatus')}</dt>
                     <dd>
                       <span
                         className={`inline-flex rounded-lg px-2.5 py-1 text-xs font-semibold ${getPaymentStatusBadgeClass(payment?.status, payment?.method)}`}
                       >
-                        {getPaymentStatusLabel(payment?.status, payment?.method)}
+                        {getPaymentStatusLabel(payment?.status, t, payment?.method)}
                       </span>
                     </dd>
                   </div>
                   {payment?.paid_amount != null && payment.paid_amount > 0 && (
                     <div>
-                      <dt className="text-gray-500">Số tiền thanh toán</dt>
+                      <dt className="text-gray-500">{t('orderDetail.paidAmount')}</dt>
                       <dd className="font-medium text-black">{formatPrice(payment.paid_amount)}</dd>
                     </div>
                   )}
                   {payment?.transaction_id && (
                     <div>
-                      <dt className="text-gray-500">Mã giao dịch</dt>
+                      <dt className="text-gray-500">{t('orderDetail.transactionId')}</dt>
                       <dd className="text-gray-800 font-mono text-xs">{payment.transaction_id}</dd>
                     </div>
                   )}
@@ -537,16 +551,16 @@ export default function OrderDetailPage() {
 
               {/* Tổng cộng */}
               <div className="border-t border-gray-100 pt-6 pb-6">
-                <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4" style={{ fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, sans-serif' }}>Tổng cộng</h2>
+                <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4" style={{ fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, sans-serif' }}>{t('orderDetail.totals')}</h2>
                 <div className="space-y-2 text-sm">
                   {order.shipping_fee != null && order.shipping_fee > 0 && (
                     <div className="flex justify-between">
-                      <span className="text-gray-600">Phí vận chuyển</span>
+                      <span className="text-gray-600">{t('orderDetail.shippingFee')}</span>
                       <span className="text-gray-800">{formatPrice(order.shipping_fee)}</span>
                     </div>
                   )}
                   <div className="flex justify-between pt-2 border-t border-gray-200">
-                    <span className="font-semibold text-black" style={{ fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, sans-serif' }}>Tổng thanh toán</span>
+                    <span className="font-semibold text-black" style={{ fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, sans-serif' }}>{t('orderDetail.grandTotal')}</span>
                     <span className="text-lg font-bold text-black">{formatPrice(order.total_amount)}</span>
                   </div>
                 </div>
@@ -555,7 +569,7 @@ export default function OrderDetailPage() {
               {/* Ghi chú */}
               {order.note && (
                 <div className="border-t border-gray-100 pt-6">
-                  <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2" style={{ fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, sans-serif' }}>Ghi chú</h2>
+                  <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2" style={{ fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, sans-serif' }}>{t('orderDetail.note')}</h2>
                   <p className="text-sm text-gray-800">{order.note}</p>
                 </div>
               )}
@@ -563,7 +577,7 @@ export default function OrderDetailPage() {
               {/* Shipper (khi có) */}
               {(order.tracking?.shipper_id || shipper) && (
                 <div className="border-t border-gray-100 pt-6">
-                  <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4" style={{ fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, sans-serif' }}>Shipper giao hàng</h2>
+                  <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4" style={{ fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, sans-serif' }}>{t('orderDetail.shipperSection')}</h2>
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="space-y-1 text-sm">
                       <p className="font-medium text-black">
@@ -571,8 +585,8 @@ export default function OrderDetailPage() {
                           [order.tracking?.first_name, order.tracking?.last_name].filter(Boolean).join(' ') ??
                           '—'}
                       </p>
-                      <p className="text-gray-600">Xe: {shipper?.vehicle_info ?? order.tracking?.vehicle_info ?? '—'}</p>
-                      {shipper?.rating != null && <p className="text-gray-600">Đánh giá: {shipper.rating}</p>}
+                      <p className="text-gray-600">{t('orderDetail.vehicle')}: {shipper?.vehicle_info ?? order.tracking?.vehicle_info ?? '—'}</p>
+                      {shipper?.rating != null && <p className="text-gray-600">{t('orderDetail.rating')}: {shipper.rating}</p>}
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
                       <Link
@@ -580,7 +594,7 @@ export default function OrderDetailPage() {
                         className="inline-flex items-center gap-2 rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-800 hover:bg-gray-50"
                       >
                         <MessageCircle className="h-4 w-4" />
-                        Nhắn tin
+                        {t('orderDetail.chat')}
                       </Link>
                       {(shipper?.phone ?? order.tracking?.phone) && (
                         <a
@@ -588,7 +602,7 @@ export default function OrderDetailPage() {
                           className="inline-flex items-center gap-2 rounded-xl bg-black px-4 py-2 text-sm font-medium text-white hover:bg-gray-800"
                         >
                           <Phone className="h-4 w-4" />
-                          Gọi điện
+                          {t('orderDetail.call')}
                         </a>
                       )}
                     </div>

@@ -1,13 +1,14 @@
 "use client"
 
 import React, { createContext, useContext, useState, useEffect } from 'react'
+import { storefrontEn, storefrontVi } from '@/lib/storefront-i18n-ext'
 
 type Language = 'en' | 'vi'
 
 interface LanguageContextType {
   language: Language
   setLanguage: (lang: Language) => void
-  t: (key: string) => string
+  t: (key: string, params?: Record<string, string>) => string
 }
 
 const translations = {
@@ -359,6 +360,7 @@ const translations = {
     'footer.instagram': 'INSTAGRAM',
     'footer.contact': 'CONTACT',
     'footer.copyright': '©VIVIENNE {year}',
+    ...storefrontEn,
   },
   vi: {
     // Header/Navigation
@@ -708,6 +710,7 @@ const translations = {
     'footer.instagram': 'INSTAGRAM',
     'footer.contact': 'LIÊN HỆ',
     'footer.copyright': '©VIVIENNE {year}',
+    ...storefrontVi,
   }
 }
 
@@ -729,8 +732,14 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem('language', lang)
   }
 
-  const t = (key: string): string => {
-    return translations[language][key as keyof typeof translations['en']] || key
+  const t = (key: string, params?: Record<string, string>): string => {
+    let text = translations[language][key as keyof typeof translations['en']] || key
+    if (params) {
+      Object.entries(params).forEach(([k, v]) => {
+        text = text.replace(`{${k}}`, v)
+      })
+    }
+    return text
   }
 
   return (

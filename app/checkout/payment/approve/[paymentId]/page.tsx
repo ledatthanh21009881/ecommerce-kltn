@@ -5,6 +5,7 @@ import { useRouter, useParams } from 'next/navigation'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { useLanguage } from '@/components/language-provider'
 
 interface PaymentData {
   payment_id: number
@@ -25,6 +26,7 @@ interface OrderData {
 }
 
 export default function ApprovePaymentPage() {
+  const { t } = useLanguage()
   const router = useRouter()
   const params = useParams()
   const paymentId = params?.paymentId as string
@@ -65,7 +67,7 @@ export default function ApprovePaymentPage() {
       }
     } catch (error) {
       console.error('Error loading data:', error)
-      toast.error('Failed to load payment data')
+      toast.error(t('payment.dataLoadFailed'))
     } finally {
       setLoading(false)
     }
@@ -80,14 +82,14 @@ export default function ApprovePaymentPage() {
 
       const data = await response.json()
       if (data.success) {
-        toast.success('Thanh toán thành công!')
+        toast.success(t('payment.success'))
         router.push(`/checkout/payment/success?order_id=${payment?.order_id}`)
       } else {
-        toast.error(data.message || 'Failed to approve payment')
+        toast.error(data.message || t('payment.approveFailed'))
       }
     } catch (error) {
       console.error('Error approving payment:', error)
-      toast.error('Failed to approve payment')
+      toast.error(t('payment.approveFailed'))
     } finally {
       setApproving(false)
     }
@@ -96,7 +98,7 @@ export default function ApprovePaymentPage() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
-        <div className="text-center">Loading...</div>
+        <div className="text-center">{t('common.loading')}</div>
       </div>
     )
   }

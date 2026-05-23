@@ -6,8 +6,10 @@ import Link from 'next/link'
 import { toast } from 'sonner'
 import { Input } from '@/components/ui/input'
 import { ArrowLeft } from 'lucide-react'
+import { useLanguage } from '@/components/language-provider'
 
 function ResetPasswordForm() {
+  const { t } = useLanguage()
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [isLoading, setIsLoading] = useState(false)
@@ -22,7 +24,7 @@ function ResetPasswordForm() {
       setToken(tokenFromUrl)
       validateToken(tokenFromUrl)
     } else {
-      toast.error('Invalid reset link')
+      toast.error(t('reset.invalidLink'))
       router.push('/login')
     }
   }, [searchParams, router])
@@ -42,12 +44,12 @@ function ResetPasswordForm() {
       if (data.success) {
         setIsValidToken(true)
       } else {
-        toast.error('Invalid or expired reset link')
+        toast.error(t('reset.invalidOrExpired'))
         router.push('/login')
       }
     } catch (error) {
       console.error('Token validation error:', error)
-      toast.error('Error validating reset link')
+      toast.error(t('reset.validateError'))
       router.push('/login')
     }
   }
@@ -56,12 +58,12 @@ function ResetPasswordForm() {
     e.preventDefault()
 
     if (!password || !confirmPassword) {
-      toast.error('Please fill in all fields')
+      toast.error(t('reset.fillAllFields'))
       return
     }
 
     if (password !== confirmPassword) {
-      toast.error('Passwords do not match')
+      toast.error(t('reset.passwordMismatch'))
       return
     }
 
@@ -83,16 +85,16 @@ function ResetPasswordForm() {
       const data = await response.json()
 
       if (data.success) {
-        toast.success('Password reset successfully')
+        toast.success(t('reset.success'))
         setTimeout(() => {
           router.push('/login')
         }, 2000)
       } else {
-        toast.error(data.message || 'Failed to reset password')
+        toast.error(data.message || t('reset.failed'))
       }
     } catch (error) {
       console.error('Reset password error:', error)
-      toast.error('Error resetting password')
+      toast.error(t('reset.error'))
     } finally {
       setIsLoading(false)
     }
@@ -104,10 +106,10 @@ function ResetPasswordForm() {
         <div className="container mx-auto px-4 py-12">
           <div className="mx-auto max-w-md text-center">
             <h2 className="mb-3 font-serif text-3xl font-light md:text-4xl">
-              Validating Reset Link
+              {t('reset.validatingTitle')}
             </h2>
             <p className="text-sm text-black/70">
-              Please wait while we validate your reset link...
+              {t('reset.validatingDesc')}
             </p>
           </div>
         </div>
@@ -120,16 +122,16 @@ function ResetPasswordForm() {
       <div className="container mx-auto px-4 py-12">
         <div className="mx-auto max-w-md">
           <h2 className="mb-4 text-center font-serif text-3xl font-light md:text-4xl">
-            Reset Password
+            {t('reset.title')}
           </h2>
           <p className="mb-8 text-center text-sm text-black/70">
-            Enter your new password below.
+            {t('reset.desc')}
           </p>
 
           <form className="space-y-6" onSubmit={handleSubmit}>
             <div className="space-y-2">
               <label htmlFor="password" className="text-sm">
-                New Password
+                {t('reset.newPassword')}
               </label>
               <Input
                 id="password"
@@ -137,7 +139,7 @@ function ResetPasswordForm() {
                 type="password"
                 autoComplete="new-password"
                 required
-                placeholder="Enter your new password"
+                placeholder={t('reset.newPasswordPlaceholder')}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 disabled={isLoading}
@@ -146,7 +148,7 @@ function ResetPasswordForm() {
 
             <div className="space-y-2">
               <label htmlFor="confirmPassword" className="text-sm">
-                Confirm New Password
+                {t('reset.confirmPassword')}
               </label>
               <Input
                 id="confirmPassword"
@@ -154,7 +156,7 @@ function ResetPasswordForm() {
                 type="password"
                 autoComplete="new-password"
                 required
-                placeholder="Confirm your new password"
+                placeholder={t('reset.confirmPlaceholder')}
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 disabled={isLoading}
@@ -168,7 +170,7 @@ function ResetPasswordForm() {
                 className="group relative h-10 w-full bg-black text-sm font-normal uppercase tracking-wider text-white transition-all duration-300 ease-in-out hover:bg-white hover:text-black disabled:cursor-not-allowed disabled:opacity-60"
               >
                 <span className="relative z-10 font-sans font-bold uppercase tracking-wider">
-                  {isLoading ? 'Resetting...' : 'Reset Password'}
+                  {isLoading ? t('reset.submitting') : t('reset.submit')}
                 </span>
                 <div className="absolute inset-0 translate-x-full transform bg-white transition-transform duration-300 ease-in-out group-hover:translate-x-0 group-disabled:hidden" />
               </button>
@@ -180,7 +182,7 @@ function ResetPasswordForm() {
                 className="inline-flex items-center gap-1 text-sm underline underline-offset-4 text-black/80 hover:text-black"
               >
                 <ArrowLeft className="h-4 w-4" />
-                Back to Login
+                {t('reset.backToLogin')}
               </Link>
             </div>
           </form>
@@ -190,18 +192,21 @@ function ResetPasswordForm() {
   )
 }
 
+function ResetPasswordFallback() {
+  const { t } = useLanguage()
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4">
+      <div className="text-center">
+        <h2 className="text-xl font-semibold text-gray-900">{t('common.loading')}</h2>
+        <p className="mt-2 text-sm text-gray-600">{t('common.pleaseWait')}</p>
+      </div>
+    </div>
+  )
+}
+
 export default function ResetPasswordPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4">
-          <div className="text-center">
-            <h2 className="text-xl font-semibold text-gray-900">Loading...</h2>
-            <p className="mt-2 text-sm text-gray-600">Please wait.</p>
-          </div>
-        </div>
-      }
-    >
+    <Suspense fallback={<ResetPasswordFallback />}>
       <ResetPasswordForm />
     </Suspense>
   )

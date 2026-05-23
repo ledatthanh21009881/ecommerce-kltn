@@ -11,6 +11,7 @@ import {
   SheetContent,
   SheetTitle,
 } from "@/components/ui/sheet"
+import { useLanguage } from "@/components/language-provider"
 
 // Helper function to format price
 const formatPrice = (price: number): string => {
@@ -84,6 +85,7 @@ const isSizeOutOfStock = (product: Product, sizeName: string): boolean => {
 }
 
 export default function ProductPage({ params }: { params: Promise<{ id: string }> }) {
+  const { t } = useLanguage()
   const [product, setProduct] = useState<Product | null>(null)
   const [loading, setLoading] = useState(true)
   const [selectedSize, setSelectedSize] = useState<string>("")
@@ -126,7 +128,7 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
         }
       } catch (error) {
         console.error("Error fetching product:", error)
-        toast.error("Failed to load product")
+        toast.error(t('product.failedToLoad'))
       } finally {
         setLoading(false)
       }
@@ -339,7 +341,7 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
             {/* Size Selection */}
             <div>
               <div className="flex items-center justify-between mb-2">
-                <h3 className="text-xs font-bold text-gray-800 uppercase tracking-wider">Kích thước</h3>
+                <h3 className="text-xs font-bold text-gray-800 uppercase tracking-wider">{t('product.selectSizeLabel')}</h3>
                 <div className="flex gap-3">
                   {allSizes.length > 0 ? (
                     allSizes.map((size) => {
@@ -366,18 +368,18 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
                       )
                     })
                   ) : (
-                    <p className="text-gray-500 text-xs">No sizes available</p>
+                    <p className="text-gray-500 text-xs">{t('product.noSizes')}</p>
                   )}
                 </div>
               </div>
               <Link href="/size-guide" className="mt-1 inline-block text-xs underline underline-offset-4">
-                Size Guide
+                {t('product.sizeGuide')}
               </Link>
             </div>
 
             {/* Quantity */}
             <div>
-              <h3 className="mb-3 text-xs font-bold uppercase tracking-wider text-gray-800">Số lượng</h3>
+              <h3 className="mb-3 text-xs font-bold uppercase tracking-wider text-gray-800">{t('product.quantity')}</h3>
               <div className="flex items-center space-x-4">
                 <button 
                   className="group relative flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 bg-white transition-all duration-300 hover:border-gray-400 hover:shadow-sm"
@@ -402,7 +404,7 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
                       if (quantity < maxAllowed) {
                         setQuantity(quantity + 1)
                       } else {
-                        toast.error(`Không đủ hàng trong kho. Số lượng còn lại có thể thêm: ${maxAllowed}`)
+                        toast.error(t('product.insufficientStockAdd', { count: String(maxAllowed) }))
                       }
                     } else {
                       setQuantity(quantity + 1)
@@ -447,7 +449,7 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
                   href="/cart"
                   className="relative flex h-10 w-full items-center justify-center text-sm font-normal uppercase tracking-wider transition-all duration-300 ease-in-out group bg-black text-white hover:bg-white hover:text-black"
                 >
-                  <span className="relative z-10 font-sans font-bold uppercase tracking-wider">XEM GIỎ HÀNG</span>
+                  <span className="relative z-10 font-sans font-bold uppercase tracking-wider">{t('product.viewCart')}</span>
                   <div className="absolute inset-0 bg-white transform translate-x-full transition-transform duration-300 ease-in-out group-hover:translate-x-0" />
                 </Link>
               ) : (
@@ -460,7 +462,7 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
                 disabled={availableSizes.length === 0 || !selectedSize || isVariantOutOfStock() || !canAddToCart()}
                 onClick={async () => {
                   if (!selectedSize) {
-                    toast.error("Vui lòng chọn kích thước")
+                    toast.error(t('product.selectSize'))
                     return
                   }
 
@@ -470,13 +472,13 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
                   )
 
                   if (!selectedVariant) {
-                    toast.error("Kích thước đã chọn không còn hàng")
+                    toast.error(t('product.sizeOutOfStock'))
                     return
                   }
 
                   // Check if quantity exceeds stock
                   if (quantity > selectedVariant.stock_quantity) {
-                    toast.error(`Không đủ hàng trong kho. Số lượng còn lại: ${selectedVariant.stock_quantity}`)
+                    toast.error(t('product.insufficientStock', { count: String(selectedVariant.stock_quantity) }))
                     setQuantity(selectedVariant.stock_quantity)
                     return
                   }
@@ -510,7 +512,7 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
                     
                     // If no token, redirect to login
                     if (!token) {
-                      toast.error('Vui lòng đăng nhập để thêm sản phẩm vào giỏ hàng')
+                      toast.error(t('product.loginToAddCart'))
                       setTimeout(() => {
                         window.location.href = '/login'
                       }, 1500)
@@ -550,17 +552,17 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
                     } else {
                       // If token error, redirect to login
                       if (result.message?.includes('token') || result.message?.includes('unauthorized') || response.status === 401) {
-                        toast.error('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại')
+                        toast.error(t('product.sessionExpired'))
                         setTimeout(() => {
                           window.location.href = '/login'
                         }, 1500)
                       } else {
-                        toast.error(result.message || 'Không thể thêm vào giỏ hàng')
+                        toast.error(result.message || t('product.addToCartFailed'))
                       }
                     }
                   } catch (error) {
                     console.error('Error adding to cart:', error)
-                    toast.error('Không thể thêm vào giỏ hàng. Vui lòng thử lại.')
+                    toast.error(t('product.addToCartError'))
                   }
                 }}
               >

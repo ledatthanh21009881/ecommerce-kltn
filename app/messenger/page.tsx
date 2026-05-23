@@ -10,6 +10,7 @@ import ChatWindow, {
   ChatContact,
   ChatMessage,
 } from "@/components/messenger/ChatWindow"
+import { useLanguage } from "@/components/language-provider"
 
 interface Message {
   message_id: number
@@ -57,6 +58,7 @@ function extractConversationIdFromResponse(payload: any): number | null {
 }
 
 function MessengerContent() {
+  const { t } = useLanguage()
   const getAuthToken = () =>
     localStorage.getItem('auth_token') ||
     localStorage.getItem('adminToken') ||
@@ -158,7 +160,7 @@ function MessengerContent() {
       }
     } catch (error) {
       console.error('❌ Error loading messages:', error)
-      toast.error('Failed to load messages')
+      toast.error(t('messenger.failedLoadMessages'))
     }
   }, [])
 
@@ -252,7 +254,7 @@ function MessengerContent() {
       }
     } catch (error) {
       console.error('❌ Error initializing chat:', error)
-      toast.error('Failed to initialize chat')
+      toast.error(t('messenger.failedInit'))
     } finally {
       setIsLoading(false)
       console.log('Debug - initializeChat finally block completed')
@@ -477,12 +479,12 @@ function MessengerContent() {
       } else {
         // Remove optimistic message on error
         setMessages(prev => prev.filter(msg => msg.message_id !== optimisticMessage.message_id))
-        toast.error('Failed to send message')
+        toast.error(t('messenger.failedSend'))
       }
     } catch (error) {
       console.error('Error sending message:', error)
       setMessages(prev => prev.filter(msg => msg.message_id !== optimisticMessage.message_id))
-      toast.error('Failed to send message')
+      toast.error(t('messenger.failedSend'))
     }
   }
 
@@ -595,11 +597,11 @@ function MessengerContent() {
             }
           } else {
             setMessages(prev => prev.filter(msg => msg.message_id !== optimisticMessage.message_id))
-            toast.error('Failed to send media message')
+            toast.error(t('messenger.failedSendMedia'))
           }
         } else {
           setMessages(prev => prev.filter(msg => msg.message_id !== optimisticMessage.message_id))
-          toast.error('Failed to upload media: ' + (data.message || 'Unknown error'))
+          toast.error(t('messenger.failedUploadMedia') + ': ' + (data.message || t('common.unknownError')))
         }
       } else {
         const errorData = await response.json()
@@ -608,7 +610,7 @@ function MessengerContent() {
       }
     } catch (error) {
       setMessages(prev => prev.filter(msg => msg.message_id !== optimisticMessage.message_id))
-      toast.error('Failed to upload media')
+      toast.error(t('messenger.failedUploadMedia'))
     }
   }
 
@@ -918,17 +920,17 @@ function MessengerContent() {
               toast.error(messageData.message || 'Failed to send voice message')
             }
           } else {
-            toast.error('Failed to send voice message')
+            toast.error(t('messenger.failedVoice'))
           }
         } else {
           toast.error(data.message || 'Failed to upload voice message')
         }
       } else {
-        toast.error('Failed to upload voice message')
+        toast.error(t('messenger.failedVoice'))
       }
     } catch (error) {
       console.error('Voice message error:', error)
-      toast.error('Failed to send voice message')
+      toast.error(t('messenger.failedVoice'))
     }
   }
 
