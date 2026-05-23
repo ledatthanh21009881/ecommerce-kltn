@@ -220,7 +220,9 @@ export default function AdminInventoryPage() {
       } else if (error instanceof TypeError) {
         toast.error(t('networkError'))
       } else {
-        toast.error(`Error deleting inventory: ${error instanceof Error ? error.message : 'Unknown error'}`)
+        toast.error(
+          `${t('errorDeletingInventory')}: ${error instanceof Error ? error.message : t('unknownError')}`,
+        )
       }
     } finally {
       setDeletingVariantId(null)

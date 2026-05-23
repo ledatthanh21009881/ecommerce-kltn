@@ -144,7 +144,9 @@ export default function CategoryModal({ isOpen, onClose, category, categories, o
       } else if (error instanceof TypeError) {
         toast.error(t('networkError'))
       } else {
-        toast.error(`Error saving category: ${error instanceof Error ? error.message : 'Unknown error'}`)
+        toast.error(
+          `${t('errorSavingCategory')}: ${error instanceof Error ? error.message : t('unknownError')}`,
+        )
       }
     } finally {
       setLoading(false)

@@ -208,7 +208,9 @@ export default function InventoryModal({ isOpen, onClose, variant, products, cat
       } else if (error instanceof TypeError) {
         toast.error(t('networkError'))
       } else {
-        toast.error(`Error saving inventory: ${error instanceof Error ? error.message : 'Unknown error'}`)
+        toast.error(
+          `${t('errorSavingInventory')}: ${error instanceof Error ? error.message : t('unknownError')}`,
+        )
       }
     } finally {
       setLoading(false)

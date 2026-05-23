@@ -89,8 +89,11 @@ export default function AdminCategoriesPage() {
 
   // Handle category operations
   const handleViewCategory = (category: Category) => {
-    toast.info(`Category: ${category.category_name}`, {
-      description: `Slug: ${category.slug}, Position: ${category.position}, Active: ${category.is_active ? 'Yes' : 'No'}`
+    toast.info(t('categoryPreviewTitle').replace('{name}', category.category_name), {
+      description: t('categoryPreviewDesc')
+        .replace('{slug}', category.slug)
+        .replace('{position}', String(category.position ?? ''))
+        .replace('{active}', category.is_active ? t('active') : t('inactive')),
     })
   }
 
@@ -161,7 +164,9 @@ export default function AdminCategoriesPage() {
       } else if (error instanceof TypeError) {
         toast.error(t('networkError'))
       } else {
-        toast.error(`Error deleting category: ${error instanceof Error ? error.message : 'Unknown error'}`)
+        toast.error(
+          `${t('errorDeletingCategory')}: ${error instanceof Error ? error.message : t('unknownError')}`,
+        )
       }
     } finally {
       setDeletingCategoryId(null)

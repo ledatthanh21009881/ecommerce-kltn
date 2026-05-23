@@ -205,7 +205,7 @@ export default function ProductModal({ isOpen, onClose, product, categories, onS
     e.preventDefault()
     
     if (!formData.product_name || !formData.category_id) {
-      toast.error('Please fill in all required fields')
+      toast.error(t('fillAllRequiredFields'))
       return
     }
 
@@ -289,7 +289,7 @@ export default function ProductModal({ isOpen, onClose, product, categories, onS
       }
       
       if (!token) {
-        toast.error('No authentication token found. Please login again.')
+        toast.error(t('noAuthTokenPleaseLogin'))
         return
       }
       
@@ -318,11 +318,15 @@ export default function ProductModal({ isOpen, onClose, product, categories, onS
         console.log('❌ Error response:', errorText)
         
         if (response.status === 401) {
-          toast.error('Authentication failed. Please login again.')
+          toast.error(t('authenticationFailed'))
           return
         }
         
-        toast.error(`Request failed: ${response.status} ${response.statusText}`)
+        toast.error(
+          t('requestFailedWithStatus')
+            .replace('{status}', String(response.status))
+            .replace('{statusText}', response.statusText),
+        )
         return
       }
 
@@ -330,20 +334,22 @@ export default function ProductModal({ isOpen, onClose, product, categories, onS
       console.log('✅ Response data:', result)
 
       if (result.success) {
-        toast.success(product ? 'Product updated successfully!' : 'Product created successfully!')
+        toast.success(product ? t('productUpdatedSuccessfully') : t('productCreatedSuccessfully'))
         onSaved()
       } else {
-        toast.error(result.message || 'Failed to save product')
+        toast.error(result.message || t('failedToSaveProduct'))
       }
     } catch (error) {
       console.error('❌ Error saving product:', error)
       
       if (error instanceof SyntaxError) {
-        toast.error('Invalid response from server. Please try again.')
+        toast.error(t('invalidResponse'))
       } else if (error instanceof TypeError) {
-        toast.error('Network error. Please check your connection.')
+        toast.error(t('networkError'))
       } else {
-        toast.error(`Error saving product: ${error instanceof Error ? error.message : 'Unknown error'}`)
+        toast.error(
+          `${t('errorSavingProduct')}: ${error instanceof Error ? error.message : t('unknownError')}`,
+        )
       }
     } finally {
       setLoading(false)

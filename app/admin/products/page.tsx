@@ -126,12 +126,12 @@ export default function AdminProductsPage() {
         setEditingProduct(data.data)
       } else {
         setEditingProduct(product)
-        toast.error('Failed to fetch product details')
+        toast.error(t('failedToFetchProductDetails'))
       }
     } catch (error) {
       console.error('Error fetching product details:', error)
       setEditingProduct(product)
-      toast.error('Error fetching product details')
+      toast.error(t('errorFetchingProductDetails'))
     }
     setIsModalOpen(true)
   }
@@ -152,12 +152,12 @@ export default function AdminProductsPage() {
           setEditingProduct(data.data)
       } else {
           setEditingProduct(viewingProduct)
-          toast.error('Failed to fetch product details')
+          toast.error(t('failedToFetchProductDetails'))
         }
       } catch (error) {
         console.error('Error fetching product details:', error)
         setEditingProduct(viewingProduct)
-        toast.error('Error fetching product details')
+        toast.error(t('errorFetchingProductDetails'))
       }
       setIsDetailModalOpen(false)
       setIsModalOpen(true)
@@ -190,13 +190,13 @@ export default function AdminProductsPage() {
       const data = await response.json()
       
       if (data.success) {
-        toast.success('Product deleted successfully')
+        toast.success(t('productDeletedSuccessfully'))
         fetchProducts()
       } else {
-        toast.error(data.message || 'Failed to delete product')
+        toast.error(data.message || t('failedToDeleteProduct'))
       }
     } catch (error) {
-      toast.error('Error deleting product')
+      toast.error(t('errorDeletingProduct'))
     } finally {
       setDeletingProductId(null)
     }
@@ -474,10 +474,10 @@ const formatPrice = (price: string | number) => {
             setDeletingProductId(null)
           }}
           onConfirm={confirmDeleteProduct}
-          title="Delete Product"
-          description="Are you sure you want to delete this product? This action cannot be undone and will remove all associated images and variants."
-          confirmText="Delete"
-          cancelText="Cancel"
+          title={t('deleteProduct')}
+          description={t('deleteProductConfirm')}
+          confirmText={t('delete')}
+          cancelText={t('cancel')}
         />
       </div>
     </div>
