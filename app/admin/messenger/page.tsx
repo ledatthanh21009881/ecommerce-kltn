@@ -37,6 +37,7 @@ interface Conversation {
   last_message_time?: string
   unread_count: number
   status: string
+  user_role: 'customer' | 'staff' | 'shipper'
 }
 
 interface MessageReplyTo {
@@ -263,7 +264,7 @@ function AdminMessengerPageInner() {
     const conv = conversations.find((c) => Number(c.customer_id) === id)
     if (conv) {
       setSelectedConversation(conv)
-      if (conv.status === 'customer') setActiveFilter('customers')
+      if (conv.user_role === 'customer') setActiveFilter('customers')
       messengerMissingCustomerToastRef.current = null
       return
     }
@@ -1296,16 +1297,16 @@ function AdminMessengerPageInner() {
 
   const filteredConversations = conversations.filter(conv => {
     const nameMatch = `${conv.first_name} ${conv.last_name}`.toLowerCase().includes(searchTerm.toLowerCase())
-    
+
     if (activeFilter === 'all') return nameMatch
-    
+
     switch (activeFilter) {
       case 'customers':
-        return nameMatch && conv.status === 'customer'
+        return nameMatch && conv.user_role === 'customer'
       case 'staff':
-        return nameMatch && conv.status === 'staff'
+        return nameMatch && conv.user_role === 'staff'
       case 'shippers':
-        return nameMatch && conv.status === 'shipper'
+        return nameMatch && conv.user_role === 'shipper'
       default:
         return nameMatch
     }
@@ -1328,9 +1329,9 @@ function AdminMessengerPageInner() {
   const getConversationCounts = () => {
     const counts = {
       all: conversations.length,
-      customers: conversations.filter(c => c.status === 'customer').length,
-      staff: conversations.filter(c => c.status === 'staff').length,
-      shippers: conversations.filter(c => c.status === 'shipper').length
+      customers: conversations.filter(c => c.user_role === 'customer').length,
+      staff: conversations.filter(c => c.user_role === 'staff').length,
+      shippers: conversations.filter(c => c.user_role === 'shipper').length,
     }
     return counts
   }
@@ -1554,21 +1555,21 @@ function AdminMessengerPageInner() {
                       <div className="flex shrink-0 items-center gap-1">
                         <Badge
                           variant={
-                            conversation.status === 'customer'
+                            conversation.user_role === 'customer'
                               ? 'default'
-                              : conversation.status === 'staff'
+                              : conversation.user_role === 'staff'
                                 ? 'secondary'
-                                : conversation.status === 'shipper'
+                                : conversation.user_role === 'shipper'
                                   ? 'outline'
                                   : 'default'
                           }
                           className="h-5 px-1.5 text-[11px] font-medium"
                         >
-                          {conversation.status === 'customer'
+                          {conversation.user_role === 'customer'
                             ? 'Customer'
-                            : conversation.status === 'staff'
+                            : conversation.user_role === 'staff'
                               ? 'Staff'
-                              : conversation.status === 'shipper'
+                              : conversation.user_role === 'shipper'
                                 ? 'Shipper'
                                 : 'User'}
                         </Badge>
@@ -1653,17 +1654,17 @@ function AdminMessengerPageInner() {
                            <h2 className={`text-[17px] font-bold leading-tight tracking-tight ${isDarkMode ? 'text-[#e4e6eb]' : 'text-[#050505]'}`}>
                              {selectedConversation.first_name} {selectedConversation.last_name}
                            </h2>
-                           <Badge 
+                           <Badge
                              variant={
-                               selectedConversation.status === 'customer' ? 'default' :
-                               selectedConversation.status === 'staff' ? 'secondary' :
-                               selectedConversation.status === 'shipper' ? 'outline' : 'default'
-                             } 
+                               selectedConversation.user_role === 'customer' ? 'default' :
+                               selectedConversation.user_role === 'staff' ? 'secondary' :
+                               selectedConversation.user_role === 'shipper' ? 'outline' : 'default'
+                             }
                              className="text-xs"
                            >
-                             {selectedConversation.status === 'customer' ? 'Customer' :
-                              selectedConversation.status === 'staff' ? 'Staff' :
-                              selectedConversation.status === 'shipper' ? 'Shipper' : 'User'}
+                             {selectedConversation.user_role === 'customer' ? 'Customer' :
+                              selectedConversation.user_role === 'staff' ? 'Staff' :
+                              selectedConversation.user_role === 'shipper' ? 'Shipper' : 'User'}
                            </Badge>
                          </div>
                          <p className={`text-[13px] ${isDarkMode ? 'text-[#b0b3b8]' : 'text-[#65676B]'}`}>{selectedConversation.email}</p>
