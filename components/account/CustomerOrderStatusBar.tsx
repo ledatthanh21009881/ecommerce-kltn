@@ -1,27 +1,31 @@
 'use client'
 
 import Link from 'next/link'
+import { useMemo } from 'react'
 import { ClipboardList, Package, PackageOpen, Truck, House, MapPinned } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { getCustomerOrderProgressPhase } from '@/lib/orderCustomerTracking'
+import { useLanguage } from '@/components/language-provider'
 
-const STEPS = [
-  { title: 'Đặt hàng', Icon: ClipboardList },
-  { title: 'Đang xử lý', Icon: Package },
-  { title: 'Đang lấy hàng', Icon: PackageOpen },
-  { title: 'Đang giao', Icon: Truck },
-  { title: 'Hoàn thành', Icon: House },
+const STEP_KEYS = [
+  'orderProgress.step.placed',
+  'orderProgress.step.processing',
+  'orderProgress.step.picking',
+  'orderProgress.step.delivering',
+  'orderProgress.step.completed',
 ] as const
 
-const N = STEPS.length
+const STEP_ICONS = [ClipboardList, Package, PackageOpen, Truck, House] as const
 
-const PHASE_HEADLINE = {
-  0: 'Đơn của bạn đã được nhận',
-  1: 'Shop đang chuẩn bị hàng',
-  2: 'Shipper đang lấy hàng tại cửa hàng',
-  3: 'Đơn hàng đang được giao tới bạn',
-  4: 'Đơn hàng đã hoàn thành',
-} as const
+const HEADLINE_KEYS = [
+  'orderProgress.headline.received',
+  'orderProgress.headline.preparing',
+  'orderProgress.headline.picking',
+  'orderProgress.headline.delivering',
+  'orderProgress.headline.completed',
+] as const
+
+const N = STEP_KEYS.length
 
 export type CustomerOrderStatusBarProps = {
   status: string
@@ -30,10 +34,6 @@ export type CustomerOrderStatusBarProps = {
   distanceKm?: number | null
 }
 
-/**
- * Chiều dài đoạn đen: từ tâm cột đầu tới tâm bước hiện tại — mỗi cột rộng 1/N của hàng,
- * đoạn giữa hai tâm liền kề = 100/N % chiều rộng box.
- */
 function fillWidthPercent(activeIndex: number, normal: boolean): string {
   if (!normal || N <= 1) return '0%'
   const i = Math.max(0, Math.min(activeIndex, N - 1))
@@ -46,15 +46,25 @@ export function CustomerOrderStatusBar({
   mapHref,
   distanceKm,
 }: CustomerOrderStatusBarProps) {
+  const { t } = useLanguage()
   const { activeIndex, badge } = getCustomerOrderProgressPhase(status)
   const normal = badge === 'normal'
 
+  const steps = useMemo(
+    () =>
+      STEP_KEYS.map((key, idx) => ({
+        title: t(key),
+        Icon: STEP_ICONS[idx],
+      })),
+    [t],
+  )
+
   const headline =
     badge === 'cancelled'
-      ? 'Đơn hàng đã hủy'
+      ? t('orderProgress.headline.cancelled')
       : badge === 'failed'
-        ? 'Giao hàng không thành công'
-        : PHASE_HEADLINE[activeIndex]
+        ? t('orderProgress.headline.failed')
+        : t(HEADLINE_KEYS[activeIndex])
 
   const lastIdx = N - 1
   const percentLeftCenter = `${100 / (2 * N)}%`
@@ -64,7 +74,7 @@ export function CustomerOrderStatusBar({
     <section className="w-full rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
       <div className="mb-6">
         <h2 className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">
-          Trạng thái đơn hàng
+          {t('orderProgress.title')}
         </h2>
         <p
           className={cn(
@@ -83,7 +93,6 @@ export function CustomerOrderStatusBar({
           gridTemplateColumns: `repeat(${N}, minmax(0, 1fr))`,
         }}
       >
-        {/* Đường nền liền: tâm bước 1 ↔ tâm bước cuối */}
         <div
           className="pointer-events-none absolute z-0 rounded-full bg-neutral-200"
           style={{
@@ -106,7 +115,7 @@ export function CustomerOrderStatusBar({
           aria-hidden
         />
 
-        {STEPS.map((step, idx) => {
+        {steps.map((step, idx) => {
           const Icon = step.Icon
           const done = normal && idx <= activeIndex
           const current = normal && idx === activeIndex && activeIndex < lastIdx
@@ -148,8 +157,7 @@ export function CustomerOrderStatusBar({
         <div className="mt-6 flex flex-col gap-3 border-t border-neutral-100 pt-4">
           {distanceKm != null && Number.isFinite(distanceKm) && (
             <p className="text-center text-xs text-neutral-600">
-              Shipper cách điểm giao khoảng{' '}
-              <span className="font-semibold text-neutral-900">{distanceKm.toFixed(2)} km</span>
+              {t('orderProgress.distance', { km: distanceKm.toFixed(2) })}
             </p>
           )}
           {showNearDestinationMapLink && mapHref ? (
@@ -158,7 +166,7 @@ export function CustomerOrderStatusBar({
               className="mx-auto inline-flex items-center justify-center gap-2 rounded-xl border border-neutral-900 bg-neutral-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-neutral-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900"
             >
               <MapPinned className="h-4 w-4 shrink-0" />
-              Xem vị trí shipper trên bản đồ
+              {t('orderProgress.viewMap')}
             </Link>
           ) : null}
         </div>

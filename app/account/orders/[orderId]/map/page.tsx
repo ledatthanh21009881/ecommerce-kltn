@@ -9,16 +9,22 @@ import { userOrdersApi } from '@/lib/userOrdersApi'
 import type { Shipper, OrderTracking } from '@/lib/tracking-types'
 import { shipperDestinationDistanceKm, trackingHasDestination } from '@/lib/orderCustomerTracking'
 import ProtectedRoute from '@/components/protected-route'
+import { useLanguage } from '@/components/language-provider'
+
+function MapLoadingOverlay() {
+  const { t } = useLanguage()
+  return (
+    <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
+      {t('orderMap.loadingMap')}
+    </div>
+  )
+}
 
 const MapboxShipperDetailMapDemo = dynamic(
   () => import('@/components/admin/MapboxShipperDetailMapDemo'),
   {
     ssr: false,
-    loading: () => (
-      <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
-        Đang tải bản đồ...
-      </div>
-    ),
+    loading: () => <MapLoadingOverlay />,
   }
 )
 
@@ -57,6 +63,7 @@ function parseUserTracking(body: unknown): { shipper: Shipper | null; orders: Or
 }
 
 export default function OrderMapPage() {
+  const { t } = useLanguage()
   const params = useParams()
   const orderId = params?.orderId as string
   const [order, setOrder] = useState<OrderDetail | null>(null)
@@ -73,7 +80,7 @@ export default function OrderMapPage() {
 
   useEffect(() => {
     if (!orderId) {
-      setError('Invalid order')
+      setError(t('orderDetail.invalidOrder'))
       setLoading(false)
       return
     }
@@ -87,14 +94,14 @@ export default function OrderMapPage() {
       ])
 
       if (!detailRes.ok) {
-        setError((detailRes.data as { message?: string })?.message ?? 'Không tìm thấy đơn hàng')
+        setError((detailRes.data as { message?: string })?.message ?? t('orderDetail.notFound'))
         setLoading(false)
         return
       }
       const detailPayload = detailRes.data as { success?: boolean; data?: OrderDetail }
       const orderPayload = detailPayload?.data ?? detailRes.data
       if (!orderPayload || typeof orderPayload !== 'object') {
-        setError('Không tìm thấy đơn hàng')
+        setError(t('orderDetail.notFound'))
         setLoading(false)
         return
       }
@@ -117,7 +124,7 @@ export default function OrderMapPage() {
     }
 
     void load()
-  }, [orderId])
+  }, [orderId, t])
 
   const numericOrderId = Number(orderId)
   const currentTrackingRow = useMemo(() => {
@@ -169,7 +176,7 @@ export default function OrderMapPage() {
     return (
       <ProtectedRoute>
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#f9fafb]">
-          <p className="text-gray-500">Đang tải...</p>
+          <p className="text-gray-500">{t('common.loading')}</p>
         </div>
       </ProtectedRoute>
     )
@@ -179,13 +186,13 @@ export default function OrderMapPage() {
     return (
       <ProtectedRoute>
         <div className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-4 bg-[#f9fafb] p-4">
-          <p className="text-center text-gray-600">{error ?? 'Không tìm thấy đơn hàng'}</p>
+          <p className="text-center text-gray-600">{error ?? t('orderDetail.notFound')}</p>
           <Link
             href={`/account/orders/${orderId}`}
             className="inline-flex items-center gap-2 rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
           >
             <ArrowLeft className="h-4 w-4" />
-            Quay lại đơn hàng
+            {t('orderMap.backToOrder')}
           </Link>
         </div>
       </ProtectedRoute>
@@ -196,13 +203,13 @@ export default function OrderMapPage() {
     return (
       <ProtectedRoute>
         <div className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-4 bg-[#f9fafb] p-4">
-          <p className="text-center text-gray-600">Đơn hàng chưa trong trạng thái giao hàng.</p>
+          <p className="text-center text-gray-600">{t('orderMap.notDelivering')}</p>
           <Link
             href={`/account/orders/${orderId}`}
             className="inline-flex items-center gap-2 rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
           >
             <ArrowLeft className="h-4 w-4" />
-            Quay lại đơn hàng
+            {t('orderMap.backToOrder')}
           </Link>
         </div>
       </ProtectedRoute>
@@ -213,15 +220,13 @@ export default function OrderMapPage() {
     return (
       <ProtectedRoute>
         <div className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-4 bg-[#f9fafb] p-4">
-          <p className="text-center text-gray-700 max-w-sm">
-            Chưa có dữ liệu vị trí shipper và địa chỉ giao để hiển thị bản đồ. Vui lòng thử lại sau.
-          </p>
+          <p className="text-center text-gray-700 max-w-sm">{t('orderMap.noMapData')}</p>
           <Link
             href={`/account/orders/${orderId}`}
             className="inline-flex items-center gap-2 rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
           >
             <ArrowLeft className="h-4 w-4" />
-            Quay lại đơn hàng
+            {t('orderMap.backToOrder')}
           </Link>
         </div>
       </ProtectedRoute>
@@ -237,10 +242,12 @@ export default function OrderMapPage() {
             className="inline-flex items-center gap-2 rounded-xl border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
           >
             <ArrowLeft className="h-4 w-4" />
-            Quay lại đơn hàng
+            {t('orderMap.backToOrder')}
           </Link>
           {distanceKm != null ? (
-            <span className="text-xs font-medium text-gray-600">~{distanceKm.toFixed(2)} km đến nơi giao</span>
+            <span className="text-xs font-medium text-gray-600">
+              {t('orderMap.distanceToDelivery', { km: distanceKm.toFixed(2) })}
+            </span>
           ) : null}
         </header>
         <div className="relative min-h-0 flex-1">

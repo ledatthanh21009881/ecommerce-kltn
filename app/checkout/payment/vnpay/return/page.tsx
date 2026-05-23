@@ -5,8 +5,26 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { CheckCircle2, XCircle } from 'lucide-react'
+import { useLanguage } from '@/components/language-provider'
+
+function VNPayReturnFallback() {
+  const { t } = useLanguage()
+  return (
+    <div className="container mx-auto px-4 py-12 max-w-2xl">
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-center">{t('vnpay.processing')}</CardTitle>
+        </CardHeader>
+        <CardContent className="flex justify-center py-8">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900" />
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
 
 function VNPayReturnContent() {
+  const { t } = useLanguage()
   const router = useRouter()
   const searchParams = useSearchParams()
   const [status, setStatus] = useState<'loading' | 'success' | 'failed'>('loading')
@@ -34,9 +52,9 @@ function VNPayReturnContent() {
       <Card>
         <CardHeader>
           <CardTitle className="text-center">
-            {status === 'loading' && 'Đang xử lý...'}
-            {status === 'success' && 'Thanh toán thành công!'}
-            {status === 'failed' && 'Thanh toán thất bại'}
+            {status === 'loading' && t('vnpay.processing')}
+            {status === 'success' && t('vnpay.successTitle')}
+            {status === 'failed' && t('vnpay.failedTitle')}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6 text-center">
@@ -45,14 +63,22 @@ function VNPayReturnContent() {
               <div className="flex justify-center">
                 <CheckCircle2 className="h-16 w-16 text-green-500" />
               </div>
-              <p className="text-lg">Cảm ơn bạn đã thanh toán!</p>
-              {orderId && <p className="text-sm text-gray-500">Đơn hàng #{orderId}</p>}
+              <p className="text-lg">{t('vnpay.thanks')}</p>
+              {orderId && (
+                <p className="text-sm text-gray-500">
+                  {t('vnpay.orderLabel', { id: String(orderId) })}
+                </p>
+              )}
               <div className="flex gap-4 justify-center">
-                <Button onClick={() => router.push(`/checkout/payment/success?order_id=${orderId}`)}>
-                  Xem đơn hàng
+                <Button
+                  onClick={() =>
+                    router.push(`/checkout/payment/success?order_id=${orderId}`)
+                  }
+                >
+                  {t('vnpay.viewOrder')}
                 </Button>
                 <Button variant="outline" onClick={() => router.push('/')}>
-                  Về trang chủ
+                  {t('vnpay.home')}
                 </Button>
               </div>
             </>
@@ -63,14 +89,12 @@ function VNPayReturnContent() {
               <div className="flex justify-center">
                 <XCircle className="h-16 w-16 text-red-500" />
               </div>
-              <p className="text-lg">Thanh toán không thành công</p>
-              <p className="text-sm text-gray-500">
-                Vui lòng thử lại hoặc chọn phương thức thanh toán khác
-              </p>
+              <p className="text-lg">{t('vnpay.failedMessage')}</p>
+              <p className="text-sm text-gray-500">{t('vnpay.retryHint')}</p>
               <div className="flex gap-4 justify-center">
-                <Button onClick={() => router.push('/checkout')}>Thử lại</Button>
+                <Button onClick={() => router.push('/checkout')}>{t('vnpay.retry')}</Button>
                 <Button variant="outline" onClick={() => router.push('/')}>
-                  Về trang chủ
+                  {t('vnpay.home')}
                 </Button>
               </div>
             </>
@@ -89,20 +113,7 @@ function VNPayReturnContent() {
 
 export default function VNPayReturnPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="container mx-auto px-4 py-12 max-w-2xl">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-center">Đang xử lý...</CardTitle>
-            </CardHeader>
-            <CardContent className="flex justify-center py-8">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900" />
-            </CardContent>
-          </Card>
-        </div>
-      }
-    >
+    <Suspense fallback={<VNPayReturnFallback />}>
       <VNPayReturnContent />
     </Suspense>
   )

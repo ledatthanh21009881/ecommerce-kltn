@@ -6,6 +6,7 @@ import { CheckCircle2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { tokenStore } from '@/lib/tokenStore'
+import { useLanguage } from '@/components/language-provider'
 
 interface OrderData {
   order_id: number
@@ -19,10 +20,19 @@ interface OrderData {
   }>
 }
 
+function PaymentSuccessFallback() {
+  const { t } = useLanguage()
+  return (
+    <div className="container mx-auto px-4 py-12">
+      <div className="text-center">{t('common.loading')}</div>
+    </div>
+  )
+}
+
 function PaymentSuccessContent() {
+  const { t } = useLanguage()
   const router = useRouter()
   const searchParams = useSearchParams()
-  /** PayOS có thể trả `orderCode` thay vì `order_id` */
   const orderIdParam =
     searchParams.get('order_id') || searchParams.get('orderCode') || null
   const payosStatus = searchParams.get('status')
@@ -56,13 +66,11 @@ function PaymentSuccessContent() {
       })
 
       window.dispatchEvent(new CustomEvent('cart-updated'))
-      console.log('Cart cleared successfully')
     } catch (error) {
       console.error('Error clearing cart:', error)
     }
   }
 
-  /** Dùng token khách (checkout), không dùng admin-auth — tránh redirect /admin-login sau PayOS */
   const loadOrder = async () => {
     if (!orderIdParam) {
       setLoading(false)
@@ -107,7 +115,7 @@ function PaymentSuccessContent() {
   if (loading) {
     return (
       <div className="container mx-auto px-4 py-12">
-        <div className="text-center">Loading...</div>
+        <div className="text-center">{t('common.loading')}</div>
       </div>
     )
   }
@@ -120,68 +128,54 @@ function PaymentSuccessContent() {
             <div className="flex justify-center mb-4">
               <CheckCircle2 className="h-16 w-16 text-green-500" />
             </div>
-            <CardTitle className="text-2xl">Đặt hàng thành công!</CardTitle>
+            <CardTitle className="text-2xl">{t('paymentSuccess.title')}</CardTitle>
           </div>
         </CardHeader>
         <CardContent className="space-y-6">
           {payosStatus === 'PAID' && (
-            <p className="text-center text-sm text-green-700">
-              Thanh toán đã được xác nhận.
-            </p>
+            <p className="text-center text-sm text-green-700">{t('paymentSuccess.paidConfirmed')}</p>
           )}
 
           {!orderIdParam && (
-            <p className="text-center text-sm text-gray-600">
-              Cảm ơn bạn! Nếu bạn vừa thanh toán, vui lòng kiểm tra email hoặc đơn
-              hàng trong tài khoản.
-            </p>
+            <p className="text-center text-sm text-gray-600">{t('paymentSuccess.thanksGeneric')}</p>
           )}
 
           {(order || orderIdParam) && (
             <>
               <div className="text-center space-y-2">
-                <p className="text-lg font-semibold">Cảm ơn bạn đã đặt hàng!</p>
+                <p className="text-lg font-semibold">{t('paymentSuccess.thanksOrder')}</p>
                 <p className="text-sm text-gray-500">
-                  Mã đơn hàng:{' '}
-                  <span className="font-semibold">
-                    #{order?.order_id ?? orderIdParam}
-                  </span>
+                  {t('paymentSuccess.orderId')}:{' '}
+                  <span className="font-semibold">#{order?.order_id ?? orderIdParam}</span>
                 </p>
                 {order?.invoice_number && (
                   <p className="text-sm text-gray-500">
-                    Số hóa đơn:{' '}
+                    {t('paymentSuccess.invoiceNumber')}:{' '}
                     <span className="font-semibold">{order.invoice_number}</span>
                   </p>
                 )}
                 {!order && orderIdParam && (
-                  <p className="text-sm text-gray-500">
-                    Đăng nhập để xem đầy đủ chi tiết đơn hàng trong mục Tài khoản.
-                  </p>
+                  <p className="text-sm text-gray-500">{t('paymentSuccess.loginForDetails')}</p>
                 )}
               </div>
 
               {order && (
                 <div className="border-t pt-4 space-y-2">
-                  <h3 className="font-semibold mb-2">Chi tiết đơn hàng:</h3>
+                  <h3 className="font-semibold mb-2">{t('paymentSuccess.orderDetails')}:</h3>
                   {order.items?.map((item, idx) => (
                     <div key={idx} className="flex justify-between text-sm">
                       <span>
                         {item.product_name_snapshot} x{item.quantity}
                       </span>
                       <span>
-                        {(
-                          Number(item.unit_price) * Number(item.quantity)
-                        ).toLocaleString('vi-VN')}{' '}
-                        ₫
+                        {(Number(item.unit_price) * Number(item.quantity)).toLocaleString('vi-VN')} ₫
                       </span>
                     </div>
                   ))}
                   <div className="border-t pt-2 mt-2">
                     <div className="flex justify-between font-bold">
-                      <span>Tổng cộng:</span>
-                      <span>
-                        {Number(order.total_amount).toLocaleString('vi-VN')} ₫
-                      </span>
+                      <span>{t('paymentSuccess.total')}:</span>
+                      <span>{Number(order.total_amount).toLocaleString('vi-VN')} ₫</span>
                     </div>
                   </div>
                 </div>
@@ -190,9 +184,9 @@ function PaymentSuccessContent() {
           )}
 
           <div className="flex gap-4 justify-center pt-4">
-            <Button onClick={() => router.push(`/account`)}>Xem đơn hàng của tôi</Button>
+            <Button onClick={() => router.push(`/account`)}>{t('paymentSuccess.viewOrders')}</Button>
             <Button variant="outline" onClick={() => router.push('/all-products')}>
-              Tiếp tục mua sắm
+              {t('paymentSuccess.continueShopping')}
             </Button>
           </div>
         </CardContent>
@@ -203,13 +197,7 @@ function PaymentSuccessContent() {
 
 export default function PaymentSuccessPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="container mx-auto px-4 py-12">
-          <div className="text-center">Đang tải...</div>
-        </div>
-      }
-    >
+    <Suspense fallback={<PaymentSuccessFallback />}>
       <PaymentSuccessContent />
     </Suspense>
   )

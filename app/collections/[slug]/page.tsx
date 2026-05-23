@@ -9,8 +9,10 @@ import {
   type Collection,
   type CollectionImage
 } from '@/lib/collections-api'
+import { useLanguage } from '@/components/language-provider'
 
 export default function CollectionDetailPage() {
+  const { t } = useLanguage()
   const params = useParams()
   const slug = params?.slug as string
   const [collection, setCollection] = useState<Collection | null>(null)
@@ -46,7 +48,7 @@ export default function CollectionDetailPage() {
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center p-12 ml-[224px]">
-        <div className="text-sm text-gray-500">Loading...</div>
+        <div className="text-sm text-gray-500">{t('common.loading')}</div>
       </div>
     )
   }
@@ -54,7 +56,7 @@ export default function CollectionDetailPage() {
   if (error || !collection) {
     return (
       <div className="flex min-h-screen items-center justify-center p-12 ml-[224px]">
-        <p className="text-sm text-gray-500">{error || 'Collection not found'}</p>
+        <p className="text-sm text-gray-500">{error || t('collections.notFound')}</p>
       </div>
     )
   }

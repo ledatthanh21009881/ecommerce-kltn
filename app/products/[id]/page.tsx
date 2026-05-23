@@ -429,10 +429,13 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
                   const availableToAdd = variant.stock_quantity - currentCartQuantity
                   return (
                     <p className="mt-2 text-xs text-gray-500">
-                      Còn lại: {variant.stock_quantity} sản phẩm
+                      {t('product.remainingStock', { count: String(variant.stock_quantity) })}
                       {currentCartQuantity > 0 && (
                         <span className="ml-2 text-gray-400">
-                          (Đã có {currentCartQuantity} trong giỏ, có thể thêm: {availableToAdd})
+                          {t('product.inCartCanAdd', {
+                            inCart: String(currentCartQuantity),
+                            canAdd: String(availableToAdd),
+                          })}
                         </span>
                       )}
                     </p>
@@ -567,7 +570,9 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
                 }}
               >
                 <span className="relative z-10 font-sans font-bold uppercase tracking-wider">
-                  {availableSizes.length === 0 ? "HẾT HÀNG" : isVariantOutOfStock() ? "Hết Hàng" : "THÊM VÀO GIỎ"}
+                  {availableSizes.length === 0 || isVariantOutOfStock()
+                    ? t('product.outOfStockUpper')
+                    : t('product.addToCartUpper')}
                 </span>
                 <div className="absolute inset-0 bg-white transform translate-x-full transition-transform duration-300 ease-in-out group-hover:translate-x-0"></div>
               </button>
@@ -578,30 +583,42 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
             <div className="border-t border-gray-200 pt-4">
               <details className="group">
                 <summary className="flex cursor-pointer items-center justify-between py-2">
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-gray-800">+ Product Details</h3>
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-gray-800">+ {t('product.productDetails')}</h3>
                   <ChevronDown className="h-3 w-3 transition-transform group-open:rotate-180" />
                 </summary>
                 <div className="pb-3 pt-1 text-xs text-gray-600">
                   <ul className="list-inside list-disc space-y-1">
-                    {product.material && <li>Material: {product.material}</li>}
-                    {product.stock !== undefined && <li>Stock: {product.stock} units</li>}
-                    {product.category_name && <li>Category: {product.category_name}</li>}
-                    {product.variant_count && <li>Available in {product.variant_count} variants</li>}
+                    {product.material && (
+                      <li>
+                        {t('product.materialLabel')}: {product.material}
+                      </li>
+                    )}
+                    {product.stock !== undefined && (
+                      <li>
+                        {t('product.stockLabel')}:{' '}
+                        {t('product.stockUnits', { count: String(product.stock) })}
+                      </li>
+                    )}
+                    {product.category_name && (
+                      <li>
+                        {t('product.categoryLabel')}: {product.category_name}
+                      </li>
+                    )}
+                    {product.variant_count && (
+                      <li>{t('product.variantsLabel', { count: String(product.variant_count) })}</li>
+                    )}
                   </ul>
                 </div>
               </details>
 
               <details className="group border-t border-gray-200">
                 <summary className="flex cursor-pointer items-center justify-between py-2">
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-gray-800">+ Customer Care</h3>
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-gray-800">+ {t('product.customerCare')}</h3>
                   <ChevronDown className="h-3 w-3 transition-transform group-open:rotate-180" />
                 </summary>
                 <div className="pb-3 pt-1 text-xs text-gray-600">
-                  <p>Free standard shipping on all orders over $100. Delivery within 3-5 business days.</p>
-                  <p className="mt-1">
-                    We offer free returns within 30 days of purchase. Items must be unworn with original tags
-                    attached.
-                  </p>
+                  <p>{t('product.careShipping')}</p>
+                  <p className="mt-1">{t('product.careReturns')}</p>
                 </div>
               </details>
             </div>

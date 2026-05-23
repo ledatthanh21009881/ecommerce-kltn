@@ -89,7 +89,7 @@ export default function AllProductsPage() {
         }
       } catch (error) {
         console.error("Error fetching categories:", error)
-        toast.error("Failed to load categories")
+        toast.error(t('catalog.failedCategories'))
       } finally {
         setCategoriesLoading(false)
       }
@@ -118,7 +118,7 @@ export default function AllProductsPage() {
         }
       } catch (error) {
         console.error("Error fetching products:", error)
-        toast.error("Failed to load products")
+        toast.error(t('catalog.failedProducts'))
       } finally {
         setLoading(false)
       }
@@ -193,7 +193,7 @@ export default function AllProductsPage() {
         {/* No Products State */}
         {!loading && products.length === 0 && (
           <div className="text-center py-12">
-            <p className="text-gray-500 text-lg">No products found</p>
+            <p className="text-gray-500 text-lg">{t('catalog.noProducts')}</p>
           </div>
         )}
 
@@ -201,7 +201,7 @@ export default function AllProductsPage() {
         {products.length > 0 && (
           <div className="mt-16 flex justify-center">
             <Button variant="outline" className="px-8 py-3 text-base">
-              Load More Products
+              {t('catalog.loadMore')}
             </Button>
           </div>
         )}
