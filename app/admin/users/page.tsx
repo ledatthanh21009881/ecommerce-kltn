@@ -1065,6 +1065,19 @@ function addressFieldsPartial(a: AdminAddressValue): boolean {
   return filled.some(Boolean) && !filled.every(Boolean)
 }
 
+function roleNameFromIds(
+  roles: Array<{ role_id: number; role_name: string }>,
+  roleIds: number[],
+): string | undefined {
+  const id = roleIds[0]
+  if (id == null || id <= 0) return undefined
+  return roles.find((r) => r.role_id === id)?.role_name
+}
+
+function isCustomerRole(roleName: string | undefined): boolean {
+  return roleName === 'customer'
+}
+
 // Add User Form Component
 function AddUserForm({
   roles,
@@ -1092,11 +1105,20 @@ function AddUserForm({
   const [addressForm, setAddressForm] = useState<AdminAddressValue>(() => emptyAdminAddress())
   const [loading, setLoading] = useState(false)
 
+  const selectedRoleName = roleNameFromIds(roles, formData.role_ids)
+  const isCustomer = isCustomerRole(selectedRoleName)
+
   useEffect(() => {
     if (modalOpen) {
       setAddressForm(emptyAdminAddress())
     }
   }, [modalOpen])
+
+  useEffect(() => {
+    if (!isCustomer) {
+      setAddressForm(emptyAdminAddress())
+    }
+  }, [isCustomer])
 
   const patchAddress = (patch: Partial<AdminAddressValue>) => {
     setAddressForm((prev) => ({ ...prev, ...patch }))
@@ -1104,7 +1126,7 @@ function AddUserForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (addressFieldsPartial(addressForm)) {
+    if (isCustomer && addressFieldsPartial(addressForm)) {
       toast.error(t('adminUserAddressPartial'))
       return
     }
@@ -1118,7 +1140,7 @@ function AddUserForm({
       }
 
       const payload: Record<string, unknown> = { ...formData, scope: 'external' }
-      if (addressFieldsFilled(addressForm)) {
+      if (isCustomer && addressFieldsFilled(addressForm)) {
         const receiver =
           addressForm.receiver_name.trim() ||
           `${formData.first_name} ${formData.last_name}`.trim()
@@ -1240,7 +1262,12 @@ function AddUserForm({
         </div>
         <div className="md:col-span-2">
           <Label htmlFor="add_role">{t('role')}</Label>
-          <Select onValueChange={(value) => setFormData((prev) => ({ ...prev, role_ids: [parseInt(value, 10)] }))}>
+          <Select
+            value={formData.role_ids[0]?.toString() ?? ''}
+            onValueChange={(value) =>
+              setFormData((prev) => ({ ...prev, role_ids: [parseInt(value, 10)] }))
+            }
+          >
             <SelectTrigger id="add_role" className="h-10 mt-1.5 w-full md:max-w-md">
               <SelectValue placeholder={t('selectRole')} />
             </SelectTrigger>
@@ -1255,12 +1282,14 @@ function AddUserForm({
         </div>
       </div>
 
-      <AdminVnAddressFields
-        value={addressForm}
-        onChange={patchAddress}
-        enableNameSync={false}
-        dialogContentEl={dialogContentEl}
-      />
+      {isCustomer && (
+        <AdminVnAddressFields
+          value={addressForm}
+          onChange={patchAddress}
+          enableNameSync={false}
+          dialogContentEl={dialogContentEl}
+        />
+      )}
 
       <div className="flex justify-end gap-2">
         <Button type="button" variant="outline" onClick={onCancel}>
@@ -1314,8 +1343,19 @@ function EditUserForm({
   const [enableNameSync, setEnableNameSync] = useState(false)
   const [loading, setLoading] = useState(false)
 
+  const selectedRoleName = roleNameFromIds(roles, formData.role_ids)
+  const isCustomer = isCustomerRole(selectedRoleName)
+
   useEffect(() => {
-    if (!modalOpen) return
+    if (!isCustomer) {
+      setAddressId(null)
+      setAddressForm(emptyAdminAddress())
+      setEnableNameSync(false)
+    }
+  }, [isCustomer])
+
+  useEffect(() => {
+    if (!modalOpen || !isCustomer) return
     let cancelled = false
     ;(async () => {
       const token = localStorage.getItem('adminToken')
@@ -1359,7 +1399,7 @@ function EditUserForm({
     return () => {
       cancelled = true
     }
-  }, [modalOpen, user.user_id, user.first_name, user.last_name, user.phone])
+  }, [modalOpen, isCustomer, user.user_id, user.first_name, user.last_name, user.phone])
 
   const patchAddress = (patch: Partial<AdminAddressValue>) => {
     setAddressForm((prev) => ({ ...prev, ...patch }))
@@ -1367,7 +1407,7 @@ function EditUserForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (addressFieldsPartial(addressForm)) {
+    if (isCustomer && addressFieldsPartial(addressForm)) {
       toast.error(t('adminUserAddressPartial'))
       return
     }
@@ -1400,7 +1440,7 @@ function EditUserForm({
         return
       }
 
-      if (addressFieldsFilled(addressForm)) {
+      if (isCustomer && addressFieldsFilled(addressForm)) {
         const receiver =
           addressForm.receiver_name.trim() ||
           `${formData.first_name} ${formData.last_name}`.trim()
@@ -1516,12 +1556,14 @@ function EditUserForm({
         </div>
       </div>
 
-      <AdminVnAddressFields
-        value={addressForm}
-        onChange={patchAddress}
-        enableNameSync={enableNameSync}
-        dialogContentEl={dialogContentEl}
-      />
+      {isCustomer && (
+        <AdminVnAddressFields
+          value={addressForm}
+          onChange={patchAddress}
+          enableNameSync={enableNameSync}
+          dialogContentEl={dialogContentEl}
+        />
+      )}
 
       <div className="flex justify-end gap-2">
         <Button type="button" variant="outline" onClick={onCancel}>

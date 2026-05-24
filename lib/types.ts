@@ -2,13 +2,15 @@ export interface Product {
   product_id: number
   product_name: string
   category_id: number
+  category_name?: string
   short_description?: string
   description?: string
   material?: string
   list_price: number
   compare_at_price?: number
   cost_price?: number
-  stock: number
+  stock?: number
+  stock_quantity?: number
   status: 'active' | 'inactive' | 'draft'
   is_featured: boolean
   created_at: string

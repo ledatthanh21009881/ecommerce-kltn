@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { X, Upload, Plus, Trash2, Save, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -20,12 +20,17 @@ import { Product, ProductFormData, ProductVariant, ProductImage } from '@/lib/ty
 import { authUtils } from '@/lib/auth'
 import { useLanguage } from '@/contexts/LanguageContext'
 import { violatesVndPriceStep } from '@/lib/vnd-price-step'
+import {
+  getCategorySelectOptions,
+  resolveProductCategoryId,
+  type CategoryOption,
+} from '@/lib/products'
 
 interface ProductModalProps {
   isOpen: boolean
   onClose: () => void
   product: Product | null
-  categories: any[]
+  categories: CategoryOption[]
   onSaved: () => void
 }
 
@@ -52,21 +57,27 @@ export default function ProductModal({ isOpen, onClose, product, categories, onS
   const [imageUrls, setImageUrls] = useState<string[]>([])
   const [mainImageIndex, setMainImageIndex] = useState<number>(0)
 
-  // Initialize form data when product changes
+  const categorySelectOptions = useMemo(() => {
+    const selectedId = Number(formData.category_id) || 0
+    return getCategorySelectOptions(categories, selectedId, product?.category_name)
+  }, [categories, formData.category_id, product?.category_name])
+
+  // Initialize form data when product or categories change
   useEffect(() => {
     console.log('ProductModal - Product changed:', product)
     if (product) {
+      const categoryId = resolveProductCategoryId(product, categories)
       setFormData({
         product_name: product.product_name,
-        category_id: product.category_id,
+        category_id: categoryId,
         short_description: product.short_description || '',
         description: product.description || '',
         material: product.material || '',
         list_price: typeof product.list_price === 'string' ? parseFloat(product.list_price) : product.list_price,
         compare_at_price: product.compare_at_price ? (typeof product.compare_at_price === 'string' ? parseFloat(product.compare_at_price) : product.compare_at_price) : 0,
         cost_price: product.cost_price ? (typeof product.cost_price === 'string' ? parseFloat(product.cost_price) : product.cost_price) : 0,
-        stock: product.stock,
-        status: product.status,
+        stock: Number(product.stock ?? product.stock_quantity ?? 0),
+        status: product.status ?? (product as { product_status?: string }).product_status ?? 'active',
         is_featured: product.is_featured,
         variants: product.variants || [],
         images: product.images || []
@@ -121,7 +132,7 @@ export default function ProductModal({ isOpen, onClose, product, categories, onS
        setImageUrls([])
        setMainImageIndex(0)
     }
-  }, [product])
+  }, [product, categories])
 
   const handleInputChange = (field: keyof ProductFormData, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }))
@@ -404,7 +415,7 @@ export default function ProductModal({ isOpen, onClose, product, categories, onS
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">{t('selectCategory')}</SelectItem>
-                    {categories.map((category) => (
+                    {categorySelectOptions.map((category) => (
                       <SelectItem key={category.category_id} value={String(category.category_id)}>
                         {category.category_name}
                       </SelectItem>

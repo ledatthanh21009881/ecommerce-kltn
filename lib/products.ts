@@ -251,6 +251,83 @@ export const productApi = {
   },
 }
 
+export type CategoryOption = {
+  category_id: number | string
+  category_name?: string
+  children?: CategoryOption[]
+}
+
+/** Flatten hierarchical category trees for dropdowns. */
+export function flattenCategories(categories: CategoryOption[]): CategoryOption[] {
+  const out: CategoryOption[] = []
+  for (const cat of categories) {
+    out.push(cat)
+    if (cat.children?.length) {
+      out.push(...flattenCategories(cat.children))
+    }
+  }
+  return out
+}
+
+/**
+ * Resolve category_id from API payload (coerce types, match by category_name).
+ */
+export function resolveProductCategoryId(
+  product: {
+    category_id?: number | string | null
+    category_name?: string | null
+  },
+  categories: CategoryOption[],
+): number {
+  const flat = flattenCategories(categories)
+  const raw = Number(product.category_id)
+  if (Number.isFinite(raw) && raw > 0) {
+    if (flat.length === 0) {
+      return raw
+    }
+    const inList = flat.some((c) => Number(c.category_id) === raw)
+    if (inList) {
+      return raw
+    }
+  }
+
+  const name = String(product.category_name ?? '').trim()
+  if (name && flat.length > 0) {
+    const lower = name.toLowerCase()
+    const match = flat.find(
+      (c) => String(c.category_name ?? '').trim().toLowerCase() === lower,
+    )
+    if (match) {
+      return Number(match.category_id)
+    }
+  }
+
+  if (Number.isFinite(raw) && raw > 0) {
+    return raw
+  }
+
+  return 0
+}
+
+/** Options for Select — includes current category even if missing from active list. */
+export function getCategorySelectOptions(
+  categories: CategoryOption[],
+  selectedId: number,
+  fallbackName?: string,
+): CategoryOption[] {
+  const flat = flattenCategories(categories)
+  if (selectedId > 0 && !flat.some((c) => Number(c.category_id) === selectedId)) {
+    return [
+      ...flat,
+      {
+        category_id: selectedId,
+        category_name: fallbackName?.trim() || `Danh mục #${selectedId}`,
+      },
+    ]
+  }
+  return flat
+}
+
 // Form data interface for product creation/editing
 export interface ProductFormData {
   product_name: string

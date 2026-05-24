@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import Image from 'next/image'
 import { Button } from '@/components/ui/button'
@@ -9,7 +9,13 @@ import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { useToast } from '@/hooks/use-toast'
-import { productApi, ProductFormData, Product } from '@/lib/products'
+import {
+  productApi,
+  ProductFormData,
+  Product,
+  getCategorySelectOptions,
+  resolveProductCategoryId,
+} from '@/lib/products'
 import { getCategories, Category } from '@/lib/categories'
 import { authUtils } from '@/lib/auth'
 import { ArrowLeft, Upload, X, ImageIcon, Save, Eye, CheckCircle } from 'lucide-react'
@@ -58,6 +64,21 @@ export default function EditProductPage() {
     variants: [],
     images: []
   })
+
+  const categorySelectOptions = useMemo(() => {
+    const selectedId = Number(formData.category_id) || 0
+    return getCategorySelectOptions(categories, selectedId, product?.category_name)
+  }, [categories, formData.category_id, product?.category_name])
+
+  useEffect(() => {
+    if (!product || categories.length === 0) return
+    const resolved = resolveProductCategoryId(product, categories)
+    if (resolved > 0) {
+      setFormData((prev) =>
+        Number(prev.category_id) === resolved ? prev : { ...prev, category_id: resolved },
+      )
+    }
+  }, [product, categories])
 
   // Load data on mount
   useEffect(() => {
@@ -129,13 +150,19 @@ export default function EditProductPage() {
 
       console.log('📋 Product data loaded:', productData)
       setProduct(productData)
+
+      const cats = categories.length > 0 ? categories : await getCategories().then((c) => {
+        setCategories(c || [])
+        return c || []
+      })
+      const categoryId = resolveProductCategoryId(productData, cats)
       
       setFormData({
         product_name: productData.product_name || '',
         slug: productData.slug || '',
         description: productData.description || '',
         short_description: productData.short_description || '',
-        category_id: productData.category_id || 0,
+        category_id: categoryId,
         material: productData.material || '',
         list_price: productData.list_price || 0,
         compare_at_price: productData.compare_at_price || 0,
@@ -647,8 +674,10 @@ export default function EditProductPage() {
                   >
                     <div className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 justify-between items-center">
                       <span>
-                        {formData.category_id 
-                          ? categories.find(cat => cat.category_id === formData.category_id)?.category_name || 'Select category...'
+                        {formData.category_id
+                          ? categorySelectOptions.find(
+                              (cat) => Number(cat.category_id) === Number(formData.category_id),
+                            )?.category_name || product?.category_name || 'Select category...'
                           : 'Select category...'
                         }
                       </span>
@@ -665,17 +694,20 @@ export default function EditProductPage() {
                         onClick={() => setCategoryDropdownOpen(false)}
                       />
                       <div className="absolute top-full left-0 right-0 z-50 mt-1 max-h-60 overflow-auto rounded-md border border-border bg-popover text-popover-foreground shadow-md">
-                        {categories.map((category) => (
+                        {categorySelectOptions.map((category) => (
                           <div
                             key={category.category_id}
                             className="relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground"
                             onClick={() => {
-                              setFormData(prev => ({ ...prev, category_id: category.category_id }))
+                              setFormData(prev => ({
+                                ...prev,
+                                category_id: Number(category.category_id),
+                              }))
                               setCategoryDropdownOpen(false)
                             }}
                           >
                             {category.category_name}
-                            {formData.category_id === category.category_id && (
+                            {Number(formData.category_id) === Number(category.category_id) && (
                               <svg className="ml-auto h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                               </svg>
