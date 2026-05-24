@@ -196,7 +196,23 @@ export async function POST(request: NextRequest) {
       })
 
       console.log('🔍 Debug - Backend response status:', response.status)
-      const responseData = await response.json()
+      let responseData: unknown = null
+      try {
+        const text = await response.text()
+        responseData = text ? JSON.parse(text) : null
+      } catch (parseError) {
+        console.error('🔍 Debug - Backend response JSON parse failed:', parseError)
+        if (response.ok) {
+          return NextResponse.json(
+            { success: true, message: 'OK', data: null },
+            { status: 200 }
+          )
+        }
+        return NextResponse.json(
+          { success: false, message: 'Invalid response from backend' },
+          { status: 502 }
+        )
+      }
       console.log('🔍 Debug - Backend response data:', responseData)
       return NextResponse.json(responseData, { status: response.status })
     }

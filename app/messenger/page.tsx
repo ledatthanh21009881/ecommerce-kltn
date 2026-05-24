@@ -130,7 +130,7 @@ function MessengerContent() {
     }
   })
 
-  const loadMessages = useCallback(async (convId: number) => {
+  const loadMessages = useCallback(async (convId: number): Promise<Message[]> => {
     try {
       const token = getAuthToken()
       console.log('Debug - Loading messages for conversation:', convId)
@@ -149,9 +149,10 @@ function MessengerContent() {
         if (data.success) {
           const messagesData = data.data && data.data.items ? data.data.items : data.data
           console.log('Debug - Raw messages data:', messagesData)
-          console.log('Debug - First message structure:', messagesData[0])
-          setMessages(Array.isArray(messagesData) ? messagesData : [])
-          console.log('Debug - Messages loaded:', Array.isArray(messagesData) ? messagesData.length : 0, 'messages')
+          const list = Array.isArray(messagesData) ? (messagesData as Message[]) : []
+          setMessages(list)
+          console.log('Debug - Messages loaded:', list.length, 'messages')
+          return list
         }
       } else {
         console.log('Debug - Failed to load messages')
@@ -162,7 +163,8 @@ function MessengerContent() {
       console.error('❌ Error loading messages:', error)
       toast.error(t('messenger.failedLoadMessages'))
     }
-  }, [])
+    return []
+  }, [t])
 
   const initializeChat = useCallback(async () => {
     console.log('Debug - initializeChat started')
@@ -459,31 +461,55 @@ function MessengerContent() {
       
       console.log('Debug - Send message response status:', response.status)
 
-             if (response.ok) {
-        const data = await response.json()
-        console.log('Debug - Send message response data:', data)
-        const savedMessage =
-          data?.data ??
-          (data as Record<string, unknown>).message ??
-          null
-        console.log('Debug - Normalized savedMessage for WS:', savedMessage)
-        if (data.success && savedMessage && conversationId) {
-          setMessages((prev) =>
-            prev.map((msg) =>
-              msg.message_id === optimisticMessage.message_id ? savedMessage : msg
-            )
-          )
-          // Luôn gọi — hook chỉ gửi khi socket OPEN (tránh stale isConnected sau await)
-          sendMessageViaWebSocket(savedMessage, conversationId)
-        }
-      } else {
-        // Remove optimistic message on error
-        setMessages(prev => prev.filter(msg => msg.message_id !== optimisticMessage.message_id))
-        toast.error(t('messenger.failedSend'))
+      let data: Record<string, unknown> | null = null
+      try {
+        data = await response.json()
+      } catch {
+        data = null
       }
+
+      const savedMessage =
+        (data?.data as Message | undefined) ??
+        (data?.message as Message | undefined) ??
+        null
+
+      if (response.ok && data?.success && savedMessage && conversationId) {
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.message_id === optimisticMessage.message_id ? savedMessage : msg
+          )
+        )
+        sendMessageViaWebSocket(savedMessage, conversationId)
+        return
+      }
+
+      if (response.ok && data?.success) {
+        await loadMessages(conversationId)
+        return
+      }
+
+      const reloaded = await loadMessages(conversationId)
+      const recovered = reloaded.some(
+        (m) => m.content === messageContent && m.sender_id === currentUserId
+      )
+      if (recovered) {
+        return
+      }
+
+      setMessages((prev) => prev.filter((msg) => msg.message_id !== optimisticMessage.message_id))
+      toast.error(t('messenger.failedSend'))
     } catch (error) {
       console.error('Error sending message:', error)
-      setMessages(prev => prev.filter(msg => msg.message_id !== optimisticMessage.message_id))
+      if (conversationId) {
+        const reloaded = await loadMessages(conversationId)
+        const recovered = reloaded.some(
+          (m) => m.content === messageContent && m.sender_id === currentUserId
+        )
+        if (recovered) {
+          return
+        }
+      }
+      setMessages((prev) => prev.filter((msg) => msg.message_id !== optimisticMessage.message_id))
       toast.error(t('messenger.failedSend'))
     }
   }
@@ -596,8 +622,12 @@ function MessengerContent() {
               }
             }
           } else {
-            setMessages(prev => prev.filter(msg => msg.message_id !== optimisticMessage.message_id))
-            toast.error(t('messenger.failedSendMedia'))
+            const reloaded = await loadMessages(conversationId)
+            const recovered = reloaded.some((m) => m.sender_id === currentUserId && m.content === content)
+            if (!recovered) {
+              setMessages(prev => prev.filter(msg => msg.message_id !== optimisticMessage.message_id))
+              toast.error(t('messenger.failedSendMedia'))
+            }
           }
         } else {
           setMessages(prev => prev.filter(msg => msg.message_id !== optimisticMessage.message_id))
