@@ -1,6 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { backendUrl } from '@/app/api/backend/config'
 
+/** Parse JSON even when PHP warnings prepend HTML to the response body. */
+function parseBackendJson(text: string): unknown {
+  const trimmed = text.trim()
+  if (!trimmed) return null
+  try {
+    return JSON.parse(trimmed)
+  } catch {
+    const start = trimmed.indexOf('{')
+    const end = trimmed.lastIndexOf('}')
+    if (start >= 0 && end > start) {
+      return JSON.parse(trimmed.slice(start, end + 1))
+    }
+    throw new Error('Invalid JSON from backend')
+  }
+}
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
@@ -57,7 +73,8 @@ export async function GET(request: NextRequest) {
       }
     })
 
-    const data = await response.json()
+    const text = await response.text()
+    const data = parseBackendJson(text)
     return NextResponse.json(data, { status: response.status })
   } catch (error) {
     console.error('Messenger API GET error:', error)
@@ -199,18 +216,12 @@ export async function POST(request: NextRequest) {
       let responseData: unknown = null
       try {
         const text = await response.text()
-        responseData = text ? JSON.parse(text) : null
+        responseData = text ? parseBackendJson(text) : null
       } catch (parseError) {
         console.error('🔍 Debug - Backend response JSON parse failed:', parseError)
-        if (response.ok) {
-          return NextResponse.json(
-            { success: true, message: 'OK', data: null },
-            { status: 200 }
-          )
-        }
         return NextResponse.json(
           { success: false, message: 'Invalid response from backend' },
-          { status: 502 }
+          { status: response.ok ? 502 : response.status }
         )
       }
       console.log('🔍 Debug - Backend response data:', responseData)
